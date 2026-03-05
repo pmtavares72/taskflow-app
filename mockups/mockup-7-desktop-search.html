@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow – Búsqueda Global</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #141418;
+    --surface:     #181820;
+    --elevated:    #1e1e28;
+    --card:        #222230;
+    --card-hover:  #28283a;
+    --border:      rgba(255,255,255,0.09);
+    --border-hover:rgba(255,255,255,0.15);
+    --text:        #e4e4ee;
+    --text-sub:    #8484a0;
+    --text-muted:  #4c4c66;
+    --accent:      #00d4c8;
+    --accent-dim:  rgba(0,212,200,0.09);
+    --urgent:      #f5495a;
+    --high:        #f59042;
+    --medium:      #4a9eff;
+    --p-blue:      #3d7fd8;
+    --p-green:     #2ebd7c;
+    --p-orange:    #f5820d;
+    --p-purple:    #9b59b6;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; overflow: hidden; position: relative; }
+
+  /* ── DESKTOP BACKDROP ── */
+  .desktop-bg {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .bg-topbar {
+    height: 56px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 20px; gap: 14px;
+    flex-shrink: 0;
+  }
+  .bg-logo { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--text-muted); letter-spacing: -0.3px; opacity: 0.5; }
+  .bg-logo em { color: rgba(0,212,200,0.35); font-style: italic; }
+  .bg-layout { flex: 1; display: flex; overflow: hidden; }
+  .bg-sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); flex-shrink: 0; }
+  .bg-main { flex: 1; background: var(--bg); }
+
+  /* ── OVERLAY ── */
+  .overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 80px;
+    z-index: 200;
+    animation: overlay-in 0.18s ease-out;
+  }
+  @keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
+
+  /* ── SEARCH MODAL ── */
+  .search-modal {
+    width: 680px;
+    max-width: calc(100vw - 32px);
+    background: var(--card);
+    border: 1px solid var(--border-hover);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+    animation: modal-in 0.2s cubic-bezier(0.16,1,0.3,1);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 120px);
+  }
+  @keyframes modal-in { from { opacity: 0; transform: scale(0.97) translateY(-10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+  /* ── INPUT ROW ── */
+  .search-input-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .search-icon svg { width: 18px; height: 18px; stroke: var(--text-sub); fill: none; stroke-width: 2; flex-shrink: 0; }
+  .search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.01em;
+    caret-color: var(--accent);
+  }
+  .search-input::placeholder { color: var(--text-muted); font-weight: 400; }
+  .search-clear {
+    width: 22px; height: 22px;
+    background: var(--elevated);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    transition: background 0.12s;
+  }
+  .search-clear:hover { background: var(--card-hover); }
+  .kbd-hint { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+  .kbd { background: var(--elevated); border: 1px solid var(--border-hover); border-radius: 5px; padding: 2px 6px; font-size: 10.5px; color: var(--text-muted); font-weight: 600; }
+
+  /* ── FILTER ROW ── */
+  .filter-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    flex-shrink: 0;
+    scrollbar-width: none;
+  }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
+  .f-chip {
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 9px;
+    background: var(--elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11.5px;
+    color: var(--text-sub);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.12s;
+  }
+  .f-chip:hover { border-color: var(--border-hover); color: var(--text); }
+  .f-chip.active { background: var(--card-hover); border-color: var(--border-hover); color: var(--text); }
+  .chip-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--p-blue); }
+
+  /* ── RESULTS BODY ── */
+  .results-body { overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: var(--elevated) transparent; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .results-section { padding: 8px 0; }
+  .results-section-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 18px 8px;
+  }
+  .rsh-label {
+    font-family: 'Playfair Display', serif;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .rsh-label::after { content: ''; display: inline-block; width: 36px; height: 1px; background: var(--border); vertical-align: middle; margin-left: 4px; }
+  .rsh-count { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+
+  .result-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: background 0.1s;
+    position: relative;
+  }
+  .result-item:hover { background: var(--elevated); }
+  .result-item.selected { background: var(--elevated); }
+  .result-item.selected::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--accent);
+    border-radius: 0 1px 1px 0;
+  }
+
+  .r-icon {
+    width: 30px; height: 30px;
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    background: var(--elevated);
+    border: 1px solid var(--border);
+    margin-top: 1px;
+  }
+  .r-body { flex: 1; min-width: 0; }
+  .r-title {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+  .r-title mark { background: rgba(0,212,200,0.18); color: var(--accent); border-radius: 2px; padding: 0 1px; }
+  .r-preview {
+    font-size: 12px; color: var(--text-sub); line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .r-preview mark { background: rgba(0,212,200,0.09); color: rgba(0,212,200,0.65); border-radius: 2px; padding: 0 1px; }
+  .r-meta { display: flex; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+  .r-tag {
+    display: flex; align-items: center; gap: 3px;
+    padding: 1.5px 6px; border-radius: 4px;
+    font-size: 10.5px; font-weight: 500;
+    background: var(--elevated); border: 1px solid var(--border); color: var(--text-muted);
+  }
+  .r-tag .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .r-tag.blue { background: rgba(61,127,216,0.08); border-color: rgba(61,127,216,0.18); color: #7aadea; }
+  .r-tag.blue .dot { background: var(--p-blue); }
+  .r-tag.urgent { background: rgba(245,73,90,0.08); border-color: rgba(245,73,90,0.18); color: #f07080; }
+  .r-tag.agent { background: var(--accent-dim); border-color: rgba(0,212,200,0.18); color: var(--accent); font-size: 10px; }
+  .r-time { margin-left: auto; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+  .r-arrow { color: var(--text-muted); font-size: 14px; flex-shrink: 0; margin-top: 6px; opacity: 0; transition: opacity 0.1s; }
+  .result-item:hover .r-arrow, .result-item.selected .r-arrow { opacity: 1; }
+
+  .results-divider { height: 1px; background: var(--border); margin: 2px 18px; }
+
+  /* ── QUICK ACTIONS ── */
+  .quick-actions { padding: 12px 18px; border-top: 1px solid var(--border); flex-shrink: 0; }
+  .qa-heading { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+  .qa-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .qa-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 11px;
+    background: var(--elevated);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 12px; color: var(--text-sub);
+    cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif;
+    transition: all 0.12s;
+  }
+  .qa-btn:hover { border-color: var(--border-hover); color: var(--text); }
+  .qa-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* ── FOOTER ── */
+  .modal-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 18px;
+    border-top: 1px solid var(--border);
+    background: var(--elevated);
+    flex-shrink: 0;
+  }
+  .footer-hints { display: flex; gap: 12px; }
+  .hint { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
+  .hint .kbd { font-size: 9.5px; }
+  .results-count { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- DESKTOP BACKDROP -->
+<div class="desktop-bg">
+  <div class="bg-topbar">
+    <div class="bg-logo">Task<em>Flow</em></div>
+  </div>
+  <div class="bg-layout">
+    <div class="bg-sidebar"></div>
+    <div class="bg-main"></div>
+  </div>
+</div>
+
+<!-- MODAL OVERLAY -->
+<div class="overlay" id="overlay">
+  <div class="search-modal" id="modal">
+
+    <!-- INPUT ROW -->
+    <div class="search-input-row">
+      <div class="search-icon">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </div>
+      <input type="text" class="search-input" id="search-input" value="pliego" autofocus placeholder="Buscar en TaskFlow…" />
+      <div class="search-clear" id="clear-btn">×</div>
+      <div class="kbd-hint"><span class="kbd">Esc</span></div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filter-row">
+      <div class="filter-label">Filtrar:</div>
+      <div class="f-chip active">Todos</div>
+      <div class="f-chip">☑️ Tareas</div>
+      <div class="f-chip">📝 Notas</div>
+      <div class="f-chip">🔗 Links</div>
+      <div class="f-chip">📎 Archivos</div>
+      <div class="f-chip">✉️ Emails</div>
+      <div class="f-chip">💡 Ideas</div>
+      <div class="f-chip"><span class="chip-dot"></span>Pliegos Q1</div>
+      <div class="f-chip">Urgente</div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="results-body">
+
+      <!-- TASKS -->
+      <div class="results-section">
+        <div class="results-section-head">
+          <div class="rsh-label">Tareas</div>
+          <div class="rsh-count">3 resultados</div>
+        </div>
+
+        <div class="result-item selected">
+          <div class="r-icon">☑️</div>
+          <div class="r-body">
+            <div class="r-title">Preparar documentación <mark>pliego</mark> Ayuntamiento Madrid</div>
+            <div class="r-preview">Documentación técnica y económica para la licitación. Incluir memoria, presupuesto y equipo...</div>
+            <div class="r-meta">
+              <div class="r-tag blue"><span class="dot"></span>Pliegos Q1</div>
+              <div class="r-tag urgent">Urgente</div>
+              <div class="r-tag agent">✦ OpenClaw</div>
+              <div class="r-time">Hoy · 9:18</div>
+            </div>
+          </div>
+          <div class="r-arrow">›</div>
+        </div>
+
+        <div class="result-item">
+          <div class="r-icon">☑️</div>
+          <div class="r-body">
+            <div class="r-title">Ideas para propuesta técnica <mark>pliego</mark> de Barcelona</div>
+            <div class="r-preview">Enfocar en metodología ágil, destacar experiencia en proyectos similares...</div>
+            <div class="r-meta">
+              <div class="r-tag blue"><span class="dot"></span>Pliegos Q1</div>
+              <div class="r-time">Lun · 14:30</div>
+            </div>
+          </div>
+          <div class="r-arrow">›</div>
+        </div>
+
+        <div class="result-item">
+          <div class="r-icon">☑️</div>
+          <div class="r-body">
+            <div class="r-title">Revisar <mark>pliego</mark> Barcelona en plataforma contratación</div>
+            <div class="r-preview">Expediente 2024-BCN-0234 · Fecha límite presentación: 28 marzo 2024</div>
+            <div class="r-meta">
+              <div class="r-tag blue"><span class="dot"></span>Pliegos Q1</div>
+              <div class="r-time">Vie · 11:00</div>
+            </div>
+          </div>
+          <div class="r-arrow">›</div>
+        </div>
+      </div>
+
+      <div class="results-divider"></div>
+
+      <!-- NOTES -->
+      <div class="results-section">
+        <div class="results-section-head">
+          <div class="rsh-label">Notas</div>
+          <div class="rsh-count">1 resultado</div>
+        </div>
+        <div class="result-item">
+          <div class="r-icon">📝</div>
+          <div class="r-body">
+            <div class="r-title">Ideas para la propuesta técnica del <mark>pliego</mark> de Barcelona</div>
+            <div class="r-preview">Metodología ágil, caso de éxito Madrid 2023, equipo especializado en <mark>pliego</mark>s públicos...</div>
+            <div class="r-meta">
+              <div class="r-tag blue"><span class="dot"></span>Pliegos Q1</div>
+              <div class="r-time">Dom · 20:15</div>
+            </div>
+          </div>
+          <div class="r-arrow">›</div>
+        </div>
+      </div>
+
+      <div class="results-divider"></div>
+
+      <!-- LINKS -->
+      <div class="results-section">
+        <div class="results-section-head">
+          <div class="rsh-label">Links</div>
+          <div class="rsh-count">1 resultado</div>
+        </div>
+        <div class="result-item">
+          <div class="r-icon">🔗</div>
+          <div class="r-body">
+            <div class="r-title">Plataforma Contratación Estado — <mark>Pliego</mark> Barcelona 2024</div>
+            <div class="r-preview">contrataciondelestado.es · Expediente 2024-BCN-0234</div>
+            <div class="r-meta">
+              <div class="r-tag blue"><span class="dot"></span>Pliegos Q1</div>
+              <div class="r-time">Vie · 9:00</div>
+            </div>
+          </div>
+          <div class="r-arrow">›</div>
+        </div>
+      </div>
+
+      <div class="results-divider"></div>
+
+      <!-- FILES -->
+      <div class="results-section">
+        <div class="results-section-head">
+          <div class="rsh-label">Archivos</div>
+          <div class="rsh-count">2 resultados</div>
+        </div>
+        <div class="result-item">
+          <div class="r-icon">📄</div>
+          <div class="r-body">
+            <div class="r-title">Memoria_<mark>pliego</mark>_Madrid_v2.pdf</div>
+            <div class="r-preview">PDF · 1.2 MB · Adjunto a "Preparar documentación pliego Madrid"</div>
+            <div class="r-meta">
+              <div class="r-tag blue"><span class="dot"></span>Pliegos Q1</div>
+              <div class="r-time">Ayer · 16:30</div>
+            </div>
+          </div>
+          <div class="r-arrow">›</div>
+        </div>
+        <div class="result-item">
+          <div class="r-icon">📊</div>
+          <div class="r-body">
+            <div class="r-title">Presupuesto_<mark>pliego</mark>_BCN.xlsx</div>
+            <div class="r-preview">Excel · 380 KB · Borrador del presupuesto para Barcelona</div>
+            <div class="r-meta">
+              <div class="r-tag blue"><span class="dot"></span>Pliegos Q1</div>
+              <div class="r-time">Jue · 10:00</div>
+            </div>
+          </div>
+          <div class="r-arrow">›</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- QUICK ACTIONS -->
+    <div class="quick-actions">
+      <div class="qa-heading">Acciones rápidas</div>
+      <div class="qa-row">
+        <div class="qa-btn">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Crear tarea "pliego"
+        </div>
+        <div class="qa-btn">
+          <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Crear nota "pliego"
+        </div>
+        <div class="qa-btn">
+          <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          Filtrar todo por "pliego"
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="modal-footer">
+      <div class="footer-hints">
+        <div class="hint"><span class="kbd">↑↓</span> Navegar</div>
+        <div class="hint"><span class="kbd">↵</span> Abrir</div>
+        <div class="hint"><span class="kbd">Esc</span> Cerrar</div>
+        <div class="hint"><span class="kbd">⌘↵</span> Abrir en panel</div>
+      </div>
+      <div class="results-count" id="results-count">7 resultados para "pliego"</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Close on overlay click
+document.getElementById('overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+function closeModal() {
+  const overlay = document.getElementById('overlay');
+  overlay.style.transition = 'opacity 0.15s';
+  overlay.style.opacity = '0';
+  setTimeout(() => overlay.style.display = 'none', 160);
+}
+
+// Filter chips
+document.querySelectorAll('.f-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.f-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+  });
+});
+
+// Keyboard navigation
+let selectedIdx = 0;
+const getItems = () => document.querySelectorAll('.result-item');
+
+document.addEventListener('keydown', e => {
+  const items = getItems();
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    items[selectedIdx]?.classList.remove('selected');
+    selectedIdx = Math.min(selectedIdx + 1, items.length - 1);
+    items[selectedIdx]?.classList.add('selected');
+    items[selectedIdx]?.scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    items[selectedIdx]?.classList.remove('selected');
+    selectedIdx = Math.max(selectedIdx - 1, 0);
+    items[selectedIdx]?.classList.add('selected');
+    items[selectedIdx]?.scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Escape') {
+    closeModal();
+  }
+});
+
+// Click to select
+getItems().forEach((item, i) => {
+  item.addEventListener('click', () => {
+    getItems().forEach(it => it.classList.remove('selected'));
+    item.classList.add('selected');
+    selectedIdx = i;
+  });
+});
+
+// Live search
+const input = document.getElementById('search-input');
+const countEl = document.getElementById('results-count');
+input.addEventListener('input', () => {
+  const val = input.value || 'pliego';
+  document.querySelectorAll('mark').forEach(m => m.textContent = val);
+  document.querySelectorAll('.qa-btn').forEach(btn => {
+    btn.textContent = btn.textContent.replace(/"[^"]*"/, `"${val}"`);
+  });
+  countEl.textContent = `7 resultados para "${val}"`;
+});
+
+// Clear button
+document.getElementById('clear-btn').addEventListener('click', () => {
+  input.value = '';
+  input.focus();
+  countEl.textContent = 'Escribe para buscar…';
+});
+</script>
+</body>
+</html>

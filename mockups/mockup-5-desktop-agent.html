@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow – Panel OpenClaw</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #141418;
+    --surface:     #181820;
+    --elevated:    #1e1e28;
+    --card:        #222230;
+    --card-hover:  #28283a;
+    --border:      rgba(255,255,255,0.09);
+    --border-hover:rgba(255,255,255,0.15);
+    --text:        #e4e4ee;
+    --text-sub:    #8484a0;
+    --text-muted:  #4c4c66;
+    --accent:      #00d4c8;
+    --accent-dim:  rgba(0,212,200,0.09);
+    --urgent:      #f5495a;
+    --high:        #f59042;
+    --medium:      #4a9eff;
+    --p-blue:      #3d7fd8;
+    --p-green:     #2ebd7c;
+    --p-orange:    #f5820d;
+    --p-purple:    #9b59b6;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; line-height: 1.5; overflow: hidden; }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0; height: 56px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 20px; gap: 14px; z-index: 100;
+  }
+  .logo { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; line-height: 1; text-decoration: none; flex-shrink: 0; }
+  .logo em { color: var(--accent); font-style: italic; }
+  .topbar-sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+  .breadcrumb { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-sub); }
+  .breadcrumb .bc-sep { color: var(--text-muted); font-size: 11px; }
+  .breadcrumb .bc-current { color: var(--accent); font-weight: 600; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .tb-icon-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid var(--border); background: var(--elevated); cursor: pointer; transition: border-color 0.15s; }
+  .tb-icon-btn:hover { border-color: var(--border-hover); }
+  .tb-icon-btn svg { width: 15px; height: 15px; stroke: var(--text-sub); fill: none; stroke-width: 1.8; }
+  .tb-new-btn { display: flex; align-items: center; gap: 6px; background: var(--accent); color: var(--bg); border-radius: 8px; padding: 0 14px; height: 32px; font-size: 12px; font-weight: 700; cursor: pointer; letter-spacing: 0.01em; box-shadow: 0 0 20px rgba(0,212,200,0.2); }
+  .tb-new-btn svg { width: 13px; height: 13px; stroke: var(--bg); fill: none; stroke-width: 2.5; }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; height: 100%; padding-top: 56px; }
+
+  /* ── SIDEBAR ── */
+  .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; padding: 14px 10px; }
+  .sidebar::-webkit-scrollbar { display: none; }
+  .nav-section-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); padding: 0 8px; margin: 14px 0 4px; }
+  .nav-section-label:first-child { margin-top: 0; }
+  .nav-link { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 8px; cursor: pointer; color: var(--text-sub); font-size: 13px; transition: all 0.12s; border: 1px solid transparent; }
+  .nav-link:hover { background: var(--elevated); color: var(--text); }
+  .nav-link.active { background: var(--accent-dim); color: var(--accent); border-color: rgba(0,212,200,0.15); }
+  .nav-link svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; flex-shrink: 0; }
+  .nav-badge { margin-left: auto; font-size: 10.5px; font-weight: 700; background: var(--elevated); color: var(--text-muted); padding: 1px 6px; border-radius: 5px; }
+  .nav-link.active .nav-badge { background: var(--accent-dim); color: var(--accent); }
+  .nav-badge.urgent { background: rgba(245,73,90,0.12); color: var(--urgent); }
+  .nav-divider { height: 1px; background: var(--border); margin: 8px 0; }
+  .proj-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; cursor: pointer; color: var(--text-sub); font-size: 12.5px; transition: all 0.12s; }
+  .proj-item:hover { background: var(--elevated); color: var(--text); }
+  .proj-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .proj-count { margin-left: auto; font-size: 11px; color: var(--text-muted); }
+  .sidebar-footer { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+  .user-row { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 8px; cursor: pointer; }
+  .user-avatar { width: 28px; height: 28px; background: linear-gradient(135deg, var(--p-blue), var(--accent)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .user-name { font-size: 12.5px; font-weight: 600; color: var(--text); }
+  .user-role { font-size: 11px; color: var(--text-muted); }
+
+  /* ── MAIN ── */
+  .main { flex: 1; display: flex; overflow: hidden; }
+
+  /* ── FEED PANEL ── */
+  .feed-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border); }
+
+  .feed-header { padding: 18px 20px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+
+  /* AGENT HERO */
+  .agent-hero { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .agent-avatar-wrap { position: relative; flex-shrink: 0; }
+  .agent-avatar { width: 46px; height: 46px; background: linear-gradient(135deg, rgba(0,212,200,0.14), rgba(0,212,200,0.05)); border: 1px solid rgba(0,212,200,0.22); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .agent-pulse-dot { position: absolute; bottom: -2px; right: -2px; width: 11px; height: 11px; background: var(--accent); border-radius: 50%; border: 2px solid var(--surface); animation: agent-pulse 2.4s ease-in-out infinite; box-shadow: 0 0 8px rgba(0,212,200,0.5); }
+  @keyframes agent-pulse { 0%,100% { opacity:1; box-shadow: 0 0 6px rgba(0,212,200,0.4); } 50% { opacity:0.6; box-shadow: 0 0 14px rgba(0,212,200,0.7); } }
+  .agent-info { flex: 1; }
+  .agent-name { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; line-height: 1.1; }
+  .agent-desc { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+  .config-btn { display: flex; align-items: center; gap: 5px; padding: 5px 11px; background: var(--elevated); border: 1px solid var(--border); border-radius: 7px; font-size: 11.5px; color: var(--text-sub); cursor: pointer; transition: border-color 0.15s; }
+  .config-btn:hover { border-color: var(--border-hover); }
+  .config-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* DIGEST BANNER */
+  .digest-banner { background: linear-gradient(120deg, rgba(0,212,200,0.07) 0%, rgba(74,158,255,0.03) 100%); border: 1px solid rgba(0,212,200,0.16); border-radius: 10px; padding: 12px 14px; display: flex; gap: 11px; align-items: flex-start; margin-bottom: 14px; }
+  .digest-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .digest-content { flex: 1; }
+  .digest-greeting { font-family: 'Playfair Display', serif; font-size: 13px; font-weight: 600; color: var(--accent); margin-bottom: 3px; }
+  .digest-text { font-size: 12.5px; color: var(--text-sub); line-height: 1.5; }
+  .digest-text strong { color: var(--text); font-weight: 600; }
+  .digest-chips { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .dchip { padding: 3px 9px; border-radius: 5px; font-size: 11px; font-weight: 600; }
+  .dchip.red { background: rgba(245,73,90,0.1); border: 1px solid rgba(245,73,90,0.2); color: #f87080; }
+  .dchip.amber { background: rgba(245,144,66,0.1); border: 1px solid rgba(245,144,66,0.2); color: #f5b074; }
+  .dchip.teal { background: var(--accent-dim); border: 1px solid rgba(0,212,200,0.2); color: var(--accent); }
+
+  /* FEED TABS */
+  .feed-tabs { display: flex; gap: 4px; }
+  .feed-tab { display: flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 7px; font-size: 12px; font-weight: 500; color: var(--text-muted); cursor: pointer; border: 1px solid transparent; transition: all 0.12s; }
+  .feed-tab:hover { color: var(--text-sub); }
+  .feed-tab.active { background: var(--elevated); border-color: var(--border); color: var(--text); }
+  .tab-badge { background: var(--card); border-radius: 4px; padding: 0 5px; font-size: 10px; font-weight: 700; }
+  .feed-tab.active .tab-badge { background: var(--accent-dim); color: var(--accent); }
+  .tab-badge.teal { background: var(--accent-dim); color: var(--accent); }
+
+  /* FEED SCROLL */
+  .feed-scroll { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; scrollbar-width: thin; scrollbar-color: var(--card) transparent; }
+
+  /* DATE SEPARATOR */
+  .date-sep { display: flex; align-items: center; gap: 10px; margin: 2px 0; }
+  .date-sep::before, .date-sep::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .date-sep span { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
+
+  /* FEED ITEM */
+  .feed-item { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; gap: 11px; cursor: pointer; transition: border-color 0.15s; position: relative; overflow: hidden; }
+  .feed-item:hover { border-color: var(--border-hover); }
+  .feed-item.pending { border-color: rgba(0,212,200,0.2); background: linear-gradient(120deg, rgba(0,212,200,0.04) 0%, var(--card) 100%); }
+
+  .fi-type-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+  .fi-type-icon.suggest { background: rgba(245,144,66,0.09); border: 1px solid rgba(245,144,66,0.18); }
+  .fi-type-icon.classify { background: rgba(74,158,255,0.08); border: 1px solid rgba(74,158,255,0.15); }
+  .fi-type-icon.agent { background: var(--accent-dim); border: 1px solid rgba(0,212,200,0.18); }
+
+  .fi-body { flex: 1; min-width: 0; }
+  .fi-meta { display: flex; align-items: baseline; gap: 7px; margin-bottom: 4px; }
+  .fi-actor { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; color: var(--accent); }
+  .fi-time { margin-left: auto; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+  .fi-desc { font-size: 12.5px; color: var(--text-sub); line-height: 1.45; }
+  .fi-desc strong { color: var(--text); font-weight: 600; }
+
+  .fi-reasoning { font-size: 11.5px; color: rgba(0,212,200,0.5); line-height: 1.45; margin-top: 7px; padding: 7px 10px; background: rgba(0,212,200,0.03); border-left: 2px solid rgba(0,212,200,0.2); border-radius: 0 6px 6px 0; }
+
+  .fi-actions { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
+  .fi-btn { display: flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 600; cursor: pointer; transition: all 0.12s; border: 1px solid; }
+  .fi-btn svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .fi-btn.accept { background: rgba(0,212,200,0.09); border-color: rgba(0,212,200,0.22); color: var(--accent); }
+  .fi-btn.accept:hover { background: rgba(0,212,200,0.15); }
+  .fi-btn.modify { background: var(--elevated); border-color: var(--border); color: var(--text-sub); }
+  .fi-btn.reject { background: rgba(245,73,90,0.06); border-color: rgba(245,73,90,0.14); color: #f07080; }
+
+  .pending-badge { position: absolute; top: 10px; right: 12px; background: var(--accent-dim); border: 1px solid rgba(0,212,200,0.22); border-radius: 20px; padding: 2px 8px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--accent); }
+
+  /* ── CONFIG PANEL ── */
+  .config-panel { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .config-header { height: 56px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); flex-shrink: 0; }
+  .config-scroll { flex: 1; overflow-y: auto; padding: 14px 16px; scrollbar-width: thin; scrollbar-color: var(--card) transparent; }
+
+  .config-section { margin-bottom: 20px; }
+  .config-section-title { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .config-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* STATS */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat-card { background: var(--elevated); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; }
+  .stat-value { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; line-height: 1; margin-bottom: 3px; }
+  .stat-label { font-size: 10.5px; color: var(--text-muted); line-height: 1.3; }
+
+  /* AUTONOMY SLIDER */
+  .autonomy-card { background: var(--elevated); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .autonomy-mode { font-size: 12.5px; font-weight: 500; color: var(--text); margin-bottom: 10px; }
+  .autonomy-mode span { color: var(--accent); font-weight: 700; }
+  .slider-track { height: 4px; background: var(--card); border-radius: 2px; position: relative; margin-bottom: 8px; cursor: pointer; }
+  .slider-fill { height: 100%; width: 35%; background: linear-gradient(90deg, rgba(0,212,200,0.4), var(--accent)); border-radius: 2px; pointer-events: none; }
+  .slider-thumb { position: absolute; top: 50%; left: 35%; transform: translate(-50%, -50%); width: 16px; height: 16px; background: var(--accent); border-radius: 50%; border: 2px solid var(--bg); box-shadow: 0 0 8px rgba(0,212,200,0.4); pointer-events: none; }
+  .slider-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); font-weight: 600; }
+  .slider-labels .active-label { color: var(--accent); }
+
+  /* TOGGLES */
+  .toggle-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-info .t-label { font-size: 12.5px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .toggle-info .t-desc { font-size: 11px; color: var(--text-muted); line-height: 1.3; }
+  .toggle { width: 34px; height: 19px; background: var(--elevated); border: 1px solid var(--border-hover); border-radius: 10px; position: relative; cursor: pointer; transition: background 0.2s, border-color 0.2s; flex-shrink: 0; margin-top: 2px; }
+  .toggle.on { background: rgba(0,212,200,0.28); border-color: rgba(0,212,200,0.4); }
+  .toggle-knob { position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; background: var(--text-muted); border-radius: 50%; transition: all 0.2s; }
+  .toggle.on .toggle-knob { left: 17px; background: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">Task<em>Flow</em></div>
+  <div class="topbar-sep"></div>
+  <div class="breadcrumb">
+    <span>Workspace</span>
+    <span class="bc-sep">/</span>
+    <span class="bc-current">✦ Agente OpenClaw</span>
+  </div>
+  <div class="topbar-right">
+    <div class="tb-icon-btn">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <div class="tb-icon-btn">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </div>
+    <div class="tb-new-btn">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nuevo
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="nav-section-label">Navegación</div>
+    <div class="nav-link">
+      <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      Inbox <span class="nav-badge urgent">5</span>
+    </div>
+    <div class="nav-link">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Kanban <span class="nav-badge">14</span>
+    </div>
+    <div class="nav-link">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      Eisenhower <span class="nav-badge">14</span>
+    </div>
+    <div class="nav-link active">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M5.76 4.93a10 10 0 0 0 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+      Agente OpenClaw <span class="nav-badge">3</span>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-section-label">Proyectos</div>
+    <div class="proj-item">
+      <div class="proj-dot" style="background:var(--p-blue)"></div>
+      Pliegos Q1 <span class="proj-count">6</span>
+    </div>
+    <div class="proj-item">
+      <div class="proj-dot" style="background:var(--p-green)"></div>
+      Cliente García <span class="proj-count">4</span>
+    </div>
+    <div class="proj-item">
+      <div class="proj-dot" style="background:var(--p-orange)"></div>
+      OpenClaw Dev <span class="proj-count">3</span>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="user-avatar">PT</div>
+        <div>
+          <div class="user-name">P. Tavares</div>
+          <div class="user-role">Administrador</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- FEED PANEL -->
+    <div class="feed-panel">
+      <div class="feed-header">
+
+        <div class="agent-hero">
+          <div class="agent-avatar-wrap">
+            <div class="agent-avatar">🤖</div>
+            <div class="agent-pulse-dot"></div>
+          </div>
+          <div class="agent-info">
+            <div class="agent-name">OpenClaw</div>
+            <div class="agent-desc">Agente activo · Última revisión hace 12 min</div>
+          </div>
+          <div class="config-btn">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M5.76 4.93a10 10 0 0 0 0 14.14"/></svg>
+            Configurar
+          </div>
+        </div>
+
+        <div class="digest-banner">
+          <div class="digest-icon">☀️</div>
+          <div class="digest-content">
+            <div class="digest-greeting">Buenos días, P. Tavares.</div>
+            <div class="digest-text">Tienes <strong>3 tareas que vencen esta semana</strong>, <strong>5 items en inbox</strong> sin procesar y <strong>4 emails</strong> clasificados esta mañana.</div>
+            <div class="digest-chips">
+              <div class="dchip red">3 vencen hoy</div>
+              <div class="dchip amber">5 en inbox</div>
+              <div class="dchip teal">4 emails procesados</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feed-tabs">
+          <div class="feed-tab active">Actividad <span class="tab-badge">12</span></div>
+          <div class="feed-tab">Pendiente aprobación <span class="tab-badge teal">3</span></div>
+          <div class="feed-tab">Digestos</div>
+        </div>
+      </div>
+
+      <div class="feed-scroll">
+
+        <div class="date-sep"><span>⏳ Pendiente de aprobación</span></div>
+
+        <div class="feed-item pending">
+          <div class="pending-badge">Pendiente</div>
+          <div class="fi-type-icon suggest">💡</div>
+          <div class="fi-body">
+            <div class="fi-meta">
+              <span class="fi-actor">✦ OpenClaw</span>
+              <span class="fi-time">Hace 5 min</span>
+            </div>
+            <div class="fi-desc">Sugiere mover <strong>"Revisar contrato Lisboa"</strong> a <strong>En Progreso</strong></div>
+            <div class="fi-reasoning">La tarea lleva 8 días en "Por hacer". Basándome en el contexto del proyecto Cliente García y la relación con la renovación del contrato, creo que ya está lista para avanzar.</div>
+            <div class="fi-actions">
+              <button class="fi-btn accept">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                Mover a En Progreso
+              </button>
+              <button class="fi-btn modify">Modificar</button>
+              <button class="fi-btn reject">Ignorar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="feed-item pending">
+          <div class="pending-badge">Pendiente</div>
+          <div class="fi-type-icon classify">🏷️</div>
+          <div class="fi-body">
+            <div class="fi-meta">
+              <span class="fi-actor">✦ OpenClaw</span>
+              <span class="fi-time">Hace 12 min</span>
+            </div>
+            <div class="fi-desc">Clasificó <strong>"Email de Juan García: Presupuesto actualizado"</strong> → proyecto <strong>Cliente García</strong>, prioridad <strong>Alta</strong></div>
+            <div class="fi-reasoning">El email menciona cambios en partidas 3 y 7. Detecté el apellido García y lo relacioné con el proyecto activo. El tono sugiere urgencia.</div>
+            <div class="fi-actions">
+              <button class="fi-btn accept">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                Aceptar clasificación
+              </button>
+              <button class="fi-btn modify">Modificar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="feed-item pending">
+          <div class="pending-badge">Pendiente</div>
+          <div class="fi-type-icon agent">⚡</div>
+          <div class="fi-body">
+            <div class="fi-meta">
+              <span class="fi-actor">✦ OpenClaw</span>
+              <span class="fi-time">Hace 25 min</span>
+            </div>
+            <div class="fi-desc">Sugiere añadir <strong>recordatorio</strong> para <strong>"Preparar documentación pliego Madrid"</strong> el 13 de marzo a las 9:00</div>
+            <div class="fi-reasoning">El plazo de entrega es el 15 de marzo. Quedan 2 días. Un recordatorio con 48h de antelación te daría tiempo de reacción si hay imprevistos.</div>
+            <div class="fi-actions">
+              <button class="fi-btn accept">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                Añadir recordatorio
+              </button>
+              <button class="fi-btn reject">No, gracias</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="date-sep"><span>Hoy</span></div>
+
+        <div class="feed-item">
+          <div class="fi-type-icon agent">🔥</div>
+          <div class="fi-body">
+            <div class="fi-meta">
+              <span class="fi-actor">✦ OpenClaw</span>
+              <span class="fi-time">9:18</span>
+            </div>
+            <div class="fi-desc">Movió <strong>"Preparar documentación pliego Ayuntamiento Madrid"</strong> a <strong>Urgente/Importante</strong> en la Matriz Eisenhower</div>
+            <div class="fi-reasoning">El plazo del pliego es en 3 días. Basándome en la fecha límite detectada, reclasifiqué automáticamente a Q1.</div>
+          </div>
+        </div>
+
+        <div class="feed-item">
+          <div class="fi-type-icon classify">✉️</div>
+          <div class="fi-body">
+            <div class="fi-meta">
+              <span class="fi-actor">✦ OpenClaw</span>
+              <span class="fi-time">9:05</span>
+            </div>
+            <div class="fi-desc">Procesó <strong>4 emails</strong> nuevos. Clasificó 3 en proyectos existentes, 1 en inbox sin clasificar</div>
+          </div>
+        </div>
+
+        <div class="date-sep"><span>Ayer</span></div>
+
+        <div class="feed-item">
+          <div class="fi-type-icon agent">🔗</div>
+          <div class="fi-body">
+            <div class="fi-meta">
+              <span class="fi-actor">✦ OpenClaw</span>
+              <span class="fi-time">18:45</span>
+            </div>
+            <div class="fi-desc">Relacionó <strong>"Pliego BCN 2024 — contrataciondelestado.es"</strong> con la tarea <strong>"Ideas para propuesta técnica Barcelona"</strong></div>
+          </div>
+        </div>
+
+        <div class="feed-item">
+          <div class="fi-type-icon classify">📊</div>
+          <div class="fi-body">
+            <div class="fi-meta">
+              <span class="fi-actor">✦ OpenClaw</span>
+              <span class="fi-time">16:12</span>
+            </div>
+            <div class="fi-desc">Detectó y clasificó <strong>"Presupuesto_Garcia_v3.xlsx"</strong> como adjunto del proyecto <strong>Cliente García</strong></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CONFIG PANEL -->
+    <div class="config-panel">
+      <div class="config-header">Configuración del Agente</div>
+      <div class="config-scroll">
+
+        <div class="config-section">
+          <div class="config-section-title">Esta semana</div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value">24</div>
+              <div class="stat-label">Acciones realizadas</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">8</div>
+              <div class="stat-label">Emails procesados</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">6</div>
+              <div class="stat-label">Items clasificados</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" style="font-size:18px">94%</div>
+              <div class="stat-label">Sugerencias aceptadas</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <div class="config-section-title">Nivel de autonomía</div>
+          <div class="autonomy-card">
+            <div class="autonomy-mode">Modo actual: <span>Sugerir y esperar</span></div>
+            <div class="slider-track" id="slider-track">
+              <div class="slider-fill" id="slider-fill"></div>
+              <div class="slider-thumb" id="slider-thumb"></div>
+            </div>
+            <div class="slider-labels">
+              <span>Solo sugerir</span>
+              <span class="active-label">↑ Actual</span>
+              <span>Automático</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <div class="config-section-title">Permisos</div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="t-label">Clasificar emails</div><div class="t-desc">Procesar inbox y crear items</div></div>
+            <div class="toggle on"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="t-label">Reclasificar prioridad</div><div class="t-desc">Mover entre urgente/importante</div></div>
+            <div class="toggle on"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="t-label">Crear relaciones</div><div class="t-desc">Enlazar items automáticamente</div></div>
+            <div class="toggle on"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="t-label">Mover en Kanban</div><div class="t-desc">Cambiar columna de los items</div></div>
+            <div class="toggle"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="t-label">Añadir etiquetas</div><div class="t-desc">Etiquetar items automáticamente</div></div>
+            <div class="toggle"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="t-label">Archivar completados</div><div class="t-desc">Archivar items marcados como hechos</div></div>
+            <div class="toggle on"><div class="toggle-knob"></div></div>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <div class="config-section-title">Notificaciones</div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="t-label">Digesto matutino</div><div class="t-desc">Resumen diario a las 9:00</div></div>
+            <div class="toggle on"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="t-label">Alerta de plazos</div><div class="t-desc">Aviso 48h antes del vencimiento</div></div>
+            <div class="toggle on"><div class="toggle-knob"></div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Toggles
+document.querySelectorAll('.toggle').forEach(t => {
+  t.addEventListener('click', () => t.classList.toggle('on'));
+});
+
+// Feed tabs
+document.querySelectorAll('.feed-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.feed-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+  });
+});
+
+// Accept/Reject dismiss
+document.querySelectorAll('.fi-btn.accept, .fi-btn.reject').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const item = btn.closest('.feed-item');
+    item.style.transition = 'opacity 0.25s, max-height 0.3s 0.05s, padding 0.3s 0.05s, margin 0.3s 0.05s';
+    item.style.opacity = '0';
+    item.style.overflow = 'hidden';
+    item.style.maxHeight = item.offsetHeight + 'px';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        item.style.maxHeight = '0';
+        item.style.paddingTop = '0';
+        item.style.paddingBottom = '0';
+        item.style.marginTop = '0';
+        item.style.marginBottom = '0';
+      });
+    });
+    setTimeout(() => item.remove(), 360);
+  });
+});
+
+// Draggable slider
+const track = document.getElementById('slider-track');
+const fill = document.getElementById('slider-fill');
+const thumb = document.getElementById('slider-thumb');
+let dragging = false;
+track.addEventListener('mousedown', e => {
+  dragging = true;
+  update(e);
+});
+document.addEventListener('mousemove', e => { if (dragging) update(e); });
+document.addEventListener('mouseup', () => { dragging = false; });
+function update(e) {
+  const rect = track.getBoundingClientRect();
+  let pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+  fill.style.width = (pct * 100) + '%';
+  thumb.style.left = (pct * 100) + '%';
+}
+</script>
+</body>
+</html>

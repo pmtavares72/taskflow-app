@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Kanban</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:           #13141f;
+  --surface:      #1a1b2e;
+  --elevated:     #1f2035;
+  --card:         #242540;
+  --sidebar-ai:   #111220;
+  --border:       rgba(255,255,255,0.07);
+  --border-hover: rgba(255,255,255,0.13);
+  --text:         #f0f1ff;
+  --text-sub:     rgba(240,241,255,0.6);
+  --text-muted:   rgba(240,241,255,0.35);
+  --accent:       #2fd4aa;
+  --accent-dim:   rgba(47,212,170,0.1);
+  --accent-blue:  #60a5fa;
+  --accent-purple:#a78bfa;
+  --accent-orange:#fb923c;
+  --accent-pink:  #f472b6;
+  --accent-green: #4ade80;
+  --urgent:       #f87171;
+  --high:         #fb923c;
+  --medium:       #60a5fa;
+  --icon-teal:    rgba(47,212,170,0.15);
+  --icon-blue:    rgba(96,165,250,0.15);
+  --icon-purple:  rgba(167,139,250,0.15);
+  --icon-orange:  rgba(251,146,60,0.15);
+  --shadow-sm:    0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md:    0 4px 20px rgba(0,0,0,0.5);
+  --shadow-lg:    0 12px 40px rgba(0,0,0,0.6);
+}
+
+html, body {
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 60% 50% at 30% 0%, rgba(167,139,250,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 60% at 80% 100%, rgba(47,212,170,0.05) 0%, transparent 55%),
+    radial-gradient(circle, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: auto, auto, 24px 24px;
+  font-family: 'Outfit', sans-serif;
+  color: var(--text);
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+/* ============================================================
+   SHELL
+   ============================================================ */
+.shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ============================================================
+   AI PANEL (left)
+   ============================================================ */
+.ai-panel {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--sidebar-ai);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 20%, rgba(167,139,250,0.07) 0%, transparent 60%);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slide-in-left 0.5s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@media (max-width: 900px) { .ai-panel { display: none; } }
+
+/* AI Panel header */
+.ai-header {
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.ai-logo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.ai-logo {
+  font-family: 'Outfit', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+.ai-logo em { color: var(--accent); font-style: normal; }
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(167,139,250,0.12);
+  border: 1px solid rgba(167,139,250,0.2);
+  border-radius: 20px;
+  padding: 3px 8px;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--accent-purple);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.ai-badge-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--accent-purple);
+  animation: blink 2s ease-in-out infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Bot identity */
+.bot-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bot-avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: rgba(47,212,170,0.12);
+  border: 1px solid rgba(47,212,170,0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 16px rgba(47,212,170,0.3); }
+  50% { box-shadow: 0 0 24px rgba(47,212,170,0.5); }
+}
+.bot-info-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 1px;
+}
+.bot-info-status {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Chat area */
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.msg {
+  display: flex;
+  gap: 8px;
+  animation: msg-in 0.3s ease both;
+}
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.msg:nth-child(1) { animation-delay: 0.3s; }
+.msg:nth-child(2) { animation-delay: 0.5s; }
+.msg:nth-child(3) { animation-delay: 0.7s; }
+.msg:nth-child(4) { animation-delay: 0.9s; }
+
+.msg-avatar {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: rgba(47,212,170,0.1);
+  border: 1px solid rgba(47,212,170,0.2);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.msg-bubble {
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px 12px 12px 12px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--text-sub);
+  line-height: 1.55;
+  max-width: 192px;
+}
+.msg-bubble.user {
+  background: rgba(47,212,170,0.08);
+  border-color: rgba(47,212,170,0.15);
+  color: var(--text);
+  border-radius: 12px 4px 12px 12px;
+  margin-left: auto;
+  max-width: 160px;
+}
+.msg.user {
+  flex-direction: row-reverse;
+}
+.msg.user .msg-avatar {
+  background: rgba(167,139,250,0.1);
+  border-color: rgba(167,139,250,0.2);
+  color: var(--accent-purple);
+}
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px 12px 12px 12px;
+  width: fit-content;
+}
+.typing-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: typing 1.2s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* Quick action pills */
+.quick-pills {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.quick-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.qpill {
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-sub);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+.qpill:hover {
+  border-color: var(--border-hover);
+  background: var(--card);
+  color: var(--text);
+}
+
+/* Chat input */
+.chat-input-row {
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.chat-input {
+  flex: 1;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.chat-input:focus { border-color: rgba(47,212,170,0.3); }
+.chat-input::placeholder { color: var(--text-muted); }
+.chat-send {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  box-shadow: 0 0 12px rgba(47,212,170,0.25);
+}
+.chat-send:hover { background: #3de0b5; box-shadow: 0 0 20px rgba(47,212,170,0.4); }
+.chat-send svg { width: 14px; height: 14px; stroke: #13141f; fill: none; stroke-width: 2.5; }
+
+/* ============================================================
+   MAIN AREA (center)
+   ============================================================ */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+/* Nav tabs */
+.nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 20px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.tab {
+  padding: 8px 16px;
+  border-radius: 8px 8px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s;
+  position: relative;
+  bottom: -1px;
+  border: 1px solid transparent;
+  border-bottom: none;
+}
+.tab.active {
+  background: var(--card);
+  color: var(--accent);
+  border-color: var(--border);
+  border-bottom-color: var(--card);
+}
+.tab:not(.active):hover { color: var(--text-sub); }
+
+/* Topbar */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: rgba(26,27,46,0.8);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.topbar-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.project-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.icon-btn {
+  width: 32px; height: 32px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--text-muted);
+}
+.icon-btn:hover { border-color: var(--border-hover); color: var(--text-sub); }
+.icon-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; }
+.btn-new {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--accent);
+  color: #13141f;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: 0 0 16px rgba(47,212,170,0.2);
+}
+.btn-new:hover { background: #3de0b5; box-shadow: 0 0 24px rgba(47,212,170,0.35); transform: translateY(-1px); }
+.btn-new svg { width: 14px; height: 14px; stroke: #13141f; fill: none; stroke-width: 2.5; }
+
+/* Board */
+.board-wrap {
+  flex: 1;
+  overflow: hidden;
+  padding: 16px 16px 0;
+}
+.board-scroll {
+  display: flex;
+  gap: 12px;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 16px;
+}
+
+/* Column */
+.col {
+  flex-shrink: 0;
+  width: 230px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  animation: col-in 0.5s cubic-bezier(0.16,1,0.3,1) both;
+}
+.col:nth-child(1) { animation-delay: 0.1s; }
+.col:nth-child(2) { animation-delay: 0.15s; }
+.col:nth-child(3) { animation-delay: 0.2s; }
+.col:nth-child(4) { animation-delay: 0.25s; }
+@keyframes col-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.col-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 4px 2px;
+  flex-shrink: 0;
+}
+.col-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.col-dot.neutral { background: var(--text-muted); }
+.col-dot.blue { background: var(--accent-blue); box-shadow: 0 0 8px rgba(96,165,250,0.5); }
+.col-dot.orange { background: var(--accent-orange); box-shadow: 0 0 8px rgba(251,146,60,0.5); }
+.col-dot.teal { background: var(--accent); box-shadow: 0 0 8px rgba(47,212,170,0.5); }
+
+.col-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  flex: 1;
+}
+.col-count {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.col-cards {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-right: 2px;
+}
+
+/* Task card */
+.task-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.task-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  border-radius: 10px 0 0 10px;
+}
+.task-card.urgent::before { background: var(--urgent); }
+.task-card.high::before { background: var(--high); }
+.task-card.medium::before { background: var(--medium); }
+.task-card.none::before { background: transparent; }
+.task-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.task-card.done {
+  opacity: 0.55;
+}
+.task-card.done .card-title { text-decoration: line-through; }
+
+.card-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.45;
+  margin-bottom: 9px;
+}
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.card-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-size: 10.5px;
+  font-weight: 500;
+  border: 1px solid;
+}
+.card-chip.blue { color: var(--accent-blue); background: rgba(96,165,250,0.08); border-color: rgba(96,165,250,0.15); }
+.card-chip.green { color: var(--accent); background: rgba(47,212,170,0.08); border-color: rgba(47,212,170,0.15); }
+.card-chip.purple { color: var(--accent-purple); background: rgba(167,139,250,0.08); border-color: rgba(167,139,250,0.15); }
+
+.card-date {
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+.card-date.overdue { color: var(--urgent); font-weight: 500; }
+.card-avatar {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+/* Agent card */
+.agent-card {
+  background: rgba(167,139,250,0.07);
+  border: 1px solid rgba(167,139,250,0.18);
+  border-radius: 10px;
+  padding: 11px 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s;
+}
+.agent-card:hover { border-color: rgba(167,139,250,0.3); }
+.ac-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.ac-dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(167,139,250,0.1);
+  border: 1px solid rgba(167,139,250,0.2);
+  color: var(--accent-purple);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+}
+.ac-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--accent-purple);
+  letter-spacing: 0.04em;
+}
+.ac-text {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--text-sub);
+  line-height: 1.45;
+  margin-bottom: 9px;
+}
+.ac-actions {
+  display: flex;
+  gap: 6px;
+}
+.ac-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: none;
+}
+.ac-btn.accept { background: var(--accent); color: #13141f; }
+.ac-btn.accept:hover { background: #3de0b5; }
+.ac-btn.dismiss { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+.ac-btn.dismiss:hover { border-color: var(--border-hover); color: var(--text-sub); }
+
+/* Add card button */
+.add-card-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px dashed rgba(255,255,255,0.1);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.add-card-btn:hover {
+  border-color: rgba(47,212,170,0.2);
+  color: var(--accent);
+  background: rgba(47,212,170,0.04);
+}
+.add-card-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+/* ============================================================
+   DETAIL PANEL (right)
+   ============================================================ */
+.detail {
+  width: 300px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  border-top: 2px solid rgba(47,212,170,0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slide-in-right 0.5s cubic-bezier(0.16,1,0.3,1) 0.1s both;
+}
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@media (max-width: 1100px) { .detail { display: none; } }
+
+.detail-header {
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.detail-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.detail-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+  flex: 1;
+}
+.close-btn {
+  width: 24px; height: 24px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+.close-btn:hover { color: var(--text-sub); border-color: var(--border-hover); }
+.close-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+/* Status chips — tab style */
+.chips-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.chip {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #13141f;
+  font-weight: 600;
+}
+.chip.active.red { background: var(--urgent); border-color: var(--urgent); }
+.chip.active.orange { background: var(--high); border-color: var(--high); color: #13141f; }
+.chip.active.blue { background: var(--accent-blue); border-color: var(--accent-blue); color: #13141f; }
+
+/* Detail scroll body */
+.detail-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.desc-text {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-sub);
+  line-height: 1.65;
+}
+
+/* AI analysis card */
+.ai-analysis {
+  background: rgba(167,139,250,0.06);
+  border: 1px solid rgba(167,139,250,0.15);
+  border-left: 3px solid var(--accent-purple);
+  border-radius: 0 10px 10px 0;
+  padding: 12px 12px;
+  box-shadow: 0 0 20px rgba(167,139,250,0.04);
+}
+.ai-analysis-hdr {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 7px;
+}
+.ai-analysis-icon {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: rgba(167,139,250,0.1);
+  border: 1px solid rgba(167,139,250,0.2);
+  color: var(--accent-purple);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.ai-analysis-label {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-purple);
+  letter-spacing: 0.04em;
+}
+.ai-analysis-time {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: auto;
+  font-family: 'DM Mono', monospace;
+}
+.ai-analysis-text {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-sub);
+  line-height: 1.6;
+}
+
+/* Attachments */
+.attach-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.attach-item:hover { border-color: var(--border-hover); }
+.attach-icon {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.attach-icon.pdf { background: rgba(248,113,113,0.1); }
+.attach-icon.xlsx { background: rgba(74,222,128,0.1); }
+.attach-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 1px;
+}
+.attach-size {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-muted);
+  font-family: 'DM Mono', monospace;
+}
+.attach-dl {
+  margin-left: auto;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.attach-dl svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+/* Activity */
+.activity-item {
+  display: flex;
+  gap: 9px;
+  margin-bottom: 10px;
+}
+.act-avatar {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.act-avatar.person { background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.2); color: var(--accent-purple); }
+.act-avatar.ai { background: rgba(47,212,170,0.1); border: 1px solid rgba(47,212,170,0.2); color: var(--accent); }
+.act-content { flex: 1; min-width: 0; }
+.act-text {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--text-sub);
+  line-height: 1.5;
+}
+.act-text strong { color: var(--text); font-weight: 500; }
+.act-time {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-top: 2px;
+  font-family: 'DM Mono', monospace;
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ========== AI PANEL ========== -->
+  <aside class="ai-panel">
+    <div class="ai-header">
+      <div class="ai-logo-row">
+        <div class="ai-logo">Task<em>Flow</em></div>
+        <div class="ai-badge">
+          <span class="ai-badge-dot"></span>
+          AI
+        </div>
+      </div>
+      <div class="bot-row">
+        <div class="bot-avatar"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
+        <div>
+          <div class="bot-info-name">EVE · OpenClaw</div>
+          <div class="bot-info-status">
+            <span class="status-dot"></span>
+            Analizando tablero...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-area">
+      <div class="msg">
+        <div class="msg-avatar"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
+        <div class="msg-bubble">Hola, soy EVE de OpenClaw. Analicé tu tablero y encontré 3 puntos de atención.</div>
+      </div>
+      <div class="msg">
+        <div class="msg-avatar"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
+        <div class="msg-bubble">La propuesta técnica para Pliegos Q1 lleva 2 días sin avance. ¿Quieres que redacte un borrador?</div>
+      </div>
+      <div class="msg user">
+        <div class="msg-avatar">PT</div>
+        <div class="msg-bubble user">Sí, hazlo. Prioridad alta.</div>
+      </div>
+      <div class="msg">
+        <div class="msg-avatar"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
+        <div class="typing-indicator">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="quick-pills">
+      <div class="quick-label">Acciones rápidas</div>
+      <button class="qpill">📋 Ver pendientes del día</button>
+      <button class="qpill">⚡ Activar modo focus</button>
+      <button class="qpill">📊 Resumen de la semana</button>
+    </div>
+
+    <div class="chat-input-row">
+      <input class="chat-input" type="text" placeholder="Pregunta a EVE..." />
+      <button class="chat-send">
+        <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ========== MAIN KANBAN ========== -->
+  <div class="main">
+
+    <!-- Nav tabs -->
+    <div class="nav-tabs">
+      <div class="tab active">Tablero</div>
+      <div class="tab">Eisenhower</div>
+      <div class="tab">Agenda</div>
+      <div class="tab">Archivado</div>
+    </div>
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="project-dot"></div>
+        <div class="topbar-title">Pliegos Q1</div>
+      </div>
+      <div class="topbar-right">
+        <div class="icon-btn">
+          <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        </div>
+        <div class="icon-btn">
+          <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        </div>
+        <button class="btn-new">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nueva tarea
+        </button>
+      </div>
+    </div>
+
+    <!-- Board -->
+    <div class="board-wrap">
+      <div class="board-scroll">
+
+        <!-- Por hacer -->
+        <div class="col">
+          <div class="col-header">
+            <div class="col-dot neutral"></div>
+            <div class="col-title">Por hacer</div>
+            <div class="col-count">4</div>
+          </div>
+          <div class="col-cards">
+            <div class="task-card urgent">
+              <div class="card-title">Carta de referencia a Cliente García</div>
+              <div class="card-meta">
+                <span class="card-chip blue">📋 Pliegos Q1</span>
+                <span class="card-date overdue">Hoy</span>
+                <div class="card-avatar">PT</div>
+              </div>
+            </div>
+            <div class="task-card medium">
+              <div class="card-title">Configurar webhook OAuth API v2</div>
+              <div class="card-meta">
+                <span class="card-chip purple">🤖 OC Dev</span>
+                <span class="card-date">8 mar</span>
+                <div class="card-avatar">PT</div>
+              </div>
+            </div>
+            <div class="agent-card">
+              <div class="ac-header">
+                <div class="ac-dot"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
+                <div class="ac-title">OpenClaw sugiere</div>
+              </div>
+              <div class="ac-text">Mover "Revisión legal contrato" aquí para desbloquear a Legal antes del 10 mar.</div>
+              <div class="ac-actions">
+                <button class="ac-btn accept">Aceptar</button>
+                <button class="ac-btn dismiss">Ignorar</button>
+              </div>
+            </div>
+            <div class="task-card none">
+              <div class="card-title">Leer regulaciones licitación 2026</div>
+              <div class="card-meta">
+                <span class="card-chip blue">📋 Pliegos Q1</span>
+                <span class="card-date">10 mar</span>
+              </div>
+            </div>
+            <button class="add-card-btn">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Añadir tarea
+            </button>
+          </div>
+        </div>
+
+        <!-- En progreso -->
+        <div class="col">
+          <div class="col-header">
+            <div class="col-dot blue"></div>
+            <div class="col-title">En progreso</div>
+            <div class="col-count">3</div>
+          </div>
+          <div class="col-cards">
+            <div class="task-card urgent">
+              <div class="card-title">Revisar propuesta técnica licitación municipal</div>
+              <div class="card-meta">
+                <span class="card-chip blue">📋 Pliegos Q1</span>
+                <span class="card-date overdue">5 mar</span>
+                <div class="card-avatar">PT</div>
+              </div>
+            </div>
+            <div class="task-card high">
+              <div class="card-title">Preparar agenda reunión Cliente García</div>
+              <div class="card-meta">
+                <span class="card-chip green">👤 García</span>
+                <span class="card-date">Mañana</span>
+                <div class="card-avatar">PT</div>
+              </div>
+            </div>
+            <div class="task-card medium">
+              <div class="card-title">Actualizar README documentación SDK</div>
+              <div class="card-meta">
+                <span class="card-chip purple">🤖 OC Dev</span>
+                <span class="card-date">7 mar</span>
+              </div>
+            </div>
+            <button class="add-card-btn">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Añadir tarea
+            </button>
+          </div>
+        </div>
+
+        <!-- Esperando -->
+        <div class="col">
+          <div class="col-header">
+            <div class="col-dot orange"></div>
+            <div class="col-title">Esperando</div>
+            <div class="col-count">2</div>
+          </div>
+          <div class="col-cards">
+            <div class="task-card high">
+              <div class="card-title">Firma contrato marco — pendiente Legal</div>
+              <div class="card-meta">
+                <span class="card-chip green">👤 García</span>
+                <span class="card-date">12 mar</span>
+                <div class="card-avatar">PT</div>
+              </div>
+            </div>
+            <div class="task-card medium">
+              <div class="card-title">Revisión código PR #47 — esperando revisor</div>
+              <div class="card-meta">
+                <span class="card-chip purple">🤖 OC Dev</span>
+                <span class="card-date">9 mar</span>
+              </div>
+            </div>
+            <button class="add-card-btn">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Añadir tarea
+            </button>
+          </div>
+        </div>
+
+        <!-- Hecho -->
+        <div class="col">
+          <div class="col-header">
+            <div class="col-dot teal"></div>
+            <div class="col-title">Hecho</div>
+            <div class="col-count">3</div>
+          </div>
+          <div class="col-cards">
+            <div class="task-card done none">
+              <div class="card-title">Actualizar certificación ISO 9001</div>
+              <div class="card-meta">
+                <span class="card-chip blue">📋 Pliegos Q1</span>
+                <span class="card-date">1 mar</span>
+              </div>
+            </div>
+            <div class="task-card done none">
+              <div class="card-title">Deploy API v2 en staging</div>
+              <div class="card-meta">
+                <span class="card-chip purple">🤖 OC Dev</span>
+                <span class="card-date">28 feb</span>
+              </div>
+            </div>
+            <div class="task-card done none">
+              <div class="card-title">Reunión kickoff Pliegos Q1</div>
+              <div class="card-meta">
+                <span class="card-chip blue">📋 Pliegos Q1</span>
+                <span class="card-date">25 feb</span>
+              </div>
+            </div>
+            <button class="add-card-btn">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Añadir tarea
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== DETAIL PANEL ========== -->
+  <aside class="detail">
+    <div class="detail-header">
+      <div class="detail-title-row">
+        <div class="detail-title">Revisar propuesta técnica licitación municipal</div>
+        <div class="close-btn">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
+      </div>
+      <div class="chips-row">
+        <div class="chip">Por hacer</div>
+        <div class="chip active">En progreso</div>
+        <div class="chip">Esperando</div>
+        <div class="chip">Hecho</div>
+      </div>
+      <div class="chips-row">
+        <div class="chip active red">🔴 Urgente</div>
+        <div class="chip">🟠 Alta</div>
+        <div class="chip">🔵 Media</div>
+      </div>
+    </div>
+
+    <div class="detail-body">
+
+      <!-- Description -->
+      <div>
+        <div class="section-label">Descripción</div>
+        <div class="desc-text">Revisar y validar la propuesta técnica para la licitación municipal de Pliegos Q1. Incluye verificación de requisitos legales, presupuesto actualizado y memoria descriptiva. Coordinar con el equipo de Legal para firma.</div>
+      </div>
+
+      <!-- AI analysis -->
+      <div>
+        <div class="section-label">Análisis IA</div>
+        <div class="ai-analysis">
+          <div class="ai-analysis-hdr">
+            <div class="ai-analysis-icon"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
+            <div class="ai-analysis-label">OpenClaw · Análisis</div>
+            <div class="ai-analysis-time">hace 2h</div>
+          </div>
+          <div class="ai-analysis-text">Detecté que faltan 2 referencias normativas en la sección 3.4. El presupuesto no incluye el desglose de IVA requerido. Recomiendo resolver antes del 6 mar para no perder el plazo.</div>
+        </div>
+      </div>
+
+      <!-- Attachments -->
+      <div>
+        <div class="section-label">Adjuntos</div>
+        <div class="attach-item">
+          <div class="attach-icon pdf">📄</div>
+          <div>
+            <div class="attach-name">Pliego_Condiciones.pdf</div>
+            <div class="attach-size">2.4 MB · 28 feb</div>
+          </div>
+          <div class="attach-dl">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+        </div>
+        <div class="attach-item">
+          <div class="attach-icon xlsx">📊</div>
+          <div>
+            <div class="attach-name">Presupuesto_v4.xlsx</div>
+            <div class="attach-size">890 KB · 1 mar</div>
+          </div>
+          <div class="attach-dl">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity -->
+      <div>
+        <div class="section-label">Actividad</div>
+        <div class="activity-item">
+          <div class="act-avatar person">PT</div>
+          <div class="act-content">
+            <div class="act-text"><strong>P. Tavares</strong> añadió un comentario: "Pendiente de revisión legal"</div>
+            <div class="act-time">hace 2h</div>
+          </div>
+        </div>
+        <div class="activity-item">
+          <div class="act-avatar ai"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
+          <div class="act-content">
+            <div class="act-text"><strong>OpenClaw</strong> detectó riesgo de incumplimiento de plazo</div>
+            <div class="act-time">hace 3h</div>
+          </div>
+        </div>
+        <div class="activity-item">
+          <div class="act-avatar person">MR</div>
+          <div class="act-content">
+            <div class="act-text"><strong>M. Rodríguez</strong> cambió estado a "En progreso"</div>
+            <div class="act-time">ayer</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+</div>
+
+</body>
+</html>

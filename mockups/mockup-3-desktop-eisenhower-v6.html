@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow v6 — Matriz Eisenhower</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root {
+  --bg: #13141f; --surface: #1a1b2e; --elevated: #1f2035; --card: #242540; --sidebar-ai: #111220;
+  --border: rgba(255,255,255,0.07); --border-hover: rgba(255,255,255,0.13);
+  --text: #f0f1ff; --text-sub: rgba(240,241,255,0.6); --text-muted: rgba(240,241,255,0.35);
+  --accent: #2fd4aa; --accent-dim: rgba(47,212,170,0.1);
+  --accent-blue: #60a5fa; --accent-purple: #a78bfa; --accent-orange: #fb923c;
+  --accent-pink: #f472b6; --accent-green: #4ade80;
+  --urgent: #f87171; --high: #fb923c; --medium: #60a5fa;
+  --icon-teal: rgba(47,212,170,0.15); --icon-blue: rgba(96,165,250,0.15);
+  --icon-purple: rgba(167,139,250,0.15); --icon-orange: rgba(251,146,60,0.15);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4); --shadow-md: 0 4px 20px rgba(0,0,0,0.5); --shadow-lg: 0 12px 40px rgba(0,0,0,0.6);
+}
+html,body{height:100vh;overflow:hidden;font-family:'Outfit',sans-serif;color:var(--text);}
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 60% 50% at 30% 0%, rgba(167,139,250,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 60% at 80% 100%, rgba(47,212,170,0.05) 0%, transparent 55%),
+    radial-gradient(circle, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: auto, auto, 24px 24px;
+}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px;}
+
+.shell{display:flex;height:100vh;overflow:hidden;}
+
+/* ── AI PANEL ── */
+.ai-panel{
+  width:280px;flex-shrink:0;
+  background:var(--sidebar-ai);
+  background-image:radial-gradient(ellipse 80% 60% at 50% 20%, rgba(167,139,250,0.07) 0%, transparent 60%);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.ai-header{padding:18px 16px 14px;border-bottom:1px solid var(--border);}
+.ai-logo{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.ai-logo-text{font-size:17px;font-weight:700;letter-spacing:-0.3px;}
+.ai-logo-text em{font-style:normal;color:var(--accent);}
+.ai-badge{font-size:10px;font-weight:600;background:rgba(167,139,250,0.18);color:var(--accent-purple);border:1px solid rgba(167,139,250,0.25);border-radius:5px;padding:2px 7px;letter-spacing:0.5px;}
+.ai-section-label{font-size:10px;font-weight:600;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px;}
+
+.ai-body{flex:1;overflow-y:auto;padding:14px 14px;display:flex;flex-direction:column;gap:8px;}
+.ai-bot-intro{display:flex;align-items:flex-start;gap:10px;margin-bottom:2px;}
+.ai-avatar{width:34px;height:34px;border-radius:50%;background:rgba(47,212,170,0.12);border:1px solid rgba(47,212,170,0.22);color:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ai-avatar.purple{background:rgba(167,139,250,0.12);border-color:rgba(167,139,250,0.22);color:var(--accent-purple);}
+.ai-avatar-sm{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+
+.msg{display:flex;gap:8px;align-items:flex-end;}
+.msg.user{flex-direction:row-reverse;}
+.msg-bubble{font-size:12px;line-height:1.5;padding:9px 12px;border-radius:12px;max-width:186px;}
+.msg:not(.user) .msg-bubble{background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text-sub);border-bottom-left-radius:4px;}
+.msg.user .msg-bubble{background:rgba(167,139,250,0.14);border:1px solid rgba(167,139,250,0.2);color:var(--text);border-bottom-right-radius:4px;font-size:11.5px;}
+
+.quick-pills{display:flex;flex-wrap:wrap;gap:6px;padding:12px 14px;border-top:1px solid var(--border);}
+.qpill{font-size:11px;padding:5px 10px;border-radius:20px;background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--text-sub);cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.qpill:hover{background:rgba(47,212,170,0.08);border-color:rgba(47,212,170,0.2);color:var(--accent);}
+
+.ai-input-area{padding:12px 14px;border-top:1px solid var(--border);}
+.ai-input-pill{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:24px;padding:8px 14px;}
+.ai-input-pill input{flex:1;background:none;border:none;outline:none;font-family:'Outfit';font-size:12px;color:var(--text);min-width:0;}
+.ai-input-pill input::placeholder{color:var(--text-muted);}
+.ai-send{width:26px;height:26px;border-radius:50%;background:var(--accent);border:none;color:#13141f;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--surface);}
+
+.topbar{
+  height:52px;background:var(--elevated);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;padding:0 20px;flex-shrink:0;
+}
+.breadcrumb{font-size:13px;color:var(--text-sub);}
+.breadcrumb strong{color:var(--text);font-weight:600;}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+.icon-btn{width:34px;height:34px;border-radius:8px;background:transparent;border:1px solid var(--border);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.icon-btn:hover{background:rgba(255,255,255,0.05);color:var(--text-sub);}
+.btn-teal{background:var(--accent);color:#13141f;border:none;border-radius:10px;font-family:'Outfit';font-size:13px;font-weight:600;padding:7px 16px;cursor:pointer;box-shadow:0 0 20px rgba(47,212,170,0.25);transition:all 0.15s;}
+.btn-teal:hover{opacity:0.9;box-shadow:0 0 28px rgba(47,212,170,0.35);}
+
+.view-tabs{display:flex;align-items:center;gap:4px;padding:10px 20px 0;flex-shrink:0;}
+.vtab{font-size:13px;font-weight:500;padding:6px 14px;border-radius:20px;cursor:pointer;color:var(--text-muted);transition:all 0.15s;border:1px solid transparent;}
+.vtab:hover{color:var(--text-sub);}
+.vtab.active{background:var(--accent);color:#13141f;font-weight:600;}
+
+/* ── MATRIX ── */
+.matrix-wrap{flex:1;overflow:hidden;padding:16px 20px 20px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:14px;}
+
+.quadrant{
+  background:var(--elevated);border:1px solid var(--border);border-radius:14px;
+  overflow:hidden;display:flex;flex-direction:column;
+  opacity:0;animation:fade-up 0.4s ease forwards;
+}
+.quad-strip{height:3px;flex-shrink:0;}
+.quad-header{display:flex;align-items:center;gap:8px;padding:11px 14px 9px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.quad-num{font-size:20px;font-weight:800;font-family:'Outfit';line-height:1;}
+.quad-info{flex:1;}
+.quad-name{font-size:12px;font-weight:600;color:var(--text);}
+.quad-hint{font-size:10px;color:var(--text-muted);margin-top:1px;}
+.quad-count{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;}
+.quad-body{flex:1;overflow-y:auto;padding:10px;}
+.quad-body .task-list{display:flex;flex-direction:column;gap:6px;}
+
+/* quadrant colors */
+.q1 .quad-strip{background:var(--urgent);}
+.q1 .quad-num{color:var(--urgent);}
+.q1 .quad-count{background:rgba(248,113,113,0.12);color:var(--urgent);}
+.q2 .quad-strip{background:var(--accent-blue);}
+.q2 .quad-num{color:var(--accent-blue);}
+.q2 .quad-count{background:rgba(96,165,250,0.12);color:var(--accent-blue);}
+.q3 .quad-strip{background:var(--accent-orange);}
+.q3 .quad-num{color:var(--accent-orange);}
+.q3 .quad-count{background:rgba(251,146,60,0.12);color:var(--accent-orange);}
+.q4{opacity:0.75;animation:fade-up 0.4s ease forwards;}
+.q4 .quad-strip{background:rgba(255,255,255,0.15);}
+.q4 .quad-num{color:var(--text-muted);}
+.q4 .quad-count{background:rgba(255,255,255,0.05);color:var(--text-muted);}
+
+/* mini task cards */
+.mini-card{
+  background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 12px;
+  border-left:3px solid var(--border);cursor:pointer;transition:all 0.15s;
+}
+.mini-card:hover{border-color:var(--border-hover);transform:translateX(2px);}
+.mini-card.urgent{border-left-color:var(--urgent);}
+.mini-card.high{border-left-color:var(--high);}
+.mini-card.medium{border-left-color:var(--medium);}
+.mini-card-title{font-size:12.5px;font-weight:500;color:var(--text);line-height:1.35;margin-bottom:6px;}
+.mini-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.proj-pill{font-size:10px;font-weight:500;padding:2px 7px;border-radius:4px;}
+.proj-blue{background:rgba(96,165,250,0.12);color:var(--accent-blue);}
+.proj-green{background:rgba(74,222,128,0.12);color:var(--accent-green);}
+.proj-purple{background:rgba(167,139,250,0.12);color:var(--accent-purple);}
+.mini-date{font-family:'DM Mono';font-size:10px;color:var(--text-muted);}
+.openclaw-label{font-size:10px;color:var(--accent);font-weight:500;}
+
+.drop-hint{
+  border:1.5px dashed var(--border-hover);border-radius:8px;padding:8px;
+  text-align:center;color:var(--text-muted);font-size:11px;margin-top:4px;
+}
+
+/* ── AGENT FLOAT ── */
+.agent-float{
+  position:fixed;bottom:20px;right:20px;width:300px;
+  background:var(--elevated);border:1px solid rgba(167,139,250,0.3);border-radius:14px;
+  box-shadow:var(--shadow-lg), 0 0 30px rgba(167,139,250,0.08);
+  overflow:hidden;z-index:50;
+  animation:slide-up 0.4s ease;
+}
+.agent-float-header{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);}
+.agent-title{flex:1;}
+.agent-name{font-size:13px;font-weight:600;color:var(--accent-purple);}
+.agent-status{font-size:11px;color:var(--text-muted);margin-top:1px;}
+.agent-close{width:24px;height:24px;border-radius:6px;background:transparent;border:none;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.agent-close:hover{background:rgba(255,255,255,0.05);color:var(--text-sub);}
+.agent-body{padding:12px 14px;}
+.agent-ai-card{
+  background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.15);
+  border-left:3px solid var(--accent-purple);border-radius:10px;padding:12px 14px;margin-bottom:12px;
+}
+.sug-label{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--accent-purple);margin-bottom:6px;}
+.sug-text{font-size:12px;line-height:1.5;color:var(--text-sub);}
+.agent-actions{display:flex;gap:8px;}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text-sub);border-radius:10px;font-family:'Outfit';font-size:12px;font-weight:500;padding:7px 14px;cursor:pointer;transition:all 0.15s;}
+.btn-ghost:hover{border-color:var(--border-hover);color:var(--text);}
+
+/* ── ANIMATIONS ── */
+@keyframes fade-up{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+@keyframes slide-up{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+
+.quadrant:nth-child(1){animation-delay:0s;}
+.quadrant:nth-child(2){animation-delay:0.08s;}
+.quadrant:nth-child(3){animation-delay:0.16s;}
+.quadrant:nth-child(4){animation-delay:0.24s;}
+
+@media(max-width:900px){.ai-panel{display:none;}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- AI PANEL -->
+  <aside class="ai-panel">
+    <div class="ai-header">
+      <div class="ai-logo">
+        <div class="ai-logo-text">Task<em>Flow</em></div>
+        <span class="ai-badge">AI</span>
+      </div>
+      <div class="ai-section-label">Asistente OpenClaw</div>
+      <div class="ai-bot-intro">
+        <div class="ai-avatar">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--text);">OpenClaw</div>
+          <div style="font-size:10px;color:var(--text-muted);font-family:'DM Mono';">Activo · ahora</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ai-body">
+      <div class="msg">
+        <div class="ai-avatar" style="width:28px;height:28px;flex-shrink:0;">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        </div>
+        <div class="msg-bubble">He analizado tu matriz. Tienes 3 tareas en Q1 con vencimiento esta semana.</div>
+      </div>
+      <div class="msg" style="margin-top:6px;">
+        <div class="ai-avatar" style="width:28px;height:28px;flex-shrink:0;">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        </div>
+        <div class="msg-bubble">¿Quieres que mueva las tareas de Q3 que pueden delegarse automáticamente?</div>
+      </div>
+      <div class="msg user" style="margin-top:6px;">
+        <div class="ai-avatar-sm" style="background:rgba(167,139,250,0.14);border:1px solid rgba(167,139,250,0.22);color:var(--accent-purple);">PT</div>
+        <div class="msg-bubble">Sí, adelante.</div>
+      </div>
+    </div>
+
+    <div class="quick-pills">
+      <span class="qpill">📋 Ver Q1</span>
+      <span class="qpill">⚡ Modo focus</span>
+      <span class="qpill">📊 Resumen</span>
+    </div>
+
+    <div class="ai-input-area">
+      <div class="ai-input-pill">
+        <input type="text" placeholder="Pregunta algo...">
+        <button class="ai-send">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="breadcrumb">Workspace / <strong>Eisenhower</strong></div>
+      <div class="topbar-right">
+        <button class="icon-btn" title="Filtrar">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+        </button>
+        <button class="btn-teal">+ Nueva tarea</button>
+      </div>
+    </div>
+
+    <div class="view-tabs">
+      <span class="vtab" onclick="switchTab(this)">Tablero</span>
+      <span class="vtab active" onclick="switchTab(this)">Eisenhower</span>
+      <span class="vtab" onclick="switchTab(this)">Agenda</span>
+      <span class="vtab" onclick="switchTab(this)">Archivado</span>
+    </div>
+
+    <!-- 2×2 MATRIX -->
+    <div class="matrix-wrap">
+
+      <!-- Q1 -->
+      <div class="quadrant q1">
+        <div class="quad-strip"></div>
+        <div class="quad-header">
+          <div class="quad-num">Q1</div>
+          <div class="quad-info">
+            <div class="quad-name">Urgente + Importante</div>
+            <div class="quad-hint">Hacer ahora</div>
+          </div>
+          <span class="quad-count">3</span>
+        </div>
+        <div class="quad-body">
+          <div class="task-list">
+            <div class="mini-card urgent">
+              <div class="mini-card-title">Preparar documentación pliego Ayuntamiento Madrid</div>
+              <div class="mini-meta">
+                <span class="proj-pill proj-blue">Pliegos Q1</span>
+                <span class="mini-date">13 mar</span>
+                <span class="openclaw-label">✦ OpenClaw</span>
+              </div>
+            </div>
+            <div class="mini-card urgent">
+              <div class="mini-card-title">Revisar contrato Lisboa — firma urgente</div>
+              <div class="mini-meta">
+                <span class="proj-pill proj-green">Cliente García</span>
+                <span class="mini-date">10 mar</span>
+              </div>
+            </div>
+            <div class="mini-card urgent">
+              <div class="mini-card-title">Responder email de Juan García sobre presupuesto</div>
+              <div class="mini-meta">
+                <span class="proj-pill proj-green">Cliente García</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q2 -->
+      <div class="quadrant q2">
+        <div class="quad-strip"></div>
+        <div class="quad-header">
+          <div class="quad-num">Q2</div>
+          <div class="quad-info">
+            <div class="quad-name">No urgente + Importante</div>
+            <div class="quad-hint">Planificar</div>
+          </div>
+          <span class="quad-count">3</span>
+        </div>
+        <div class="quad-body">
+          <div class="task-list">
+            <div class="mini-card medium">
+              <div class="mini-card-title">Ideas para propuesta técnica pliego Barcelona</div>
+              <div class="mini-meta">
+                <span class="proj-pill proj-blue">Pliegos Q1</span>
+                <span class="mini-date">14 mar</span>
+              </div>
+            </div>
+            <div class="mini-card medium">
+              <div class="mini-card-title">Configurar integración OpenClaw con Gmail</div>
+              <div class="mini-meta">
+                <span class="proj-pill proj-purple">OpenClaw Dev</span>
+              </div>
+            </div>
+            <div class="mini-card medium">
+              <div class="mini-card-title">Documentar API de clasificación automática</div>
+              <div class="mini-meta">
+                <span class="proj-pill proj-purple">OpenClaw Dev</span>
+              </div>
+            </div>
+            <div class="drop-hint">Arrastra aquí para clasificar</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q3 -->
+      <div class="quadrant q3">
+        <div class="quad-strip"></div>
+        <div class="quad-header">
+          <div class="quad-num">Q3</div>
+          <div class="quad-info">
+            <div class="quad-name">Urgente + No importante</div>
+            <div class="quad-hint">Delegar</div>
+          </div>
+          <span class="quad-count">2</span>
+        </div>
+        <div class="quad-body">
+          <div class="task-list">
+            <div class="mini-card high">
+              <div class="mini-card-title">Reunión de seguimiento semanal equipo</div>
+              <div class="mini-meta">
+                <span class="mini-date">Cada lunes · 10:00</span>
+              </div>
+            </div>
+            <div class="mini-card high">
+              <div class="mini-card-title">Actualizar estado en plataforma contratación</div>
+              <div class="mini-meta">
+                <span class="proj-pill proj-blue">Pliegos Q1</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q4 -->
+      <div class="quadrant q4">
+        <div class="quad-strip"></div>
+        <div class="quad-header">
+          <div class="quad-num">Q4</div>
+          <div class="quad-info">
+            <div class="quad-name">No urgente + No importante</div>
+            <div class="quad-hint">Eliminar</div>
+          </div>
+          <span class="quad-count">2</span>
+        </div>
+        <div class="quad-body">
+          <div class="task-list">
+            <div class="mini-card">
+              <div class="mini-card-title">Leer newsletter de herramientas de productividad</div>
+              <div class="mini-meta">
+                <span class="mini-date">Sin fecha</span>
+              </div>
+            </div>
+            <div class="mini-card">
+              <div class="mini-card-title">Organizar carpetas de archivos locales</div>
+              <div class="mini-meta">
+                <span class="mini-date">Sin fecha</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /matrix-wrap -->
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<!-- AGENT FLOATING PANEL -->
+<div class="agent-float" id="agentFloat">
+  <div class="agent-float-header">
+    <div class="ai-avatar purple" style="width:32px;height:32px;border-radius:10px;flex-shrink:0;">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+    </div>
+    <div class="agent-title">
+      <div class="agent-name">EVE · OpenClaw</div>
+      <div class="agent-status">Analizando matriz...</div>
+    </div>
+    <button class="agent-close" onclick="document.getElementById('agentFloat').style.display='none'">×</button>
+  </div>
+  <div class="agent-body">
+    <div class="agent-ai-card">
+      <div class="sug-label">✦ Sugerencia</div>
+      <div class="sug-text">Mueve "Preparar documentación pliego Madrid" a Q1 — el plazo es en 3 días y aún está en Por hacer.</div>
+    </div>
+    <div class="agent-actions">
+      <button class="btn-teal" style="flex:1;font-size:12px;padding:7px 12px;" onclick="this.closest('.agent-float').style.display='none'">Aceptar</button>
+      <button class="btn-ghost" style="font-size:12px;padding:7px 12px;">Modificar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(el){
+  document.querySelectorAll('.vtab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+</script>
+</body>
+</html>

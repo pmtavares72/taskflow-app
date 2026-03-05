@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — OpenClaw Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #f0ede8;
+  --surface:     #faf8f5;
+  --elevated:    #ffffff;
+  --card:        #ffffff;
+  --border:      rgba(0,0,0,0.08);
+  --border-hover:rgba(0,0,0,0.16);
+  --text:        #1a1a2e;
+  --text-sub:    #6b6b8a;
+  --text-muted:  #a8a8c0;
+  --accent:      #00b8ad;
+  --accent-dark: #008f86;
+  --accent-dim:  rgba(0,184,173,0.1);
+  --accent-glow: rgba(0,184,173,0.2);
+  --urgent:      #e8304a;
+  --high:        #f07832;
+  --medium:      #3d8ef0;
+  --p-blue:      #3d7fd8;
+  --p-green:     #1faa6b;
+  --p-orange:    #f07820;
+  --p-purple:    #7c52c8;
+  --shadow-sm:   0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:   0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:   0 12px 40px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.05);
+}
+
+html, body {
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--bg);
+  background-image: radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--text);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
+
+/* === LAYOUT === */
+.app-shell {
+  display: flex;
+  height: 100vh;
+}
+
+/* ---- SIDEBAR ---- */
+.sidebar {
+  width: 216px;
+  flex-shrink: 0;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-logo {
+  padding: 20px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.logo-lockup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.logo-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--accent-dim), rgba(0,184,173,0.05));
+  border: 1px solid rgba(0,184,173,0.2);
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+}
+.logo-icon svg { width: 16px; height: 16px; stroke: var(--accent); fill: none; stroke-width: 2; }
+.logo-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.logo-name em { color: var(--accent); font-style: italic; }
+
+.sidebar-nav {
+  padding: 12px 8px;
+  flex: 1;
+  overflow-y: auto;
+}
+.nav-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 8px 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-sub);
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  text-decoration: none;
+  margin-bottom: 1px;
+}
+.nav-item:hover { background: var(--bg); color: var(--text); }
+.nav-item.active {
+  background: var(--accent-dim);
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 4px; bottom: 4px;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+.nav-item svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--urgent);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+.nav-badge.teal { background: var(--accent); }
+
+.project-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sidebar-footer {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+}
+.user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.user-row:hover { background: var(--bg); }
+.user-avatar {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--p-blue), var(--p-purple));
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.user-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.user-email { font-size: 11px; color: var(--text-muted); }
+
+/* ---- FEED PANEL ---- */
+.feed-panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.feed-topbar {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  height: 56px;
+  gap: 16px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.feed-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.agent-status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse-dot 2s ease infinite;
+  flex-shrink: 0;
+}
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  50%       { box-shadow: 0 0 0 5px transparent; }
+}
+
+.feed-tabs {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+.feed-tab {
+  padding: 6px 14px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-sub);
+  cursor: pointer;
+  transition: all 0.15s;
+  border: none;
+  background: none;
+}
+.feed-tab:hover { background: var(--bg); color: var(--text); }
+.feed-tab.active { background: var(--accent-dim); color: var(--accent-dark); }
+
+.topbar-icon-btn {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-sub);
+  transition: all 0.15s;
+}
+.topbar-icon-btn:hover { background: var(--bg); color: var(--text); }
+.topbar-icon-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+.feed-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px 24px;
+}
+
+/* Digest banner */
+.digest-banner {
+  background: linear-gradient(135deg, rgba(0,184,173,0.06), rgba(0,184,173,0.1));
+  border: 1px solid rgba(0,184,173,0.2);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 20px;
+  animation: fade-up 0.4s ease both;
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.digest-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.agent-avatar {
+  width: 40px; height: 40px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  display: flex; align-items: center; justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 13px;
+  flex-shrink: 0;
+  position: relative;
+}
+.agent-avatar::after {
+  content: '';
+  position: absolute;
+  bottom: -2px; right: -2px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--p-green);
+  border: 2px solid white;
+}
+.digest-meta { flex: 1; }
+.digest-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+.digest-time {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.digest-body {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text-sub);
+}
+.digest-stats {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.digest-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+}
+.digest-stat-num {
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--accent-dark);
+}
+.digest-stat-label { color: var(--text-sub); }
+
+/* Feed section title */
+.feed-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 20px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.feed-section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Feed item card */
+.feed-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+  animation: fade-up 0.3s ease both;
+  position: relative;
+  overflow: hidden;
+}
+.feed-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent);
+}
+.feed-card.urgent::before { background: var(--urgent); }
+.feed-card.high::before   { background: var(--high); }
+.feed-card:hover { border-color: var(--border-hover); box-shadow: var(--shadow-sm); }
+
+.feed-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.feed-card-icon {
+  width: 34px; height: 34px;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.feed-card-body { flex: 1; min-width: 0; }
+.feed-card-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: 3px;
+}
+.feed-card-meta {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.feed-card-tag {
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: var(--bg);
+  color: var(--text-sub);
+}
+
+/* Reasoning block */
+.reasoning-block {
+  background: rgba(0,184,173,0.05);
+  border: 1px solid rgba(0,184,173,0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-sub);
+  margin-bottom: 10px;
+  font-style: italic;
+}
+.reasoning-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  font-style: normal;
+}
+
+/* Feed card actions */
+.feed-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.fc-btn {
+  padding: 5px 14px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: none;
+}
+.fc-btn-accept {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+.fc-btn-accept:hover { background: var(--accent-dark); }
+.fc-btn-dismiss {
+  background: var(--surface);
+  color: var(--text-sub);
+  border: 1px solid var(--border);
+}
+.fc-btn-dismiss:hover { border-color: var(--border-hover); }
+.fc-btn-view {
+  margin-left: auto;
+  background: none;
+  color: var(--accent);
+  font-weight: 600;
+}
+.fc-btn-view:hover { background: var(--accent-dim); }
+
+/* Date separator */
+.date-sep {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin: 16px 0 10px;
+  position: relative;
+}
+.date-sep::before, .date-sep::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: calc(50% - 50px);
+  height: 1px;
+  background: var(--border);
+}
+.date-sep::before { left: 0; }
+.date-sep::after  { right: 0; }
+
+/* ---- CONFIG PANEL ---- */
+.config-panel {
+  width: 272px;
+  flex-shrink: 0;
+  background: var(--card);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.config-header {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.config-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.config-subtitle { font-size: 12px; color: var(--text-muted); }
+
+.config-scroll { flex: 1; overflow-y: auto; padding: 14px; }
+
+/* Stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+.stat-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--accent-dark);
+  font-family: 'Playfair Display', serif;
+  line-height: 1;
+  margin-bottom: 3px;
+}
+.stat-value.green { color: var(--p-green); }
+.stat-value.orange { color: var(--p-orange); }
+.stat-value.blue { color: var(--p-blue); }
+.stat-label {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.config-section-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 16px 0 8px;
+}
+
+/* Autonomy slider */
+.autonomy-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.autonomy-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.slider-track {
+  height: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  position: relative;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+.slider-fill {
+  height: 100%;
+  width: 65%;
+  background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.slider-thumb {
+  position: absolute;
+  top: 50%;
+  left: 65%;
+  transform: translate(-50%, -50%);
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  cursor: grab;
+  transition: left 0.3s ease;
+}
+.autonomy-value {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-dark);
+}
+.autonomy-levels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.autonomy-level {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Permission toggles */
+.permission-list { display: flex; flex-direction: column; gap: 6px; }
+.permission-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 10px 12px;
+}
+.permission-icon { font-size: 16px; }
+.permission-text { flex: 1; }
+.permission-name { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.permission-desc { font-size: 11px; color: var(--text-muted); }
+
+.toggle-switch {
+  width: 36px; height: 20px;
+  border-radius: 10px;
+  background: var(--border-hover);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+  border: none;
+}
+.toggle-switch.on { background: var(--accent); }
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle-switch.on::after { transform: translateX(16px); }
+
+/* Responsive */
+@media (max-width: 1100px) { .config-panel { display: none; } }
+@media (max-width: 768px)  { .sidebar { display: none; } }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <a class="logo-lockup" href="#">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <span class="logo-name">Task<em>Flow</em></span>
+      </a>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Inbox <span class="nav-badge">7</span>
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Kanban
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+        Eisenhower
+      </a>
+      <a class="nav-item active" href="#">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        OpenClaw <span class="nav-badge teal">3</span>
+      </a>
+
+      <div class="nav-section-label" style="margin-top:16px">Proyectos</div>
+      <a class="nav-item" href="#">
+        <span class="project-dot" style="background:var(--p-blue)"></span>
+        Pliegos Q1
+      </a>
+      <a class="nav-item" href="#">
+        <span class="project-dot" style="background:var(--p-green)"></span>
+        Cliente García
+      </a>
+      <a class="nav-item" href="#">
+        <span class="project-dot" style="background:var(--p-purple)"></span>
+        OpenClaw Dev
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="user-avatar">PT</div>
+        <div>
+          <div class="user-name">P. Tavares</div>
+          <div class="user-email">ptavares@openclaw.io</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- FEED PANEL -->
+  <main class="feed-panel">
+    <div class="feed-topbar">
+      <div class="feed-title">
+        <div class="agent-status-dot"></div>
+        OpenClaw
+      </div>
+      <div class="feed-tabs">
+        <button class="feed-tab active" onclick="setTab(this)">Feed</button>
+        <button class="feed-tab" onclick="setTab(this)">Historial</button>
+        <button class="feed-tab" onclick="setTab(this)">Memoria</button>
+      </div>
+      <button class="topbar-icon-btn" title="Filtrar">
+        <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      </button>
+      <button class="topbar-icon-btn" title="Configuración">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+
+    <div class="feed-scroll">
+
+      <!-- Digest banner -->
+      <div class="digest-banner">
+        <div class="digest-header">
+          <div class="agent-avatar">OC</div>
+          <div class="digest-meta">
+            <div class="digest-title">Resumen diario · 3 mar 2026</div>
+            <div class="digest-time">Generado a las 08:00 · procesados 27 inputs</div>
+          </div>
+        </div>
+        <div class="digest-body">
+          He analizado tu bandeja, calendario y proyectos. Tienes <strong>3 tareas críticas</strong> con vencimiento esta semana. Pliegos Q1 necesita atención hoy: falta la referencia de Cliente García. También detecté 4 emails sin procesar con información relevante para OpenClaw Dev.
+        </div>
+        <div class="digest-stats">
+          <div class="digest-stat"><span class="digest-stat-num">27</span><span class="digest-stat-label">procesados</span></div>
+          <div class="digest-stat"><span class="digest-stat-num">3</span><span class="digest-stat-label">acciones pendientes</span></div>
+          <div class="digest-stat"><span class="digest-stat-num">94%</span><span class="digest-stat-label">confianza</span></div>
+        </div>
+      </div>
+
+      <!-- Pending section -->
+      <div class="feed-section-title">Pendientes de revisión (3)</div>
+
+      <!-- Card 1 -->
+      <div class="feed-card urgent" id="fc1">
+        <div class="feed-card-header">
+          <div class="feed-card-icon" style="background:rgba(232,48,74,0.08)">⚠️</div>
+          <div class="feed-card-body">
+            <div class="feed-card-title">Detectado riesgo en propuesta técnica Pliegos Q1</div>
+            <div class="feed-card-meta">
+              <span>Hace 2h</span>
+              <span class="feed-card-tag">Pliegos Q1</span>
+              <span class="feed-card-tag" style="background:rgba(232,48,74,0.08);color:var(--urgent)">Urgente</span>
+            </div>
+          </div>
+        </div>
+        <div class="reasoning-block">
+          <div class="reasoning-label">✦ Razonamiento</div>
+          El pliego exige 3 referencias de proyectos similares (últimos 5 años). Revisé los documentos adjuntos y solo encuentro 2 referencias válidas. La referencia de "Ayuntamiento de Sevilla" (2019) queda fuera del período exigido.
+        </div>
+        <div class="feed-card-actions">
+          <button class="fc-btn fc-btn-accept" onclick="acceptCard('fc1')">Crear tarea urgente</button>
+          <button class="fc-btn fc-btn-dismiss" onclick="dismissCard('fc1')">Ignorar</button>
+          <button class="fc-btn fc-btn-view">Ver tarea →</button>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="feed-card" id="fc2">
+        <div class="feed-card-header">
+          <div class="feed-card-icon" style="background:rgba(0,184,173,0.08)">📧</div>
+          <div class="feed-card-body">
+            <div class="feed-card-title">4 emails de OpenClaw Dev sin procesar</div>
+            <div class="feed-card-meta">
+              <span>Hace 4h</span>
+              <span class="feed-card-tag">OpenClaw Dev</span>
+            </div>
+          </div>
+        </div>
+        <div class="reasoning-block">
+          <div class="reasoning-label">✦ Razonamiento</div>
+          Los 4 emails contienen feedback de beta testers sobre la API v2. Dos emails mencionan un bug en la autenticación OAuth. He extractado los puntos clave y sugiero crear 3 tareas en el proyecto.
+        </div>
+        <div class="feed-card-actions">
+          <button class="fc-btn fc-btn-accept" onclick="acceptCard('fc2')">Crear 3 tareas</button>
+          <button class="fc-btn fc-btn-dismiss" onclick="dismissCard('fc2')">Revisar manualmente</button>
+          <button class="fc-btn fc-btn-view">Ver emails →</button>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="feed-card high" id="fc3">
+        <div class="feed-card-header">
+          <div class="feed-card-icon" style="background:rgba(240,120,50,0.08)">📅</div>
+          <div class="feed-card-body">
+            <div class="feed-card-title">Reunión Cliente García — preparar agenda</div>
+            <div class="feed-card-meta">
+              <span>Hace 5h</span>
+              <span class="feed-card-tag">Cliente García</span>
+              <span class="feed-card-tag" style="background:rgba(240,120,50,0.08);color:var(--high)">Alta</span>
+            </div>
+          </div>
+        </div>
+        <div class="reasoning-block">
+          <div class="reasoning-label">✦ Razonamiento</div>
+          La reunión es mañana a las 10:00. Según el historial, normalmente preparas agendas con 24h de antelación. He identificado 5 puntos pendientes del sprint anterior que deberían incluirse.
+        </div>
+        <div class="feed-card-actions">
+          <button class="fc-btn fc-btn-accept" onclick="acceptCard('fc3')">Generar agenda</button>
+          <button class="fc-btn fc-btn-dismiss" onclick="dismissCard('fc3')">Yo la preparo</button>
+        </div>
+      </div>
+
+      <!-- Activity section -->
+      <div class="feed-section-title" style="margin-top:8px">Actividad reciente</div>
+
+      <div class="date-sep">Hoy</div>
+
+      <div class="feed-card" style="animation-delay:0.1s">
+        <div class="feed-card-header">
+          <div class="feed-card-icon" style="background:rgba(31,170,107,0.08)">✅</div>
+          <div class="feed-card-body">
+            <div class="feed-card-title">Tarea completada: Actualizar README OpenClaw SDK</div>
+            <div class="feed-card-meta"><span>10:30</span><span class="feed-card-tag">OpenClaw Dev</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="feed-card" style="animation-delay:0.15s">
+        <div class="feed-card-header">
+          <div class="feed-card-icon" style="background:rgba(61,127,216,0.08)">📥</div>
+          <div class="feed-card-body">
+            <div class="feed-card-title">7 tareas clasificadas desde Inbox</div>
+            <div class="feed-card-meta"><span>08:03</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="date-sep">Ayer</div>
+
+      <div class="feed-card" style="animation-delay:0.2s">
+        <div class="feed-card-header">
+          <div class="feed-card-icon" style="background:rgba(124,82,200,0.08)">🔀</div>
+          <div class="feed-card-body">
+            <div class="feed-card-title">Reorganización sugerida del Eisenhower aceptada</div>
+            <div class="feed-card-meta"><span>15:22</span><span>3 tareas movidas</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- CONFIG PANEL -->
+  <aside class="config-panel">
+    <div class="config-header">
+      <div class="config-title">Configuración</div>
+      <div class="config-subtitle">OpenClaw · Agente activo</div>
+    </div>
+
+    <div class="config-scroll">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">142</div>
+          <div class="stat-label">Tareas procesadas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value green">94%</div>
+          <div class="stat-label">Precisión</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value blue">27</div>
+          <div class="stat-label">Inputs hoy</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value orange">4.2h</div>
+          <div class="stat-label">Tiempo ahorrado</div>
+        </div>
+      </div>
+
+      <div class="config-section-title">Nivel de autonomía</div>
+      <div class="autonomy-section">
+        <div class="autonomy-labels">
+          <span>Asistente</span>
+          <span>Copiloto</span>
+          <span>Autónomo</span>
+        </div>
+        <div class="slider-track" id="sliderTrack" onclick="moveSlider(event)">
+          <div class="slider-fill" id="sliderFill"></div>
+          <div class="slider-thumb" id="sliderThumb"></div>
+        </div>
+        <div class="autonomy-value" id="autonomyLabel">Copiloto (65%)</div>
+      </div>
+
+      <div class="config-section-title">Permisos</div>
+      <div class="permission-list">
+        <div class="permission-row">
+          <span class="permission-icon">📧</span>
+          <div class="permission-text">
+            <div class="permission-name">Leer emails</div>
+            <div class="permission-desc">Analizar bandejas</div>
+          </div>
+          <button class="toggle-switch on" onclick="toggleSwitch(this)"></button>
+        </div>
+        <div class="permission-row">
+          <span class="permission-icon">📋</span>
+          <div class="permission-text">
+            <div class="permission-name">Crear tareas</div>
+            <div class="permission-desc">Auto-crear con confianza alta</div>
+          </div>
+          <button class="toggle-switch on" onclick="toggleSwitch(this)"></button>
+        </div>
+        <div class="permission-row">
+          <span class="permission-icon">🗓️</span>
+          <div class="permission-text">
+            <div class="permission-name">Leer calendario</div>
+            <div class="permission-desc">Detectar conflictos</div>
+          </div>
+          <button class="toggle-switch on" onclick="toggleSwitch(this)"></button>
+        </div>
+        <div class="permission-row">
+          <span class="permission-icon">📤</span>
+          <div class="permission-text">
+            <div class="permission-name">Enviar emails</div>
+            <div class="permission-desc">Requiere confirmación</div>
+          </div>
+          <button class="toggle-switch" onclick="toggleSwitch(this)"></button>
+        </div>
+        <div class="permission-row">
+          <span class="permission-icon">💳</span>
+          <div class="permission-text">
+            <div class="permission-name">Acceso a pagos</div>
+            <div class="permission-desc">Desactivado</div>
+          </div>
+          <button class="toggle-switch" onclick="toggleSwitch(this)"></button>
+        </div>
+      </div>
+
+      <div class="config-section-title" style="margin-top:16px">Fuentes de datos</div>
+      <div class="permission-list">
+        <div class="permission-row">
+          <span class="permission-icon">📂</span>
+          <div class="permission-text">
+            <div class="permission-name">Google Drive</div>
+            <div class="permission-desc">Conectado</div>
+          </div>
+          <button class="toggle-switch on" onclick="toggleSwitch(this)"></button>
+        </div>
+        <div class="permission-row">
+          <span class="permission-icon">💬</span>
+          <div class="permission-text">
+            <div class="permission-name">Slack</div>
+            <div class="permission-desc">No conectado</div>
+          </div>
+          <button class="toggle-switch" onclick="toggleSwitch(this)"></button>
+        </div>
+        <div class="permission-row">
+          <span class="permission-icon">🔗</span>
+          <div class="permission-text">
+            <div class="permission-name">Notion</div>
+            <div class="permission-desc">No conectado</div>
+          </div>
+          <button class="toggle-switch" onclick="toggleSwitch(this)"></button>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+</div>
+
+<script>
+// Feed tabs
+function setTab(el) {
+  document.querySelectorAll('.feed-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// Toggle switches
+function toggleSwitch(btn) {
+  btn.classList.toggle('on');
+  const desc = btn.previousElementSibling.querySelector('.permission-desc');
+  if (btn.classList.contains('on')) {
+    if (desc.textContent === 'No conectado') desc.textContent = 'Conectado';
+    else if (desc.textContent === 'Desactivado') desc.textContent = 'Activado';
+    else if (desc.textContent === 'Desactivado') desc.textContent = 'Activado';
+  } else {
+    if (desc.textContent === 'Conectado') desc.textContent = 'No conectado';
+    else if (desc.textContent === 'Activado') desc.textContent = 'Desactivado';
+  }
+}
+
+// Accept / dismiss cards
+function acceptCard(id) {
+  const card = document.getElementById(id);
+  card.style.opacity = '0';
+  card.style.transform = 'translateX(20px)';
+  card.style.transition = 'all 0.3s ease';
+  setTimeout(() => { card.remove(); updatePendingCount(); }, 300);
+}
+
+function dismissCard(id) {
+  const card = document.getElementById(id);
+  card.style.opacity = '0';
+  card.style.transform = 'translateX(-20px)';
+  card.style.transition = 'all 0.3s ease';
+  setTimeout(() => { card.remove(); updatePendingCount(); }, 300);
+}
+
+function updatePendingCount() {
+  const remaining = document.querySelectorAll('#fc1, #fc2, #fc3').length;
+  const titles = document.querySelectorAll('.feed-section-title');
+  if (titles[0]) titles[0].textContent = `Pendientes de revisión (${remaining})`;
+}
+
+// Slider
+function moveSlider(e) {
+  const track = document.getElementById('sliderTrack');
+  const rect = track.getBoundingClientRect();
+  const pct = Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100));
+  document.getElementById('sliderFill').style.width = pct + '%';
+  document.getElementById('sliderThumb').style.left = pct + '%';
+  const label = pct < 33 ? 'Asistente' : pct < 66 ? 'Copiloto' : 'Autónomo';
+  document.getElementById('autonomyLabel').textContent = `${label} (${Math.round(pct)}%)`;
+}
+</script>
+</body>
+</html>

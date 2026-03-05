@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>TaskFlow – Detalle de Tarea</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #141418;
+    --surface: #181820;
+    --elevated: #1e1e28;
+    --card: #222230;
+    --card-hover: #28283a;
+    --border: rgba(255,255,255,0.09);
+    --border-hover: rgba(255,255,255,0.15);
+    --text: #e4e4ee;
+    --text-sub: #8484a0;
+    --text-muted: #4c4c66;
+    --accent: #00d4c8;
+    --accent-dim: rgba(0,212,200,0.09);
+    --urgent: #f5495a;
+    --high: #f59042;
+    --medium: #4a9eff;
+    --p-blue: #3d7fd8;
+    --p-green: #2ebd7c;
+    --p-orange: #f5820d;
+    --p-purple: #9b59b6;
+  }
+
+  html {
+    background: #0e0e12;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 24px 16px 40px;
+  }
+
+  body {
+    width: 390px;
+    min-height: 844px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    border-radius: 44px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    background: var(--surface);
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 22px 6px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .sb-time {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+  .sb-icons {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sb-icons svg { color: var(--text); }
+  .sb-battery {
+    width: 25px; height: 12px;
+    border: 1.5px solid var(--text);
+    border-radius: 3px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 1.5px;
+  }
+  .sb-battery::after {
+    content: '';
+    position: absolute;
+    right: -5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2.5px;
+    height: 6px;
+    background: var(--text);
+    border-radius: 0 1px 1px 0;
+  }
+  .sb-battery-fill {
+    height: 100%;
+    width: 75%;
+    background: var(--text);
+    border-radius: 1.5px;
+  }
+
+  /* ── TOP NAV ── */
+  .top-nav {
+    background: var(--surface);
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-back {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--accent);
+    font-size: 15px;
+    font-weight: 600;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    padding: 6px 0;
+  }
+  .nav-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .nav-menu {
+    background: none;
+    border: none;
+    color: var(--text-sub);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    line-height: 1;
+    font-family: sans-serif;
+  }
+  .nav-menu:hover { color: var(--text); }
+
+  /* ── SCROLLABLE CONTENT ── */
+  .scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  .scroll-area::-webkit-scrollbar { width: 0; }
+
+  /* ── HERO SECTION ── */
+  .hero {
+    background: var(--surface);
+    padding: 16px 18px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hero-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 5px;
+    padding: 3px 8px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .badge-type {
+    background: var(--elevated);
+    color: var(--text-sub);
+    border: 1px solid var(--border);
+  }
+  .badge-status {
+    background: rgba(74,158,255,0.14);
+    color: var(--medium);
+    border: 1px solid rgba(74,158,255,0.22);
+  }
+  .badge-agent {
+    margin-left: auto;
+    background: rgba(0,212,200,0.09);
+    color: var(--accent);
+    border: 1px solid rgba(0,212,200,0.22);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .badge-agent-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse-dot 2.2s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,212,200,0.4); }
+    50% { opacity: 0.7; box-shadow: 0 0 0 3px rgba(0,212,200,0); }
+  }
+
+  .hero-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.35;
+    margin-bottom: 14px;
+    letter-spacing: -0.01em;
+  }
+
+  /* Priority Toggles */
+  .priority-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 13px;
+  }
+  .priority-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 8px;
+    padding: 6px 11px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid;
+    transition: background 0.2s, opacity 0.2s;
+    user-select: none;
+  }
+  .priority-toggle.urgent-toggle {
+    background: rgba(245,73,90,0.12);
+    border-color: rgba(245,73,90,0.35);
+    color: var(--urgent);
+  }
+  .priority-toggle.important-toggle {
+    background: rgba(74,158,255,0.12);
+    border-color: rgba(74,158,255,0.35);
+    color: var(--medium);
+  }
+  .priority-toggle.inactive {
+    background: var(--elevated);
+    border-color: var(--border);
+    color: var(--text-muted);
+    opacity: 0.7;
+  }
+
+  /* Project Row */
+  .project-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--elevated);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .proj-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--p-blue);
+    flex-shrink: 0;
+  }
+  .proj-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    flex: 1;
+  }
+  .proj-ctx {
+    font-size: 12px;
+    color: var(--text-sub);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* ── TAB BAR ── */
+  .tab-bar {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .tab {
+    flex: 1;
+    padding: 12px 4px 11px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-sub);
+    text-align: center;
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    position: relative;
+    transition: color 0.2s;
+    user-select: none;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); }
+  .tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 10%; right: 10%;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 2px 2px 0 0;
+  }
+
+  /* ── TAB PANELS ── */
+  .tab-panel { display: none; padding: 16px 18px 20px; }
+  .tab-panel.active { display: block; }
+
+  /* ── CONTENIDO TAB ── */
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .desc-block {
+    background: var(--elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13.5px;
+    color: var(--text-sub);
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+
+  /* Agent Notes */
+  .agent-notes {
+    background: var(--elevated);
+    border: 1px solid rgba(0,212,200,0.18);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 11px 13px;
+    margin-bottom: 16px;
+  }
+  .agent-notes-header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 7px;
+  }
+  .an-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse-dot 2.2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  .an-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .agent-notes p {
+    font-size: 12.5px;
+    color: var(--text-sub);
+    line-height: 1.55;
+  }
+  .agent-notes p strong { color: var(--text); }
+  .agent-notes p em { color: var(--accent); font-style: normal; }
+
+  /* Activity Log */
+  .activity-log { margin-top: 4px; }
+  .activity-entry {
+    display: flex;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .activity-entry:last-child { border-bottom: none; }
+  .activity-avatar {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .avatar-agent {
+    background: rgba(0,212,200,0.14);
+    color: var(--accent);
+    border: 1px solid rgba(0,212,200,0.25);
+  }
+  .avatar-user {
+    background: rgba(61,127,216,0.14);
+    color: var(--p-blue);
+    border: 1px solid rgba(61,127,216,0.25);
+  }
+  .activity-content { flex: 1; min-width: 0; }
+  .activity-actor {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 1px;
+  }
+  .activity-text {
+    font-size: 12px;
+    color: var(--text-sub);
+    line-height: 1.45;
+  }
+  .activity-time {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ── ADJUNTOS TAB ── */
+  .attach-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .attach-card {
+    background: var(--elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 13px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .attach-card:hover { background: var(--card); border-color: var(--border-hover); }
+  .attach-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  .attach-icon.pdf { background: rgba(245,73,90,0.14); }
+  .attach-icon.xlsx { background: rgba(46,189,124,0.14); }
+  .attach-icon.img { background: rgba(74,158,255,0.14); }
+  .attach-icon.add {
+    background: var(--elevated);
+    border: 1.5px dashed var(--border-hover);
+    color: var(--text-muted);
+    font-size: 20px;
+    font-family: sans-serif;
+  }
+  .attach-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .attach-meta { font-size: 11px; color: var(--text-muted); }
+  .attach-card.add-card {
+    align-items: center;
+    justify-content: center;
+    border: 1.5px dashed var(--border);
+    background: transparent;
+    color: var(--text-muted);
+  }
+  .attach-card.add-card:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .attach-add-label { font-size: 12px; font-weight: 600; margin-top: 4px; }
+
+  /* ── RELACIONES TAB ── */
+  .relation-card {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    background: var(--elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 13px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    margin-bottom: 8px;
+  }
+  .relation-card:hover { background: var(--card); border-color: var(--border-hover); }
+  .rel-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .rel-content { flex: 1; min-width: 0; }
+  .rel-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .rel-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .rel-badge {
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 2px 7px;
+    flex-shrink: 0;
+  }
+  .rel-badge-link { background: rgba(155,89,182,0.14); color: var(--p-purple); }
+  .rel-badge-email { background: rgba(74,158,255,0.14); color: var(--medium); }
+  .rel-badge-task { background: rgba(0,212,200,0.09); color: var(--accent); }
+
+  .btn-add-rel {
+    width: 100%;
+    padding: 11px;
+    border: 1.5px dashed var(--border);
+    border-radius: 10px;
+    background: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .btn-add-rel:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  /* ── INFO TAB ── */
+  .meta-list { display: flex; flex-direction: column; gap: 0; margin-bottom: 18px; }
+  .meta-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .meta-row:last-child { border-bottom: none; }
+  .meta-key {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    width: 110px;
+    flex-shrink: 0;
+  }
+  .meta-val {
+    font-size: 13px;
+    color: var(--text);
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .meta-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .meta-chip {
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 2px 8px;
+  }
+  .meta-chip-progress { background: rgba(74,158,255,0.14); color: var(--medium); }
+  .meta-chip-urgent { background: rgba(245,73,90,0.14); color: var(--urgent); }
+  .meta-chip-important { background: rgba(74,158,255,0.14); color: var(--medium); }
+  .meta-chip-q1 { background: rgba(245,73,90,0.1); color: var(--urgent); }
+  .meta-chip-agent { background: rgba(0,212,200,0.09); color: var(--accent); border: 1px solid rgba(0,212,200,0.2); }
+  .meta-val-muted { color: var(--text-sub); }
+
+  .tag-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .info-tag {
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 4px 10px;
+    background: var(--elevated);
+    color: var(--text-sub);
+    border: 1px solid var(--border);
+  }
+  .tag-add {
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 4px 10px;
+    background: none;
+    color: var(--text-muted);
+    border: 1.5px dashed var(--border);
+    cursor: pointer;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .tag-add:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── BOTTOM ACTION BAR ── */
+  .bottom-bar {
+    display: flex;
+    gap: 10px;
+    padding: 14px 18px 20px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .btn-secondary {
+    flex: 0 0 auto;
+    padding: 11px 18px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--elevated);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--border-hover); background: var(--card); }
+  .btn-primary {
+    flex: 1;
+    padding: 11px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #051212;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-primary:active { transform: scale(0.97); }
+</style>
+</head>
+<body>
+
+  <!-- ── STATUS BAR ── -->
+  <div class="status-bar">
+    <span class="sb-time">9:41</span>
+    <div class="sb-icons">
+      <!-- Signal -->
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor">
+        <rect x="0" y="8" width="3" height="4" rx="0.5" opacity="0.4"/>
+        <rect x="4.5" y="5.5" width="3" height="6.5" rx="0.5" opacity="0.6"/>
+        <rect x="9" y="3" width="3" height="9" rx="0.5" opacity="0.8"/>
+        <rect x="13.5" y="0" width="2.5" height="12" rx="0.5"/>
+      </svg>
+      <!-- Wifi -->
+      <svg width="16" height="12" viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M1 5.5C5.6 1.4 10.6 1 12 1s6.4.4 11 4.5"/>
+        <path d="M4.5 9C7.5 6.5 10 6 12 6s4.5.5 7.5 3"/>
+        <path d="M8 12.5c1.2-1 2.6-1.5 4-1.5s2.8.5 4 1.5"/>
+        <circle cx="12" cy="17" r="1.5" fill="currentColor" stroke="none"/>
+      </svg>
+      <!-- Battery -->
+      <div class="sb-battery">
+        <div class="sb-battery-fill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TOP NAV ── -->
+  <div class="top-nav">
+    <button class="nav-back">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Kanban
+    </button>
+    <span class="nav-title">Tarea</span>
+    <button class="nav-menu">···</button>
+  </div>
+
+  <!-- ── SCROLLABLE AREA ── -->
+  <div class="scroll-area">
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-badges">
+        <span class="badge badge-type">☑ TAREA</span>
+        <span class="badge badge-status">EN PROGRESO</span>
+        <span class="badge badge-agent">
+          <span class="badge-agent-dot"></span>
+          ✦ OpenClaw
+        </span>
+      </div>
+
+      <h1 class="hero-title">Preparar documentación pliego Ayuntamiento Madrid</h1>
+
+      <div class="priority-row">
+        <div class="priority-toggle urgent-toggle" onclick="togglePriority(this)" data-active="true">
+          🔴 Urgente
+        </div>
+        <div class="priority-toggle important-toggle" onclick="togglePriority(this)" data-active="true">
+          ⚡ Importante
+        </div>
+      </div>
+
+      <div class="project-row">
+        <div class="proj-dot"></div>
+        <span class="proj-name">Pliegos Públicos Q1</span>
+        <span class="proj-ctx">
+          💼 Trabajo
+        </span>
+      </div>
+    </div>
+
+    <!-- TAB BAR -->
+    <div class="tab-bar">
+      <button class="tab active" onclick="switchTab(this,'contenido')">Contenido</button>
+      <button class="tab" onclick="switchTab(this,'adjuntos')">Adjuntos</button>
+      <button class="tab" onclick="switchTab(this,'relaciones')">Relaciones</button>
+      <button class="tab" onclick="switchTab(this,'info')">Info</button>
+    </div>
+
+    <!-- ── CONTENIDO PANEL ── -->
+    <div class="tab-panel active" id="panel-contenido">
+
+      <div class="section-label">Descripción</div>
+      <div class="desc-block">
+        Preparar toda la documentación técnica y administrativa requerida para el pliego de contratación del Ayuntamiento de Madrid.
+        Incluye memoria descriptiva, planos técnicos, presupuesto desglosado y declaración responsable.
+        La fecha límite de entrega es hoy a las 18:00 h en la sede electrónica.
+      </div>
+
+      <div class="section-label">Notas del Agente IA</div>
+      <div class="agent-notes">
+        <div class="agent-notes-header">
+          <div class="an-dot"></div>
+          <span class="an-label">✦ OpenClaw</span>
+        </div>
+        <p>
+          He movido esta tarea a <em>Urgente</em> porque detecté que el plazo vence <strong>hoy a las 18:00</strong>.
+          También encontré un pliego similar del Ayuntamiento de Málaga del que puedes reutilizar la sección de solvencia técnica.
+          ¿Quieres que genere un borrador de la memoria descriptiva?
+        </p>
+      </div>
+
+      <div class="section-label">Actividad</div>
+      <div class="activity-log">
+
+        <div class="activity-entry">
+          <div class="activity-avatar avatar-agent">✦</div>
+          <div class="activity-content">
+            <div class="activity-actor">✦ OpenClaw</div>
+            <div class="activity-text">Movió la tarea a <strong>Urgente</strong> y actualizó la matriz Eisenhower a Q1 — "Hacer ya"</div>
+            <div class="activity-time">Hace 23 minutos</div>
+          </div>
+        </div>
+
+        <div class="activity-entry">
+          <div class="activity-avatar avatar-user">PT</div>
+          <div class="activity-content">
+            <div class="activity-actor">Pablo Tavares</div>
+            <div class="activity-text">Adjuntó <strong>Memoria_v2.pdf</strong> y <strong>Presupuesto.xlsx</strong></div>
+            <div class="activity-time">Hace 1 hora</div>
+          </div>
+        </div>
+
+        <div class="activity-entry">
+          <div class="activity-avatar avatar-user">PT</div>
+          <div class="activity-content">
+            <div class="activity-actor">Pablo Tavares</div>
+            <div class="activity-text">Creó la tarea en <strong>Pliegos Públicos Q1</strong></div>
+            <div class="activity-time">Ayer, 10:32</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── ADJUNTOS PANEL ── -->
+    <div class="tab-panel" id="panel-adjuntos">
+
+      <div class="section-label">Archivos adjuntos</div>
+      <div class="attach-grid">
+
+        <div class="attach-card">
+          <div class="attach-icon pdf">📄</div>
+          <div class="attach-name">Memoria_v2.pdf</div>
+          <div class="attach-meta">PDF · 2.4 MB</div>
+        </div>
+
+        <div class="attach-card">
+          <div class="attach-icon xlsx">📊</div>
+          <div class="attach-name">Presupuesto.xlsx</div>
+          <div class="attach-meta">Excel · 480 KB</div>
+        </div>
+
+        <div class="attach-card">
+          <div class="attach-icon img">🖼</div>
+          <div class="attach-name">foto_obra.jpg</div>
+          <div class="attach-meta">Imagen · 1.1 MB</div>
+        </div>
+
+        <div class="attach-card add-card">
+          <div class="attach-icon add" style="border:none;background:none;font-size:26px;color:var(--text-muted);">+</div>
+          <div class="attach-add-label">Añadir archivo</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── RELACIONES PANEL ── -->
+    <div class="tab-panel" id="panel-relaciones">
+
+      <div class="section-label">Relaciones</div>
+
+      <div class="relation-card">
+        <div class="rel-icon" style="background:rgba(155,89,182,0.12);">🔗</div>
+        <div class="rel-content">
+          <div class="rel-title">Pliego base — Ayto. Málaga 2025</div>
+          <div class="rel-sub">Referencia · sede.malaga.es</div>
+        </div>
+        <span class="rel-badge rel-badge-link">Enlace</span>
+      </div>
+
+      <div class="relation-card">
+        <div class="rel-icon" style="background:rgba(74,158,255,0.12);">✉</div>
+        <div class="rel-content">
+          <div class="rel-title">Email García — instrucciones pliego</div>
+          <div class="rel-sub">Email · Recibido ayer</div>
+        </div>
+        <span class="rel-badge rel-badge-email">Email</span>
+      </div>
+
+      <div class="relation-card">
+        <div class="rel-icon" style="background:rgba(0,212,200,0.08);">☑</div>
+        <div class="rel-content">
+          <div class="rel-title">Enviar presupuesto actualizado</div>
+          <div class="rel-sub">Tarea relacionada · En progreso</div>
+        </div>
+        <span class="rel-badge rel-badge-task">Tarea</span>
+      </div>
+
+      <button class="btn-add-rel">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Añadir relación
+      </button>
+
+    </div>
+
+    <!-- ── INFO PANEL ── -->
+    <div class="tab-panel" id="panel-info">
+
+      <div class="section-label">Metadatos</div>
+      <div class="meta-list">
+
+        <div class="meta-row">
+          <span class="meta-key">Proyecto</span>
+          <span class="meta-val">
+            <span class="meta-dot" style="background:var(--p-blue)"></span>
+            Pliegos Públicos Q1
+          </span>
+        </div>
+
+        <div class="meta-row">
+          <span class="meta-key">Estado</span>
+          <span class="meta-val">
+            <span class="meta-chip meta-chip-progress">En progreso</span>
+          </span>
+        </div>
+
+        <div class="meta-row">
+          <span class="meta-key">Prioridad</span>
+          <span class="meta-val" style="gap:5px;">
+            <span class="meta-chip meta-chip-urgent">🔴 Urgente</span>
+            <span class="meta-chip meta-chip-important">⚡ Importante</span>
+          </span>
+        </div>
+
+        <div class="meta-row">
+          <span class="meta-key">Contexto</span>
+          <span class="meta-val">💼 Trabajo</span>
+        </div>
+
+        <div class="meta-row">
+          <span class="meta-key">Fecha límite</span>
+          <span class="meta-val" style="color:var(--urgent);">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Hoy, 18:00 h
+          </span>
+        </div>
+
+        <div class="meta-row">
+          <span class="meta-key">Recordatorio</span>
+          <span class="meta-val meta-val-muted">Hoy, 16:00 h</span>
+        </div>
+
+        <div class="meta-row">
+          <span class="meta-key">Eisenhower</span>
+          <span class="meta-val">
+            <span class="meta-chip meta-chip-q1">Q1 · Hacer ya</span>
+          </span>
+        </div>
+
+        <div class="meta-row">
+          <span class="meta-key">Creado</span>
+          <span class="meta-val meta-val-muted">02 Mar 2026, 10:32</span>
+        </div>
+
+        <div class="meta-row">
+          <span class="meta-key">Modificado por</span>
+          <span class="meta-val">
+            <span class="meta-chip meta-chip-agent">✦ OpenClaw</span>
+            <span class="meta-val-muted" style="font-size:12px;">hace 23 min</span>
+          </span>
+        </div>
+
+      </div>
+
+      <div class="section-label">Etiquetas</div>
+      <div class="tag-row">
+        <span class="info-tag">licitación</span>
+        <span class="info-tag">madrid</span>
+        <span class="info-tag">urgente</span>
+        <button class="tag-add">+ Añadir</button>
+      </div>
+
+    </div>
+
+    <!-- spacer so content doesn't hide behind bottom bar -->
+    <div style="height: 12px;"></div>
+
+  </div><!-- /scroll-area -->
+
+  <!-- ── BOTTOM ACTION BAR ── -->
+  <div class="bottom-bar">
+    <button class="btn-secondary">Editar</button>
+    <button class="btn-primary" onclick="markDone(this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Marcar como hecho
+    </button>
+  </div>
+
+<script>
+// ── TAB SWITCHING ─────────────────────────────────────────
+function switchTab(tabEl, panelId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  tabEl.classList.add('active');
+  const panel = document.getElementById('panel-' + panelId);
+  if (panel) panel.classList.add('active');
+}
+
+// ── PRIORITY TOGGLE ──────────────────────────────────────
+function togglePriority(el) {
+  const active = el.dataset.active === 'true';
+  if (active) {
+    el.dataset.active = 'false';
+    el.classList.add('inactive');
+  } else {
+    el.dataset.active = 'true';
+    el.classList.remove('inactive');
+  }
+}
+
+// ── MARK AS DONE ─────────────────────────────────────────
+function markDone(btn) {
+  const statusBadge = document.querySelector('.badge-status');
+  if (statusBadge && !btn.dataset.done) {
+    btn.dataset.done = '1';
+    statusBadge.textContent = 'COMPLETADA';
+    statusBadge.style.background = 'rgba(46,189,124,0.14)';
+    statusBadge.style.color = '#2ebd7c';
+    statusBadge.style.borderColor = 'rgba(46,189,124,0.25)';
+    btn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      ¡Completada!
+    `;
+    btn.style.background = 'rgba(46,189,124,0.85)';
+    setTimeout(() => {
+      btn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Marcar como hecho
+      `;
+      btn.style.background = '';
+    }, 2000);
+  }
+}
+</script>
+</body>
+</html>

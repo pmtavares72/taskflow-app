@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Acceder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:           #141418;
+    --surface:      #1a1a20;
+    --card:         #1f1f28;
+    --card-hover:   #252532;
+    --border:       rgba(255,255,255,0.09);
+    --border-hover: rgba(255,255,255,0.16);
+    --text:         #e8e8f0;
+    --text-sub:     #9090a8;
+    --text-muted:   #52526a;
+    --accent:       #00d4c8;
+    --accent-dim:   rgba(0,212,200,0.1);
+    --accent-glow:  rgba(0,212,200,0.22);
+    --font-d: 'Playfair Display', serif;
+    --font-b: 'Plus Jakarta Sans', sans-serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; overflow:hidden; background: var(--bg); color: var(--text); font-family: var(--font-b); }
+
+  /* ── ATMOSPHERIC BG ── */
+  .bg {
+    position: fixed; inset: 0; z-index: 0; overflow: hidden;
+    background: var(--bg);
+  }
+  .bg-gradient {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 90% 70% at 10% 50%, rgba(0,212,200,0.055) 0%, transparent 55%),
+      radial-gradient(ellipse 60% 50% at 80% 15%, rgba(74,158,255,0.04) 0%, transparent 50%),
+      radial-gradient(ellipse 40% 40% at 65% 85%, rgba(0,212,200,0.03) 0%, transparent 50%);
+  }
+  /* Fine grid */
+  .bg-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 70% 90% at 0% 50%, black 10%, transparent 75%);
+  }
+  /* Floating orbs */
+  .orb {
+    position: absolute; border-radius: 50%; filter: blur(70px);
+    animation: float 9s ease-in-out infinite;
+  }
+  .o1 { width:460px;height:460px; background:rgba(0,212,200,0.055); left:-120px;top:30%;animation-delay:0s; }
+  .o2 { width:320px;height:320px; background:rgba(74,158,255,0.04); right:-60px;top:10%;animation-delay:-4.5s; }
+  .o3 { width:180px;height:180px; background:rgba(0,212,200,0.035); right:25%;bottom:8%;animation-delay:-2s; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-18px)} }
+
+  /* ── LAYOUT ── */
+  .page {
+    position:relative; z-index:1; height:100vh;
+    display:grid; grid-template-columns:1fr 440px;
+    overflow:hidden;
+  }
+
+  /* ── LEFT PANEL ── */
+  .left {
+    display:flex; flex-direction:column; justify-content:center;
+    padding: 56px 64px;
+    position:relative;
+  }
+
+  .logo-row {
+    display:flex; align-items:center; gap:11px;
+    margin-bottom:72px;
+  }
+  .logo-mark {
+    width:38px; height:38px;
+    background: linear-gradient(135deg, rgba(0,212,200,0.18), rgba(0,212,200,0.06));
+    border: 1px solid rgba(0,212,200,0.22);
+    border-radius: 10px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px;
+    box-shadow: 0 0 20px rgba(0,212,200,0.1);
+  }
+  .logo-name {
+    font-family: var(--font-d);
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  .logo-name em { color: var(--accent); font-style:italic; }
+
+  .hero-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 12px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(0,212,200,0.18);
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    width: fit-content;
+  }
+  .htag-dot { width:5px;height:5px;background:var(--accent);border-radius:50%;animation:blink 2s ease-in-out infinite;box-shadow:0 0 5px var(--accent-glow); }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:0.35} }
+
+  .hero-h {
+    font-family: var(--font-d);
+    font-size: 50px;
+    font-weight: 400;
+    line-height: 1.12;
+    letter-spacing: -0.025em;
+    color: var(--text);
+    margin-bottom: 22px;
+  }
+  .hero-h em { color: var(--accent); font-style: italic; }
+  .hero-h .line2 { font-weight: 700; }
+
+  .hero-p {
+    font-size: 15.5px;
+    color: var(--text-sub);
+    line-height: 1.7;
+    font-weight: 300;
+    max-width: 400px;
+    margin-bottom: 52px;
+  }
+
+  /* Features */
+  .features { display:flex;flex-direction:column;gap:20px; }
+  .feat {
+    display:flex; align-items:flex-start; gap:14px;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: border-color 0.2s;
+  }
+  .feat:hover { border-color: var(--border-hover); }
+  .feat-icon {
+    width:34px;height:34px;
+    border-radius:9px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:15px; flex-shrink:0;
+  }
+  .feat-icon.teal  { background:rgba(0,212,200,0.1); border:1px solid rgba(0,212,200,0.2); }
+  .feat-icon.blue  { background:rgba(74,158,255,0.1); border:1px solid rgba(74,158,255,0.2); }
+  .feat-icon.amber { background:rgba(255,160,50,0.1); border:1px solid rgba(255,160,50,0.2); }
+  .feat-title { font-size:13.5px;font-weight:600;color:var(--text);margin-bottom:2px; }
+  .feat-desc  { font-size:12.5px;color:var(--text-muted);line-height:1.45; }
+
+  /* ── RIGHT PANEL ── */
+  .right {
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display:flex; flex-direction:column; justify-content:center;
+    padding: 0 48px;
+    position:relative;
+    overflow:hidden;
+  }
+  .right::before {
+    content:'';
+    position:absolute; inset:0;
+    background: linear-gradient(160deg, rgba(0,212,200,0.025) 0%, transparent 40%);
+    pointer-events:none;
+  }
+  /* subtle top border accent */
+  .right::after {
+    content:'';
+    position:absolute; top:0;left:0;right:0;
+    height:1px;
+    background: linear-gradient(90deg, transparent, rgba(0,212,200,0.4), transparent);
+  }
+
+  .form-head { margin-bottom: 36px; position:relative;z-index:1; }
+  .form-title {
+    font-family: var(--font-d);
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .form-sub { font-size:14px;color:var(--text-muted);font-weight:300; }
+  .form-sub a { color:var(--accent);cursor:pointer;font-weight:500; }
+
+  .form { display:flex;flex-direction:column;gap:18px;position:relative;z-index:1; }
+
+  .f-group { display:flex;flex-direction:column;gap:7px; }
+  .f-label {
+    font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
+    color:var(--text-muted);
+  }
+  .f-wrap { position:relative;display:flex;align-items:center; }
+  .f-icon { position:absolute;left:13px;color:var(--text-muted);pointer-events:none; }
+  .f-icon svg { width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2; }
+  .f-input {
+    width:100%;
+    background: rgba(255,255,255,0.04);
+    border:1px solid var(--border-hover);
+    border-radius:10px;
+    padding:12px 14px 12px 41px;
+    font-family:var(--font-b);
+    font-size:14px;
+    color:var(--text);
+    outline:none;
+    transition:border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    caret-color:var(--accent);
+  }
+  .f-input:focus {
+    border-color:rgba(0,212,200,0.35);
+    box-shadow:0 0 0 3px rgba(0,212,200,0.06);
+    background: rgba(255,255,255,0.055);
+  }
+  .f-input.has-val { border-color:rgba(0,212,200,0.18); }
+  .f-input::placeholder { color:var(--text-muted);font-weight:300; }
+  .f-eye {
+    position:absolute;right:13px;cursor:pointer;color:var(--text-muted);
+    transition:color 0.12s;
+  }
+  .f-eye:hover { color:var(--text-sub); }
+  .f-eye svg { width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2; }
+
+  .f-row { display:flex;align-items:center;justify-content:space-between; }
+  .f-check { display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-sub);user-select:none; }
+  .check-box {
+    width:16px;height:16px;
+    background:rgba(255,255,255,0.05);
+    border:1px solid var(--border-hover);
+    border-radius:4px;
+    display:flex;align-items:center;justify-content:center;
+    transition:all 0.15s; flex-shrink:0;
+  }
+  .check-box.on { background:rgba(0,212,200,0.18);border-color:rgba(0,212,200,0.4); }
+  .check-box.on::after { content:'✓';font-size:10px;color:var(--accent);font-weight:700; }
+  .f-forgot { font-size:13px;color:var(--accent);cursor:pointer;font-weight:500; }
+
+  .submit {
+    width:100%; background:var(--accent);color:#0f0f12;
+    border:none;border-radius:10px;padding:14px;
+    font-size:14px;font-weight:700;font-family:var(--font-b);
+    cursor:pointer;letter-spacing:0.01em;
+    box-shadow: 0 0 28px rgba(0,212,200,0.24), 0 4px 14px rgba(0,0,0,0.35);
+    transition:all 0.18s;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    margin-top:4px;
+  }
+  .submit:hover { box-shadow:0 0 42px rgba(0,212,200,0.36),0 4px 18px rgba(0,0,0,0.45);transform:translateY(-1px); }
+  .submit svg { width:15px;height:15px;stroke:#0f0f12;fill:none;stroke-width:2.5; }
+
+  .or-sep {
+    display:flex;align-items:center;gap:12px;
+    font-size:11.5px;color:var(--text-muted);font-weight:500;letter-spacing:0.05em;
+  }
+  .or-sep::before,.or-sep::after { content:'';flex:1;height:1px;background:var(--border); }
+
+  .sso-btn {
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    width:100%;
+    background:rgba(255,255,255,0.04);
+    border:1px solid var(--border-hover);
+    border-radius:10px;padding:12px;
+    font-size:13.5px;font-weight:500;
+    color:var(--text-sub);cursor:pointer;
+    transition:all 0.15s;font-family:var(--font-b);
+  }
+  .sso-btn:hover { background:rgba(255,255,255,0.06);border-color:var(--border-hover);color:var(--text); }
+
+  /* Agent teaser */
+  .agent-strip {
+    margin-top: 28px;
+    padding: 14px 16px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(0,212,200,0.18);
+    border-radius: 10px;
+    display:flex;align-items:flex-start;gap:12px;
+    position:relative;z-index:1;
+  }
+  .as-icon {
+    width:32px;height:32px;
+    background:rgba(0,212,200,0.12);
+    border:1px solid rgba(0,212,200,0.22);
+    border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:15px;flex-shrink:0;position:relative;
+  }
+  .as-dot {
+    position:absolute;bottom:-2px;right:-2px;
+    width:8px;height:8px;background:var(--accent);
+    border-radius:50%;border:2px solid var(--surface);
+    animation:blink 2s ease-in-out infinite;
+    box-shadow:0 0 5px rgba(0,212,200,0.5);
+  }
+  .as-text { font-size:12.5px;color:rgba(0,212,200,0.7);line-height:1.5; }
+  .as-text strong { color:var(--accent);font-weight:500; }
+
+  .page-foot {
+    position:absolute;bottom:24px;left:48px;right:48px;
+    text-align:center;
+    font-size:11px;color:var(--text-muted);line-height:1.5;
+    z-index:1;
+  }
+  .page-foot a { color:var(--text-sub); }
+</style>
+</head>
+<body>
+
+<div class="bg">
+  <div class="bg-gradient"></div>
+  <div class="bg-grid"></div>
+  <div class="orb o1"></div>
+  <div class="orb o2"></div>
+  <div class="orb o3"></div>
+</div>
+
+<div class="page">
+  <!-- LEFT -->
+  <div class="left">
+    <div class="logo-row">
+      <div class="logo-mark">⚡</div>
+      <div class="logo-name">Task<em>Flow</em></div>
+    </div>
+
+    <div class="hero-tag"><div class="htag-dot"></div>Agente AI integrado</div>
+    <h1 class="hero-h">
+      Organiza todo.<br>
+      <span class="line2"><em>OpenClaw</em><br>lo entiende.</span>
+    </h1>
+    <p class="hero-p">
+      Tu sistema de productividad personal donde el agente AI clasifica, relaciona y prioriza todo lo que capturas — en tiempo real.
+    </p>
+
+    <div class="features">
+      <div class="feat">
+        <div class="feat-icon teal">✦</div>
+        <div>
+          <div class="feat-title">Agente OpenClaw integrado</div>
+          <div class="feat-desc">Clasifica emails, detecta plazos y prioriza automáticamente</div>
+        </div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon blue">⚡</div>
+        <div>
+          <div class="feat-title">Captura sin fricción</div>
+          <div class="feat-desc">Texto, URLs, archivos e ideas en menos de 3 segundos</div>
+        </div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon amber">🎯</div>
+        <div>
+          <div class="feat-title">Kanban + Eisenhower</div>
+          <div class="feat-desc">Gestión visual y estratégica de tus prioridades reales</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right">
+    <div class="form-head">
+      <div class="form-title">Bienvenido de nuevo</div>
+      <div class="form-sub">¿Primera vez? <a>Crea tu cuenta gratis</a></div>
+    </div>
+
+    <div class="form">
+      <div class="f-group">
+        <div class="f-label">Email</div>
+        <div class="f-wrap">
+          <div class="f-icon"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+          <input class="f-input has-val" type="email" value="ptavares@openclaw.io" placeholder="tu@email.com" />
+        </div>
+      </div>
+
+      <div class="f-group">
+        <div class="f-label">Contraseña</div>
+        <div class="f-wrap">
+          <div class="f-icon"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+          <input class="f-input" type="password" value="••••••••••" placeholder="Tu contraseña" />
+          <div class="f-eye"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
+        </div>
+      </div>
+
+      <div class="f-row">
+        <label class="f-check">
+          <div class="check-box on" id="cb"></div>
+          Recordarme
+        </label>
+        <div class="f-forgot">¿Olvidaste la contraseña?</div>
+      </div>
+
+      <button class="submit" id="submitBtn">
+        <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Acceder a TaskFlow
+      </button>
+
+      <div class="or-sep">O</div>
+
+      <div class="sso-btn">🔐 &nbsp; Acceder con SSO corporativo</div>
+    </div>
+
+    <div class="agent-strip">
+      <div class="as-icon">🤖<div class="as-dot"></div></div>
+      <div class="as-text">
+        <strong>OpenClaw está listo.</strong> Al acceder, tu agente retomará el análisis y clasificará los 3 emails que llegaron mientras estabas fuera.
+      </div>
+    </div>
+
+    <div class="page-foot">
+      Al acceder aceptas los <a>Términos de uso</a> y la <a>Política de privacidad</a>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('cb').addEventListener('click', function(){this.classList.toggle('on')});
+document.querySelectorAll('.f-input').forEach(i=>{
+  i.addEventListener('input',()=>i.value?i.classList.add('has-val'):i.classList.remove('has-val'));
+});
+document.getElementById('submitBtn').addEventListener('click',function(){
+  this.innerHTML='<svg viewBox="0 0 24 24" style="animation:spin .8s linear infinite" width="16" height="16"><path d="M21 12a9 9 0 1 1-6.22-8.56" stroke="currentColor" fill="none" stroke-width="2.5" stroke-linecap="round"/></svg> &nbsp;Verificando…';
+  document.head.insertAdjacentHTML('beforeend','<style>@keyframes spin{to{transform:rotate(360deg)}}</style>');
+  setTimeout(()=>{ this.innerHTML='✓ &nbsp;Accediendo…'; },1600);
+});
+</script>
+</body>
+</html>

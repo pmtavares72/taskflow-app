@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Eisenhower</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#f0ede8; --surface:#faf8f5; --elevated:#ffffff; --card:#ffffff; --card-hover:#f7f5f2;
+  --border:rgba(0,0,0,0.08); --border-hover:rgba(0,0,0,0.16);
+  --text:#1a1a2e; --text-sub:#6b6b8a; --text-muted:#a8a8c0;
+  --accent:#00b8ad; --accent-dark:#008f86; --accent-dim:rgba(0,184,173,0.1); --accent-glow:rgba(0,184,173,0.2);
+  --urgent:#e8304a; --high:#f07832; --medium:#3d8ef0;
+  --p-blue:#3d7fd8; --p-green:#1faa6b; --p-orange:#f07820; --p-purple:#7c52c8;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 16px rgba(0,0,0,0.08),0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:0 12px 40px rgba(0,0,0,0.1),0 4px 8px rgba(0,0,0,0.05);
+}
+html, body { height:100%; font-family:'Plus Jakarta Sans',sans-serif; color:var(--text); font-size:13px; overflow:hidden; }
+body { background-color:var(--bg); background-image:radial-gradient(circle,rgba(0,0,0,0.05) 1px,transparent 1px); background-size:24px 24px; }
+::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.12); border-radius:2px; }
+
+/* TOPBAR */
+.topbar { position:fixed; top:0; left:0; right:0; height:56px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 20px; gap:14px; z-index:100; box-shadow:var(--shadow-sm); }
+.logo { font-family:'Playfair Display',serif; font-size:20px; font-weight:700; color:var(--text); letter-spacing:-0.02em; } .logo em { color:var(--accent); font-style:italic; }
+.topbar-sep { width:1px; height:20px; background:var(--border); }
+.breadcrumb { display:flex; align-items:center; gap:5px; font-size:13px; color:var(--text-sub); }
+.bc-current { color:var(--text); font-weight:600; } .bc-sep { color:var(--text-muted); }
+.topbar-right { margin-left:auto; display:flex; align-items:center; gap:8px; }
+.tb-btn { width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:var(--card); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.12s; }
+.tb-btn:hover { border-color:var(--border-hover); box-shadow:var(--shadow-sm); }
+.tb-btn svg { width:15px; height:15px; stroke:var(--text-sub); fill:none; stroke-width:1.8; }
+.new-btn { display:flex; align-items:center; gap:6px; background:var(--accent); color:#fff; border:none; border-radius:8px; padding:0 14px; height:32px; font-size:12.5px; font-weight:700; cursor:pointer; box-shadow:0 2px 10px var(--accent-glow); transition:all 0.15s; font-family:'Plus Jakarta Sans',sans-serif; }
+.new-btn:hover { background:var(--accent-dark); }
+.new-btn svg { width:13px; height:13px; stroke:#fff; fill:none; stroke-width:2.5; }
+
+/* LAYOUT */
+.layout { display:flex; height:100%; padding-top:56px; }
+
+/* SIDEBAR */
+.sidebar { width:220px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; overflow-y:auto; padding:16px 12px; }
+.sidebar::-webkit-scrollbar { display:none; }
+.nav-section { font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); padding:0 8px; margin:14px 0 4px; }
+.nav-section:first-child { margin-top:0; }
+.nav-link { display:flex; align-items:center; gap:9px; padding:7px 8px; border-radius:8px; cursor:pointer; color:var(--text-sub); font-size:13px; transition:all 0.12s; border:1px solid transparent; }
+.nav-link:hover { background:var(--card); color:var(--text); }
+.nav-link.active { background:var(--accent-dim); color:var(--accent); border-color:rgba(0,184,173,0.15); border-left:2px solid var(--accent); }
+.nav-link svg { width:15px; height:15px; stroke:currentColor; fill:none; stroke-width:1.8; flex-shrink:0; }
+.nav-badge { margin-left:auto; font-size:10.5px; font-weight:700; background:rgba(0,0,0,0.06); color:var(--text-sub); padding:1px 6px; border-radius:5px; }
+.nav-link.active .nav-badge { background:rgba(0,184,173,0.15); color:var(--accent); }
+.nav-badge.red { background:rgba(232,48,74,0.1); color:var(--urgent); }
+.nav-divider { height:1px; background:var(--border); margin:8px 0; }
+.proj-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:7px; cursor:pointer; color:var(--text-sub); font-size:12.5px; transition:all 0.12s; }
+.proj-item:hover { background:var(--card); color:var(--text); }
+.proj-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.proj-count { margin-left:auto; font-size:11px; color:var(--text-muted); }
+.sidebar-footer { margin-top:auto; padding-top:12px; border-top:1px solid var(--border); }
+.user-row { display:flex; align-items:center; gap:9px; padding:7px 8px; border-radius:8px; cursor:pointer; transition:background 0.12s; }
+.user-row:hover { background:var(--card); }
+.avatar { width:30px; height:30px; background:linear-gradient(135deg,var(--p-blue),var(--accent)); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; }
+.user-name { font-size:12.5px; font-weight:600; color:var(--text); } .user-role { font-size:11px; color:var(--text-muted); }
+
+/* MAIN */
+.main-area { flex:1; overflow:auto; padding:20px; display:flex; flex-direction:column; gap:16px; position:relative; }
+
+/* MATRIX */
+.matrix-labels { display:grid; grid-template-columns:1fr 1fr; gap:14px; padding-left:2px; }
+.matrix-label-row { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; }
+
+.matrix { display:grid; grid-template-columns:1fr 1fr; gap:14px; flex:1; }
+
+/* QUADRANT */
+.quad { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; min-height:260px; }
+.quad-header { padding:12px 16px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.quad-num { font-family:'Playfair Display',serif; font-size:18px; font-weight:700; line-height:1; opacity:0.5; }
+.quad-info { flex:1; }
+.quad-name { font-size:12px; font-weight:700; letter-spacing:0.02em; }
+.quad-hint { font-size:10.5px; color:var(--text-muted); margin-top:1px; }
+.quad-count { font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; }
+
+/* Q1 — Urgente + Importante */
+.quad.q1 .quad-header { background:rgba(232,48,74,0.04); border-bottom-color:rgba(232,48,74,0.12); }
+.quad.q1 .quad-num { color:var(--urgent); }
+.quad.q1 .quad-name { color:var(--urgent); }
+.quad.q1 .quad-count { background:rgba(232,48,74,0.1); color:var(--urgent); }
+/* Q2 — No urgente + Importante */
+.quad.q2 .quad-header { background:rgba(61,127,216,0.04); border-bottom-color:rgba(61,127,216,0.12); }
+.quad.q2 .quad-num { color:var(--p-blue); }
+.quad.q2 .quad-name { color:var(--p-blue); }
+.quad.q2 .quad-count { background:rgba(61,127,216,0.1); color:var(--p-blue); }
+/* Q3 — Urgente + No importante */
+.quad.q3 .quad-header { background:rgba(240,120,32,0.04); border-bottom-color:rgba(240,120,32,0.12); }
+.quad.q3 .quad-num { color:var(--high); }
+.quad.q3 .quad-name { color:var(--high); }
+.quad.q3 .quad-count { background:rgba(240,120,32,0.1); color:var(--high); }
+/* Q4 — No urgente + No importante */
+.quad.q4 .quad-header { background:rgba(0,0,0,0.02); }
+.quad.q4 .quad-num { color:var(--text-muted); }
+.quad.q4 .quad-name { color:var(--text-sub); }
+.quad.q4 .quad-count { background:rgba(0,0,0,0.06); color:var(--text-sub); }
+.quad.q4 { opacity:0.75; }
+
+.quad-body { padding:10px; flex:1; display:flex; flex-direction:column; gap:7px; overflow-y:auto; }
+
+/* MINI TASK CARD */
+.mtask { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:9px 12px; cursor:pointer; transition:all 0.15s; box-shadow:var(--shadow-sm); border-left-width:3px; }
+.mtask:hover { box-shadow:var(--shadow-md); transform:translateY(-1px); border-color:var(--border-hover); }
+.mt-title { font-size:12px; font-weight:600; color:var(--text); margin-bottom:5px; line-height:1.3; }
+.mt-meta { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+.mt-tag { padding:1.5px 6px; border-radius:4px; font-size:10px; font-weight:600; }
+.mt-date { font-size:10px; color:var(--text-muted); }
+.mt-agent { font-size:10px; color:var(--accent); font-weight:600; background:var(--accent-dim); padding:1.5px 6px; border-radius:4px; }
+.drop-hint { border:1.5px dashed var(--border); border-radius:7px; padding:8px; text-align:center; font-size:11px; color:var(--text-muted); }
+
+/* AGENT FLOATING PANEL */
+.agent-float {
+  position:fixed; bottom:24px; right:24px; width:300px;
+  background:var(--card); border:1px solid rgba(0,184,173,0.25); border-radius:14px;
+  box-shadow:var(--shadow-lg), 0 0 0 1px rgba(0,184,173,0.08);
+  z-index:200; overflow:hidden;
+  animation:panel-in 0.4s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes panel-in { from{opacity:0;transform:translateY(20px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+.af-header { background:linear-gradient(135deg,rgba(0,184,173,0.08),rgba(0,184,173,0.03)); border-bottom:1px solid rgba(0,184,173,0.15); padding:12px 14px; display:flex; align-items:center; gap:8px; }
+.af-avatar { width:30px; height:30px; background:linear-gradient(135deg,rgba(0,184,173,0.2),rgba(0,184,173,0.08)); border:1px solid rgba(0,184,173,0.25); border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; position:relative; }
+.af-pulse { position:absolute; bottom:-2px; right:-2px; width:8px; height:8px; background:var(--accent); border-radius:50%; border:2px solid var(--card); animation:agent-pulse 2s ease-in-out infinite; box-shadow:0 0 4px var(--accent-glow); }
+@keyframes agent-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.af-name { font-size:13px; font-weight:700; color:var(--accent); font-family:'Playfair Display',serif; }
+.af-status { font-size:10.5px; color:var(--text-muted); }
+.af-close { margin-left:auto; width:22px; height:22px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-muted); border-radius:5px; transition:background 0.12s; font-size:14px; }
+.af-close:hover { background:rgba(0,0,0,0.06); }
+.af-body { padding:12px 14px; }
+.af-suggestion { background:rgba(0,184,173,0.04); border:1px solid rgba(0,184,173,0.15); border-radius:8px; padding:9px 11px; margin-bottom:10px; }
+.af-suggestion-label { font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--accent); margin-bottom:4px; }
+.af-suggestion-text { font-size:12px; color:var(--text-sub); line-height:1.45; }
+.af-suggestion-text strong { color:var(--text); }
+.af-btns { display:flex; gap:6px; }
+.af-btn { flex:1; padding:6px; border-radius:7px; font-size:11.5px; font-weight:600; cursor:pointer; text-align:center; transition:all 0.12s; border:1px solid; }
+.af-btn.accept { background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:0 2px 8px var(--accent-glow); }
+.af-btn.accept:hover { background:var(--accent-dark); }
+.af-btn.modify { background:transparent; border-color:var(--border); color:var(--text-sub); }
+.af-btn.modify:hover { border-color:var(--border-hover); background:var(--card-hover); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">Task<em>Flow</em></div>
+  <div class="topbar-sep"></div>
+  <div class="breadcrumb"><span>Workspace</span><span class="bc-sep">/</span><span class="bc-current">Eisenhower</span></div>
+  <div class="topbar-right">
+    <div class="tb-btn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+    <div class="tb-btn"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+    <button class="new-btn"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nueva tarea</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="nav-section">Navegación</div>
+    <div class="nav-link"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Inbox<span class="nav-badge red">5</span></div>
+    <div class="nav-link"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Kanban<span class="nav-badge">14</span></div>
+    <div class="nav-link active"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Eisenhower<span class="nav-badge">14</span></div>
+    <div class="nav-link"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M5.76 4.93a10 10 0 0 0 0 14.14"/></svg>OpenClaw<span class="nav-badge">3</span></div>
+    <div class="nav-divider"></div>
+    <div class="nav-section">Proyectos</div>
+    <div class="proj-item"><div class="proj-dot" style="background:var(--p-blue)"></div>Pliegos Q1<span class="proj-count">6</span></div>
+    <div class="proj-item"><div class="proj-dot" style="background:var(--p-green)"></div>Cliente García<span class="proj-count">4</span></div>
+    <div class="proj-item"><div class="proj-dot" style="background:var(--p-orange)"></div>OpenClaw Dev<span class="proj-count">3</span></div>
+    <div class="sidebar-footer">
+      <div class="user-row"><div class="avatar">PT</div><div><div class="user-name">P. Tavares</div><div class="user-role">Administrador</div></div></div>
+    </div>
+  </div>
+
+  <div class="main-area">
+    <div class="matrix">
+      <!-- Q1 -->
+      <div class="quad q1">
+        <div class="quad-header">
+          <div class="quad-num">Q1</div>
+          <div class="quad-info"><div class="quad-name">Urgente + Importante</div><div class="quad-hint">Hacer ahora</div></div>
+          <div class="quad-count">3</div>
+        </div>
+        <div class="quad-body">
+          <div class="mtask" style="border-left-color:var(--urgent)">
+            <div class="mt-title">Preparar documentación pliego Ayuntamiento Madrid</div>
+            <div class="mt-meta"><span class="mt-tag" style="background:rgba(61,127,216,0.1);color:var(--p-blue)">Pliegos Q1</span><span class="mt-date">Vence 13 mar</span><span class="mt-agent">✦ OpenClaw</span></div>
+          </div>
+          <div class="mtask" style="border-left-color:var(--urgent)">
+            <div class="mt-title">Revisar contrato Lisboa — firma urgente</div>
+            <div class="mt-meta"><span class="mt-tag" style="background:rgba(31,170,107,0.1);color:var(--p-green)">Cliente García</span><span class="mt-date">Vence 10 mar</span></div>
+          </div>
+          <div class="mtask" style="border-left-color:var(--urgent)">
+            <div class="mt-title">Responder email de Juan García sobre presupuesto</div>
+            <div class="mt-meta"><span class="mt-tag" style="background:rgba(31,170,107,0.1);color:var(--p-green)">Cliente García</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q2 -->
+      <div class="quad q2">
+        <div class="quad-header">
+          <div class="quad-num">Q2</div>
+          <div class="quad-info"><div class="quad-name">No urgente + Importante</div><div class="quad-hint">Planificar</div></div>
+          <div class="quad-count">4</div>
+        </div>
+        <div class="quad-body">
+          <div class="mtask" style="border-left-color:var(--p-blue)">
+            <div class="mt-title">Ideas para propuesta técnica pliego Barcelona</div>
+            <div class="mt-meta"><span class="mt-tag" style="background:rgba(61,127,216,0.1);color:var(--p-blue)">Pliegos Q1</span><span class="mt-date">14 mar</span></div>
+          </div>
+          <div class="mtask" style="border-left-color:var(--p-blue)">
+            <div class="mt-title">Configurar integración OpenClaw con Gmail</div>
+            <div class="mt-meta"><span class="mt-tag" style="background:rgba(240,120,32,0.1);color:var(--p-orange)">OpenClaw Dev</span></div>
+          </div>
+          <div class="mtask" style="border-left-color:var(--p-blue)">
+            <div class="mt-title">Documentar API de clasificación automática</div>
+            <div class="mt-meta"><span class="mt-tag" style="background:rgba(240,120,32,0.1);color:var(--p-orange)">OpenClaw Dev</span></div>
+          </div>
+          <div class="drop-hint">Arrastra aquí para clasificar</div>
+        </div>
+      </div>
+
+      <!-- Q3 -->
+      <div class="quad q3">
+        <div class="quad-header">
+          <div class="quad-num">Q3</div>
+          <div class="quad-info"><div class="quad-name">Urgente + No importante</div><div class="quad-hint">Delegar</div></div>
+          <div class="quad-count">2</div>
+        </div>
+        <div class="quad-body">
+          <div class="mtask" style="border-left-color:var(--high)">
+            <div class="mt-title">Reunión de seguimiento semanal equipo</div>
+            <div class="mt-meta"><span class="mt-date">Cada lunes · 10:00</span></div>
+          </div>
+          <div class="mtask" style="border-left-color:var(--high)">
+            <div class="mt-title">Actualizar estado en plataforma contratación</div>
+            <div class="mt-meta"><span class="mt-tag" style="background:rgba(61,127,216,0.1);color:var(--p-blue)">Pliegos Q1</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q4 -->
+      <div class="quad q4">
+        <div class="quad-header">
+          <div class="quad-num">Q4</div>
+          <div class="quad-info"><div class="quad-name">No urgente + No importante</div><div class="quad-hint">Eliminar</div></div>
+          <div class="quad-count">2</div>
+        </div>
+        <div class="quad-body">
+          <div class="mtask" style="border-left-color:var(--text-muted)">
+            <div class="mt-title">Leer newsletter de herramientas de productividad</div>
+            <div class="mt-meta"><span class="mt-date">Sin fecha</span></div>
+          </div>
+          <div class="mtask" style="border-left-color:var(--text-muted)">
+            <div class="mt-title">Organizar carpetas de archivos locales</div>
+            <div class="mt-meta"><span class="mt-date">Sin fecha</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AGENT FLOATING PANEL -->
+<div class="agent-float" id="agentPanel">
+  <div class="af-header">
+    <div class="af-avatar">🤖<div class="af-pulse"></div></div>
+    <div>
+      <div class="af-name">OpenClaw</div>
+      <div class="af-status">Analizando matriz…</div>
+    </div>
+    <div class="af-close" onclick="document.getElementById('agentPanel').style.display='none'">×</div>
+  </div>
+  <div class="af-body">
+    <div class="af-suggestion">
+      <div class="af-suggestion-label">✦ Sugerencia</div>
+      <div class="af-suggestion-text">Mueve <strong>"Preparar documentación pliego Madrid"</strong> a Q1 — el plazo es en 3 días y aún está en Por hacer.</div>
+    </div>
+    <div class="af-btns">
+      <div class="af-btn accept" onclick="this.closest('.af-suggestion').remove();this.closest('.af-btns').remove()">Aceptar</div>
+      <div class="af-btn modify">Modificar</div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.mtask').forEach(t => {
+  t.addEventListener('click', () => { document.querySelectorAll('.mtask').forEach(x=>x.style.boxShadow=''); t.style.boxShadow='0 0 0 2px var(--accent)'; });
+});
+</script>
+</body>
+</html>

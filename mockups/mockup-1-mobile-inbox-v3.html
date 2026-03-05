@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Inbox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#f0ede8; --surface:#faf8f5; --elevated:#ffffff; --card:#ffffff; --card-hover:#f7f5f2;
+  --border:rgba(0,0,0,0.08); --border-hover:rgba(0,0,0,0.16);
+  --text:#1a1a2e; --text-sub:#6b6b8a; --text-muted:#a8a8c0;
+  --accent:#00b8ad; --accent-dark:#008f86; --accent-dim:rgba(0,184,173,0.1); --accent-glow:rgba(0,184,173,0.2);
+  --urgent:#e8304a; --high:#f07832; --medium:#3d8ef0;
+  --p-blue:#3d7fd8; --p-green:#1faa6b; --p-orange:#f07820; --p-purple:#7c52c8;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 16px rgba(0,0,0,0.08),0 2px 4px rgba(0,0,0,0.04);
+}
+html { background-color: var(--bg); background-image: radial-gradient(circle,rgba(0,0,0,0.06) 1px,transparent 1px); background-size:24px 24px; min-height:100vh; }
+body { font-family:'Plus Jakarta Sans',sans-serif; color:var(--text); font-size:14px; line-height:1.5; min-height:100vh; }
+::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+.page-wrap { max-width:480px; margin:0 auto; min-height:100vh; background:var(--surface); border-left:1px solid var(--border); border-right:1px solid var(--border); display:flex; flex-direction:column; }
+@media(max-width:520px){ .page-wrap{ border:none; } }
+
+/* TOP BAR */
+.top-bar { background:var(--card); border-bottom:1px solid var(--border); padding:14px 20px 10px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:50; box-shadow:var(--shadow-sm); }
+.logo { font-family:'Playfair Display',serif; font-size:20px; font-weight:700; color:var(--text); letter-spacing:-0.02em; } .logo em { color:var(--accent); font-style:italic; }
+.bell-wrap { position:relative; cursor:pointer; }
+.bell-wrap svg { width:22px; height:22px; stroke:var(--text-sub); fill:none; stroke-width:1.8; }
+.bell-badge { position:absolute; top:-3px; right:-3px; width:16px; height:16px; background:var(--urgent); color:#fff; border-radius:50%; font-size:9px; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid var(--card); }
+
+/* CAPTURE BOX */
+.capture-section { padding:16px 16px 12px; background:var(--card); border-bottom:1px solid var(--border); }
+.capture-box { background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; display:flex; gap:10px; align-items:flex-start; transition:all 0.15s; cursor:text; }
+.capture-box:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim); background:#fff; }
+.capture-input { flex:1; background:none; border:none; outline:none; font-family:'Plus Jakarta Sans',sans-serif; font-size:14px; color:var(--text); resize:none; height:24px; } .capture-input::placeholder { color:var(--text-muted); }
+.capture-actions { display:flex; gap:6px; align-items:center; }
+.cap-btn { width:30px; height:30px; border-radius:8px; border:1px solid var(--border); background:var(--card); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; transition:all 0.12s; color:var(--text-sub); }
+.cap-btn:hover { border-color:var(--border-hover); background:var(--card-hover); }
+
+/* CONTEXT TOGGLE */
+.context-section { padding:12px 16px; background:var(--card); border-bottom:1px solid var(--border); display:flex; gap:6px; }
+.ctx-btn { padding:6px 14px; border-radius:20px; font-size:12.5px; font-weight:600; cursor:pointer; border:1.5px solid var(--border); color:var(--text-sub); background:transparent; transition:all 0.12s; }
+.ctx-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:0 2px 8px var(--accent-glow); }
+.ctx-btn:not(.active):hover { border-color:var(--border-hover); color:var(--text); }
+
+/* AGENT STRIP */
+.agent-strip { background:linear-gradient(90deg,rgba(0,184,173,0.08),rgba(0,184,173,0.04)); border-bottom:1px solid rgba(0,184,173,0.15); padding:10px 16px; display:flex; align-items:center; gap:9px; cursor:pointer; }
+.agent-dot { width:7px; height:7px; background:var(--accent); border-radius:50%; animation:agent-pulse 2s ease-in-out infinite; box-shadow:0 0 6px var(--accent-glow); flex-shrink:0; }
+@keyframes agent-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.agent-strip-text { font-size:12.5px; color:var(--accent-dark); font-weight:600; flex:1; }
+.agent-strip-arrow { color:var(--accent); font-size:14px; }
+
+/* FILTERS */
+.filters-section { padding:12px 16px; display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; background:var(--surface); border-bottom:1px solid var(--border); }
+.filters-section::-webkit-scrollbar { display:none; }
+.filter-pill { padding:5px 13px; border-radius:20px; font-size:12px; font-weight:600; white-space:nowrap; cursor:pointer; border:1.5px solid var(--border); color:var(--text-sub); background:var(--card); transition:all 0.12s; flex-shrink:0; }
+.filter-pill.active { background:var(--text); color:#fff; border-color:var(--text); }
+.filter-pill:not(.active):hover { border-color:var(--border-hover); }
+
+/* INBOX LIST */
+.inbox-list { flex:1; padding:12px 16px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; }
+
+/* INBOX ITEM */
+.inbox-item { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px 16px; display:flex; gap:12px; cursor:pointer; transition:all 0.15s; position:relative; overflow:hidden; box-shadow:var(--shadow-sm); animation:item-in 0.3s ease both; }
+.inbox-item:nth-child(1){animation-delay:0.05s} .inbox-item:nth-child(2){animation-delay:0.1s} .inbox-item:nth-child(3){animation-delay:0.15s} .inbox-item:nth-child(4){animation-delay:0.2s} .inbox-item:nth-child(5){animation-delay:0.25s} .inbox-item:nth-child(6){animation-delay:0.3s}
+@keyframes item-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.inbox-item:hover { border-color:var(--border-hover); box-shadow:var(--shadow-md); transform:translateY(-1px); }
+.priority-bar { width:3px; border-radius:2px; align-self:stretch; flex-shrink:0; }
+.item-body { flex:1; min-width:0; }
+.item-title { font-size:14px; font-weight:600; color:var(--text); margin-bottom:5px; line-height:1.35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.item-meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.item-tag { padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }
+.item-tag.blue { background:rgba(61,127,216,0.1); color:var(--p-blue); border:1px solid rgba(61,127,216,0.15); }
+.item-tag.green { background:rgba(31,170,107,0.1); color:var(--p-green); border:1px solid rgba(31,170,107,0.15); }
+.item-tag.orange { background:rgba(240,120,32,0.1); color:var(--p-orange); border:1px solid rgba(240,120,32,0.15); }
+.item-date { font-size:11px; color:var(--text-muted); }
+.item-check { width:20px; height:20px; border-radius:50%; border:1.5px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; cursor:pointer; transition:all 0.15s; }
+.item-check:hover { border-color:var(--accent); background:var(--accent-dim); }
+
+/* AGENT SUGGESTION CARD */
+.agent-suggestion { background:linear-gradient(120deg,rgba(0,184,173,0.06),rgba(0,184,173,0.02)); border:1px solid rgba(0,184,173,0.2); border-radius:12px; padding:12px 14px; box-shadow:var(--shadow-sm); animation:item-in 0.3s ease both; animation-delay:0.35s; }
+.as-header { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
+.as-pulse { width:6px; height:6px; background:var(--accent); border-radius:50%; animation:agent-pulse 2s ease-in-out infinite; }
+.as-label { font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--accent); }
+.as-text { font-size:13px; color:var(--text-sub); line-height:1.45; margin-bottom:10px; }
+.as-text strong { color:var(--text); font-weight:600; }
+.as-btns { display:flex; gap:7px; }
+.as-btn { padding:5px 13px; border-radius:7px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.12s; border:1.5px solid; }
+.as-btn.accept { background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:0 2px 8px var(--accent-glow); }
+.as-btn.accept:hover { background:var(--accent-dark); }
+.as-btn.dismiss { background:transparent; border-color:var(--border); color:var(--text-sub); }
+.as-btn.dismiss:hover { border-color:var(--border-hover); background:var(--card-hover); }
+
+/* BOTTOM NAV */
+.bottom-nav { background:var(--card); border-top:1px solid var(--border); padding:10px 0 calc(env(safe-area-inset-bottom,0px)+10px); display:flex; box-shadow:0 -2px 12px rgba(0,0,0,0.06); }
+.bn-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; padding:4px 0; }
+.bn-item svg { width:20px; height:20px; stroke:var(--text-muted); fill:none; stroke-width:1.8; }
+.bn-item.active svg { stroke:var(--accent); }
+.bn-item span { font-size:10px; font-weight:600; color:var(--text-muted); letter-spacing:0.03em; }
+.bn-item.active span { color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+  <div class="top-bar">
+    <div class="logo">Task<em>Flow</em></div>
+    <div class="bell-wrap">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <div class="bell-badge">5</div>
+    </div>
+  </div>
+
+  <div class="capture-section">
+    <div class="capture-box">
+      <textarea class="capture-input" placeholder="Captura algo…" rows="1"></textarea>
+      <div class="capture-actions">
+        <div class="cap-btn" title="Adjuntar">📎</div>
+        <div class="cap-btn" title="Enlace">🔗</div>
+        <div class="cap-btn" title="Foto">📷</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="context-section">
+    <button class="ctx-btn active">Todos</button>
+    <button class="ctx-btn">Trabajo</button>
+    <button class="ctx-btn">Personal</button>
+  </div>
+
+  <div class="agent-strip">
+    <div class="agent-dot"></div>
+    <div class="agent-strip-text">OpenClaw procesó 4 emails esta mañana</div>
+    <div class="agent-strip-arrow">→</div>
+  </div>
+
+  <div class="filters-section">
+    <div class="filter-pill active">Por procesar</div>
+    <div class="filter-pill">Urgente</div>
+    <div class="filter-pill">Importante</div>
+    <div class="filter-pill">Hoy</div>
+    <div class="filter-pill">Esta semana</div>
+  </div>
+
+  <div class="inbox-list">
+    <div class="inbox-item">
+      <div class="priority-bar" style="background:var(--urgent)"></div>
+      <div class="item-body">
+        <div class="item-title">Preparar documentación pliego Ayuntamiento Madrid</div>
+        <div class="item-meta">
+          <span class="item-tag blue">Pliegos Q1</span>
+          <span class="item-tag" style="background:rgba(232,48,74,0.1);color:var(--urgent);border:1px solid rgba(232,48,74,0.15)">Urgente</span>
+          <span class="item-date">Vence hoy</span>
+        </div>
+      </div>
+      <div class="item-check"></div>
+    </div>
+
+    <div class="inbox-item">
+      <div class="priority-bar" style="background:var(--high)"></div>
+      <div class="item-body">
+        <div class="item-title">Revisar contrato Lisboa — pendiente firma</div>
+        <div class="item-meta">
+          <span class="item-tag green">Cliente García</span>
+          <span class="item-date">Lun 10 mar</span>
+        </div>
+      </div>
+      <div class="item-check"></div>
+    </div>
+
+    <div class="inbox-item">
+      <div class="priority-bar" style="background:var(--medium)"></div>
+      <div class="item-body">
+        <div class="item-title">Ideas para propuesta técnica pliego Barcelona</div>
+        <div class="item-meta">
+          <span class="item-tag blue">Pliegos Q1</span>
+          <span class="item-date">Lun 14 mar</span>
+        </div>
+      </div>
+      <div class="item-check"></div>
+    </div>
+
+    <!-- Agent suggestion card -->
+    <div class="agent-suggestion">
+      <div class="as-header">
+        <div class="as-pulse"></div>
+        <div class="as-label">✦ OpenClaw sugiere</div>
+      </div>
+      <div class="as-text">El email de <strong>Juan García</strong> sobre el presupuesto parece de alta prioridad. ¿Lo clasifico en <strong>Cliente García</strong>?</div>
+      <div class="as-btns">
+        <button class="as-btn accept">Sí, clasificar</button>
+        <button class="as-btn dismiss">Ignorar</button>
+      </div>
+    </div>
+
+    <div class="inbox-item">
+      <div class="priority-bar" style="background:var(--p-purple)"></div>
+      <div class="item-body">
+        <div class="item-title">Configurar integración OpenClaw con Gmail</div>
+        <div class="item-meta">
+          <span class="item-tag orange">OpenClaw Dev</span>
+          <span class="item-date">Mar 11 mar</span>
+        </div>
+      </div>
+      <div class="item-check"></div>
+    </div>
+
+    <div class="inbox-item">
+      <div class="priority-bar" style="background:var(--p-green)"></div>
+      <div class="item-body">
+        <div class="item-title">Llamada de seguimiento con equipo técnico</div>
+        <div class="item-meta">
+          <span class="item-tag green">Cliente García</span>
+          <span class="item-date">Mié 12 mar · 11:00</span>
+        </div>
+      </div>
+      <div class="item-check"></div>
+    </div>
+
+    <div class="inbox-item">
+      <div class="priority-bar" style="background:var(--border)"></div>
+      <div class="item-body">
+        <div class="item-title">Revisar pliego BCN en plataforma contratación</div>
+        <div class="item-meta">
+          <span class="item-tag blue">Pliegos Q1</span>
+          <span class="item-date">Vie 15 mar</span>
+        </div>
+      </div>
+      <div class="item-check"></div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="bn-item active">
+      <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      <span>Inbox</span>
+    </div>
+    <div class="bn-item">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span>Kanban</span>
+    </div>
+    <div class="bn-item">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      <span>Matriz</span>
+    </div>
+    <div class="bn-item">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M5.76 4.93a10 10 0 0 0 0 14.14"/></svg>
+      <span>Agente</span>
+    </div>
+    <div class="bn-item">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Perfil</span>
+    </div>
+  </nav>
+</div>
+<script>
+document.querySelectorAll('.ctx-btn').forEach(btn => {
+  btn.addEventListener('click', () => { document.querySelectorAll('.ctx-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); });
+});
+document.querySelectorAll('.filter-pill').forEach(pill => {
+  pill.addEventListener('click', () => { document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active')); pill.classList.add('active'); });
+});
+document.querySelectorAll('.item-check').forEach(chk => {
+  chk.addEventListener('click', e => { e.stopPropagation(); chk.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="'+getComputedStyle(document.documentElement).getPropertyValue('--accent')+'" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'; chk.style.background = 'rgba(0,184,173,0.1)'; chk.style.borderColor = 'var(--accent)'; });
+});
+document.querySelectorAll('.as-btn').forEach(btn => {
+  btn.addEventListener('click', () => { const card = btn.closest('.agent-suggestion'); card.style.transition = 'all 0.25s'; card.style.opacity = '0'; card.style.maxHeight = '0'; card.style.overflow = 'hidden'; card.style.marginBottom = '0'; setTimeout(() => card.remove(), 260); });
+});
+</script>
+</body>
+</html>

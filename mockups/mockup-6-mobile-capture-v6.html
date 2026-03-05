@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow v6 — Capturar Archivo</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root {
+  --bg: #13141f; --surface: #1a1b2e; --elevated: #1f2035; --card: #242540; --sidebar-ai: #111220;
+  --border: rgba(255,255,255,0.07); --border-hover: rgba(255,255,255,0.13);
+  --text: #f0f1ff; --text-sub: rgba(240,241,255,0.6); --text-muted: rgba(240,241,255,0.35);
+  --accent: #2fd4aa; --accent-dim: rgba(47,212,170,0.1);
+  --accent-blue: #60a5fa; --accent-purple: #a78bfa; --accent-orange: #fb923c;
+  --accent-pink: #f472b6; --accent-green: #4ade80;
+  --urgent: #f87171; --high: #fb923c; --medium: #60a5fa;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4); --shadow-md: 0 4px 20px rgba(0,0,0,0.5); --shadow-lg: 0 12px 40px rgba(0,0,0,0.6);
+}
+html,body{font-family:'Outfit',sans-serif;color:var(--text);}
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 60% 50% at 30% 0%, rgba(167,139,250,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 60% at 80% 100%, rgba(47,212,170,0.05) 0%, transparent 55%),
+    radial-gradient(circle, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: auto, auto, 24px 24px;
+}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px;}
+
+.page{max-width:480px;margin:0 auto;min-height:100vh;background:var(--surface);display:flex;flex-direction:column;}
+
+/* ── TOP NAV ── */
+.top-nav{
+  position:sticky;top:0;z-index:30;
+  background:var(--elevated);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:12px 16px;gap:8px;
+}
+.back-btn{font-size:13px;font-weight:600;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px;}
+.nav-title{flex:1;text-align:center;font-size:15px;font-weight:600;color:var(--text);}
+
+/* ── STEPS ── */
+.steps-bar{padding:18px 20px 14px;display:flex;align-items:center;gap:0;}
+.step{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;position:relative;}
+.step-circle{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;z-index:1;position:relative;}
+.step-done .step-circle{background:var(--accent);color:#13141f;}
+.step-active .step-circle{background:var(--accent);color:#13141f;box-shadow:0 0 0 4px rgba(47,212,170,0.15);}
+.step-pending .step-circle{background:var(--card);border:1px solid var(--border);color:var(--text-muted);}
+.step-label{font-size:10px;font-weight:500;color:var(--text-muted);white-space:nowrap;}
+.step-done .step-label{color:var(--accent);}
+.step-active .step-label{color:var(--text);font-weight:600;}
+
+.step-connector{flex:1;height:2px;margin-top:-18px;position:relative;z-index:0;}
+.step-connector.done{background:var(--accent);}
+.step-connector.pending{background:var(--border);}
+
+/* ── FILE PREVIEW ── */
+.section-pad{padding:0 16px 16px;}
+
+.file-preview-card{
+  background:var(--elevated);border:1px solid var(--border);border-radius:14px;
+  overflow:hidden;margin-bottom:12px;
+  animation:fade-up 0.3s ease;
+}
+.file-thumb{
+  background:linear-gradient(135deg,var(--card),var(--elevated));
+  height:110px;display:flex;align-items:center;justify-content:center;
+  position:relative;
+}
+.file-thumb-icon{font-size:48px;}
+.pdf-badge{
+  position:absolute;top:10px;right:10px;
+  font-size:10px;font-weight:700;padding:3px 8px;border-radius:5px;
+  background:rgba(248,113,113,0.15);color:var(--urgent);border:1px solid rgba(248,113,113,0.2);
+  letter-spacing:0.5px;font-family:'DM Mono';
+}
+.file-info{padding:12px 14px;}
+.file-name{font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px;word-break:break-all;}
+.file-meta-row{display:flex;align-items:center;gap:0;}
+.file-meta-text{font-family:'DM Mono';font-size:10px;color:var(--text-muted);flex:1;}
+.eye-btn{width:28px;height:28px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.eye-btn:hover{border-color:var(--border-hover);color:var(--text-sub);}
+
+/* progress bar */
+.progress-wrap{margin:10px 14px 4px;}
+.progress-track{height:4px;background:var(--card);border-radius:2px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent-blue),var(--accent));width:0;transition:width 1.2s ease;}
+.progress-label{font-family:'DM Mono';font-size:10px;color:var(--text-muted);text-align:right;margin-top:3px;margin-bottom:8px;padding:0 14px;}
+
+/* ── AI SUGGESTION ── */
+.ai-suggestion{
+  background:var(--elevated);border:1px solid rgba(47,212,170,0.2);
+  border-left:3px solid var(--accent);border-radius:14px;padding:14px;
+  margin-bottom:12px;
+  animation:fade-up 0.35s ease 0.1s both;
+}
+.ai-sug-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.ai-avatar-lg{width:30px;height:30px;border-radius:9px;background:rgba(47,212,170,0.12);border:1px solid rgba(47,212,170,0.22);color:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ai-sug-title{font-size:12.5px;font-weight:600;color:var(--accent);flex:1;}
+.ai-conf{font-family:'DM Mono';font-size:10px;color:var(--text-muted);}
+.ai-sug-text{font-size:13px;line-height:1.55;color:var(--text-sub);margin-bottom:10px;}
+.ai-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.ai-tag{font-size:11px;padding:4px 9px;border-radius:6px;background:var(--card);border:1px solid var(--border);color:var(--text-sub);}
+.ai-sug-actions{display:flex;gap:8px;}
+.btn-teal{background:var(--accent);color:#13141f;border:none;border-radius:10px;font-family:'Outfit';font-size:13px;font-weight:600;padding:9px 18px;cursor:pointer;box-shadow:0 0 20px rgba(47,212,170,0.25);transition:all 0.15s;flex:1;}
+.btn-teal:hover{opacity:0.9;}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text-sub);border-radius:10px;font-family:'Outfit';font-size:13px;font-weight:500;padding:9px 16px;cursor:pointer;transition:all 0.15s;}
+.btn-ghost:hover{border-color:var(--border-hover);color:var(--text);}
+
+/* ── MANUAL CLASSIFICATION ── */
+.section-label{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+
+.form-select{
+  width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);font-family:'Outfit';font-size:13px;padding:10px 14px;
+  appearance:none;cursor:pointer;outline:none;margin-bottom:10px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(240,241,255,0.35)' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;
+}
+.form-select:focus{border-color:rgba(47,212,170,0.3);}
+
+.priority-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.priority-btn{
+  padding:10px;border-radius:10px;border:2px solid var(--border);
+  background:transparent;color:var(--text-muted);cursor:pointer;
+  font-family:'Outfit';font-size:13px;font-weight:500;
+  transition:all 0.15s;text-align:center;
+}
+.priority-btn:hover{border-color:var(--border-hover);color:var(--text-sub);}
+.priority-btn.selected-urgent{background:rgba(248,113,113,0.12);border-color:var(--urgent);color:var(--urgent);font-weight:600;}
+.priority-btn.selected-high{background:rgba(251,146,60,0.12);border-color:var(--high);color:var(--high);font-weight:600;}
+
+.context-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.ctx-pill{font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;transition:all 0.15s;}
+.ctx-pill:hover{border-color:var(--border-hover);color:var(--text-sub);}
+.ctx-pill.active{background:rgba(47,212,170,0.12);border-color:rgba(47,212,170,0.3);color:var(--accent);}
+
+.form-textarea{
+  width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);font-family:'Outfit';font-size:13px;line-height:1.5;
+  padding:10px 14px;outline:none;resize:none;
+  min-height:72px;margin-bottom:10px;
+}
+.form-textarea::placeholder{color:var(--text-muted);}
+.form-textarea:focus{border-color:rgba(47,212,170,0.3);}
+
+/* ── BOTTOM BAR ── */
+.bottom-bar{
+  position:sticky;bottom:0;
+  background:var(--elevated);border-top:1px solid var(--border);
+  padding:12px 16px;
+}
+.btn-teal-full{
+  width:100%;background:var(--accent);color:#13141f;border:none;border-radius:10px;
+  font-family:'Outfit';font-size:14px;font-weight:600;padding:13px;cursor:pointer;
+  box-shadow:0 0 24px rgba(47,212,170,0.3);transition:all 0.15s;
+}
+.btn-teal-full:hover{opacity:0.9;box-shadow:0 0 32px rgba(47,212,170,0.4);}
+
+@keyframes fade-up{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- TOP NAV -->
+  <nav class="top-nav">
+    <button class="back-btn">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>
+    </button>
+    <span class="nav-title">Capturar archivo</span>
+    <div style="width:40px;"></div>
+  </nav>
+
+  <!-- STEPS -->
+  <div class="steps-bar">
+    <div class="step step-done">
+      <div class="step-circle">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <span class="step-label">Seleccionar</span>
+    </div>
+    <div class="step-connector done"></div>
+    <div class="step step-done">
+      <div class="step-circle">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <span class="step-label">Subir</span>
+    </div>
+    <div class="step-connector done"></div>
+    <div class="step step-active">
+      <div class="step-circle">3</div>
+      <span class="step-label">Clasificar</span>
+    </div>
+  </div>
+
+  <div class="section-pad">
+
+    <!-- FILE PREVIEW -->
+    <div class="file-preview-card">
+      <div class="file-thumb">
+        <div class="file-thumb-icon">📄</div>
+        <span class="pdf-badge">PDF</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+      <p class="progress-label" id="progressLabel">Analizando... 100%</p>
+      <div class="file-info">
+        <div class="file-name">Pliego_Condiciones_Ayto_Madrid_2026.pdf</div>
+        <div class="file-meta-row">
+          <span class="file-meta-text">2.4 MB · 28 páginas · Subido hace 1 min</span>
+          <button class="eye-btn">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI SUGGESTION -->
+    <div class="ai-suggestion" id="aiSuggestion">
+      <div class="ai-sug-header">
+        <div class="ai-avatar-lg">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        </div>
+        <span class="ai-sug-title">✦ OpenClaw — Clasificación sugerida</span>
+        <span class="ai-conf">Confianza: 94% · 1.2s</span>
+      </div>
+      <p class="ai-sug-text">He identificado este documento como un pliego de condiciones del Ayuntamiento de Madrid para licitación pública. Contiene requisitos técnicos, criterios de valoración y plazo de entrega urgente.</p>
+      <div class="ai-tags">
+        <span class="ai-tag">📋 Pliegos Q1</span>
+        <span class="ai-tag">🔴 Urgente</span>
+        <span class="ai-tag">🏢 Trabajo</span>
+        <span class="ai-tag">📑 Licitación</span>
+      </div>
+      <div class="ai-sug-actions">
+        <button class="btn-teal" onclick="applyAI()">✓ Aplicar sugerencia</button>
+        <button class="btn-ghost">Editar</button>
+      </div>
+    </div>
+
+    <!-- MANUAL CLASSIFICATION -->
+    <div class="section-label">Clasificación manual</div>
+
+    <select class="form-select" id="projectSelect">
+      <option>Pliegos Q1</option>
+      <option>Cliente García</option>
+      <option>OpenClaw Dev</option>
+    </select>
+
+    <div class="section-label">Prioridad</div>
+    <div class="priority-grid">
+      <button class="priority-btn selected-urgent" onclick="setPriority(this,'selected-urgent')">🔴 Urgente</button>
+      <button class="priority-btn" onclick="setPriority(this,'selected-high')">🟠 Alta</button>
+      <button class="priority-btn" onclick="setPriority(this,'')">🔵 Media</button>
+      <button class="priority-btn" onclick="setPriority(this,'')">⚪ Baja</button>
+    </div>
+
+    <div class="section-label">Contexto</div>
+    <div class="context-pills">
+      <span class="ctx-pill active" onclick="toggleCtx(this)">🏢 Trabajo</span>
+      <span class="ctx-pill" onclick="toggleCtx(this)">🏠 Personal</span>
+      <span class="ctx-pill" onclick="toggleCtx(this)">💡 Ideas</span>
+      <span class="ctx-pill" onclick="toggleCtx(this)">📚 Referencia</span>
+    </div>
+
+    <div class="section-label">Notas</div>
+    <textarea class="form-textarea" placeholder="Añade notas sobre este archivo...">Pliego de condiciones técnicas para la licitación del Ayuntamiento de Madrid Q1 2026. Plazo de entrega urgente. Revisar apartado 3.2 sobre certificaciones ISO.</textarea>
+
+    <div class="section-label">Etiquetas</div>
+    <select class="form-select">
+      <option>Licitación, ISO, Propuesta...</option>
+    </select>
+
+  </div><!-- /section-pad -->
+
+  <!-- BOTTOM BAR -->
+  <div class="bottom-bar">
+    <button class="btn-teal-full">Guardar en Pliegos Q1</button>
+  </div>
+
+</div>
+
+<script>
+// animate progress bar on load
+window.addEventListener('DOMContentLoaded',()=>{
+  const fill=document.getElementById('progressFill');
+  const label=document.getElementById('progressLabel');
+  fill.style.width='0%';
+  setTimeout(()=>{
+    fill.style.transition='width 1.2s ease';
+    fill.style.width='100%';
+  },300);
+  setTimeout(()=>{label.textContent='Análisis completado · 100%';},1500);
+});
+
+function applyAI(){
+  const el=document.getElementById('aiSuggestion');
+  el.style.transition='all 0.3s ease';
+  el.style.opacity='0';
+  el.style.transform='translateY(-10px)';
+  setTimeout(()=>{el.style.display='none';},300);
+}
+
+function setPriority(btn,cls){
+  const all=document.querySelectorAll('.priority-btn');
+  all.forEach(b=>{b.classList.remove('selected-urgent','selected-high');});
+  if(cls)btn.classList.add(cls);
+}
+
+function toggleCtx(el){
+  el.classList.toggle('active');
+}
+</script>
+</body>
+</html>

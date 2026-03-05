@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Matriz Eisenhower</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep:       #09090e;
+    --bg-surface:    #0f0f16;
+    --bg-elevated:   #161620;
+    --bg-card:       #1c1c28;
+    --bg-card-hover: #22222e;
+    --border:        rgba(255,255,255,0.06);
+    --border-hover:  rgba(255,255,255,0.12);
+    --text-primary:  #eeeef5;
+    --text-secondary:#7878a0;
+    --text-muted:    #44445a;
+    --accent-agent:  #00d4c8;
+    --accent-urgent: #ff4757;
+    --accent-high:   #ff8c42;
+    --accent-medium: #4a9eff;
+    --proj-blue:     #3b7dd8;
+    --proj-green:    #2ebd7c;
+    --proj-orange:   #f5820d;
+    --proj-purple:   #9b59b6;
+    --q1-bg:         rgba(255,71,87,0.05);
+    --q1-border:     rgba(255,71,87,0.12);
+    --q1-label:      #ff4757;
+    --q2-bg:         rgba(74,158,255,0.05);
+    --q2-border:     rgba(74,158,255,0.12);
+    --q2-label:      #4a9eff;
+    --q3-bg:         rgba(255,140,66,0.04);
+    --q3-border:     rgba(255,140,66,0.10);
+    --q3-label:      #ff8c42;
+    --q4-bg:         rgba(100,100,120,0.04);
+    --q4-border:     rgba(100,100,120,0.10);
+    --q4-label:      #666680;
+    --sidebar-w:     220px;
+    --topbar-h:      52px;
+    --font-display:  'Syne', sans-serif;
+    --font-body:     'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 13px;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    height: var(--topbar-h);
+    background: rgba(9,9,14,0.95);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+  .topbar-logo { font-family: var(--font-display); font-weight: 800; font-size: 17px; letter-spacing: -0.04em; padding-right: 12px; border-right: 1px solid var(--border); }
+  .topbar-logo span { color: var(--accent-agent); }
+
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+  .breadcrumb .sep { color: var(--text-muted); }
+  .breadcrumb .current { color: var(--text-primary); font-weight: 500; }
+
+  .topbar-center { flex: 1; display: flex; align-items: center; justify-content: center; }
+  .view-tabs { display: flex; gap: 2px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; padding: 3px; }
+  .view-tab { display: flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 5px; font-size: 12px; font-weight: 500; color: var(--text-secondary); cursor: pointer; transition: all 0.12s; font-family: var(--font-body); }
+  .view-tab svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .view-tab.active { background: var(--bg-card); color: var(--text-primary); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+
+  .topbar-right { display: flex; align-items: center; gap: 8px; }
+  .agent-indicator { display: flex; align-items: center; gap: 6px; background: rgba(0,212,200,0.07); border: 1px solid rgba(0,212,200,0.18); border-radius: 7px; padding: 4px 10px; cursor: pointer; }
+  .agent-dot { width: 6px; height: 6px; background: var(--accent-agent); border-radius: 50%; animation: agent-pulse 2s ease-in-out infinite; box-shadow: 0 0 6px rgba(0,212,200,0.5); }
+  @keyframes agent-pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+  .agent-indicator span { font-size: 11.5px; color: var(--accent-agent); font-weight: 500; }
+  .topbar-btn { width: 30px; height: 30px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 7px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; }
+  .topbar-btn svg { width: 14px; height: 14px; stroke: var(--text-secondary); fill: none; stroke-width: 2; }
+  .topbar-btn .badge { position: absolute; top: -4px; right: -4px; background: var(--accent-urgent); color: white; font-size: 8px; font-weight: 700; padding: 1px 4px; border-radius: 5px; font-family: var(--font-display); }
+  .add-btn { display: flex; align-items: center; gap: 6px; background: var(--accent-agent); border-radius: 7px; padding: 5px 12px; font-size: 12px; font-weight: 600; color: #09090e; cursor: pointer; font-family: var(--font-display); box-shadow: 0 0 16px rgba(0,212,200,0.2); }
+  .add-btn svg { width: 13px; height: 13px; stroke: #09090e; fill: none; stroke-width: 2.5; }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── SIDEBAR ── */
+  .sidebar { width: var(--sidebar-w); background: var(--bg-surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; scrollbar-width: none; padding: 16px 12px; }
+  .sidebar::-webkit-scrollbar { display: none; }
+  .sidebar-section-title { font-family: var(--font-display); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); padding: 0 8px; margin-bottom: 4px; margin-top: 16px; }
+  .sidebar-section-title:first-child { margin-top: 0; }
+  .nav-link { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 7px; cursor: pointer; transition: all 0.12s; color: var(--text-secondary); font-size: 13px; }
+  .nav-link:hover { background: var(--bg-elevated); color: var(--text-primary); }
+  .nav-link.active { background: var(--bg-card); color: var(--text-primary); }
+  .nav-link svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; flex-shrink: 0; }
+  .nav-link .count { margin-left: auto; font-size: 11px; font-family: var(--font-display); font-weight: 600; color: var(--text-muted); background: var(--bg-elevated); border-radius: 5px; padding: 1px 6px; }
+  .nav-link .inbox-badge { background: var(--accent-urgent); color: white; font-size: 10px; font-weight: 700; font-family: var(--font-display); margin-left: auto; padding: 1px 6px; border-radius: 5px; }
+  .divider { height: 1px; background: var(--border); margin: 8px 0; }
+  .project-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; cursor: pointer; transition: all 0.12s; color: var(--text-secondary); font-size: 12.5px; }
+  .project-item:hover { background: var(--bg-elevated); color: var(--text-primary); }
+  .project-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .project-item .count { margin-left: auto; font-size: 10.5px; color: var(--text-muted); font-family: var(--font-display); font-weight: 600; }
+  .sidebar-footer { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+  .user-info { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; cursor: pointer; }
+  .avatar { width: 28px; height: 28px; background: linear-gradient(135deg, var(--proj-blue), var(--accent-agent)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 11px; font-weight: 700; color: white; flex-shrink: 0; }
+  .user-details .name { font-size: 12.5px; font-weight: 500; }
+  .user-details .role { font-size: 11px; color: var(--text-muted); }
+
+  /* ── MATRIX MAIN ── */
+  .matrix-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  .matrix-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .matrix-title { font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: -0.02em; }
+  .matrix-subtitle { font-size: 12px; color: var(--text-muted); margin-left: 4px; }
+  .toolbar-divider { width: 1px; height: 16px; background: var(--border); margin: 0 4px; }
+  .filter-chip { display: flex; align-items: center; gap: 5px; padding: 4px 9px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer; transition: all 0.12s; }
+  .filter-chip svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .filter-chip.active { background: var(--bg-card); border-color: var(--border-hover); color: var(--text-primary); }
+  .suggestion-chip { display: flex; align-items: center; gap: 5px; padding: 4px 9px; background: rgba(0,212,200,0.06); border: 1px solid rgba(0,212,200,0.18); border-radius: 6px; font-size: 11.5px; color: var(--accent-agent); cursor: pointer; margin-left: auto; }
+  .suggestion-chip span.count { background: rgba(0,212,200,0.15); border-radius: 10px; padding: 0 5px; font-family: var(--font-display); font-weight: 700; }
+
+  /* ── AXIS LABELS ── */
+  .matrix-wrapper {
+    flex: 1;
+    padding: 16px 20px 20px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .axis-x-labels {
+    display: flex;
+    padding-left: 44px;
+    margin-bottom: 4px;
+  }
+  .axis-x-label {
+    flex: 1;
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .axis-x-label.urgent-label { color: var(--accent-urgent); }
+  .axis-x-label.not-urgent-label { color: var(--text-muted); }
+
+  .matrix-body { display: flex; flex: 1; gap: 0; }
+
+  .axis-y-labels {
+    display: flex;
+    flex-direction: column;
+    width: 44px;
+    flex-shrink: 0;
+  }
+  .axis-y-label {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .axis-y-label span {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+  }
+  .axis-y-label.important-label span { color: var(--accent-medium); }
+  .axis-y-label.not-important-label span { color: var(--text-muted); }
+
+  .matrix-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 10px;
+    overflow: hidden;
+  }
+
+  /* ── QUADRANT ── */
+  .quadrant {
+    border-radius: 12px;
+    border: 1px solid;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+  }
+  .quadrant:hover { box-shadow: 0 0 0 1px rgba(255,255,255,0.06); }
+  .quadrant.q1 { background: var(--q1-bg); border-color: var(--q1-border); }
+  .quadrant.q2 { background: var(--q2-bg); border-color: var(--q2-border); }
+  .quadrant.q3 { background: var(--q3-bg); border-color: var(--q3-border); }
+  .quadrant.q4 { background: var(--q4-bg); border-color: var(--q4-border); }
+
+  .quadrant-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid;
+    flex-shrink: 0;
+  }
+  .q1 .quadrant-header { border-color: var(--q1-border); }
+  .q2 .quadrant-header { border-color: var(--q2-border); }
+  .q3 .quadrant-header { border-color: var(--q3-border); }
+  .q4 .quadrant-header { border-color: var(--q4-border); }
+
+  .quadrant-emoji { font-size: 16px; }
+  .quadrant-info { flex: 1; }
+  .quadrant-name { font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: 0.03em; }
+  .quadrant-subtitle { font-size: 11px; color: var(--text-muted); }
+  .q1 .quadrant-name { color: var(--q1-label); }
+  .q2 .quadrant-name { color: var(--q2-label); }
+  .q3 .quadrant-name { color: var(--q3-label); }
+  .q4 .quadrant-name { color: var(--q4-label); }
+
+  .quadrant-count {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+  .q1 .quadrant-count { background: rgba(255,71,87,0.12); color: var(--q1-label); }
+  .q2 .quadrant-count { background: rgba(74,158,255,0.12); color: var(--q2-label); }
+  .q3 .quadrant-count { background: rgba(255,140,66,0.1); color: var(--q3-label); }
+  .q4 .quadrant-count { background: rgba(100,100,120,0.12); color: var(--q4-label); }
+
+  .quadrant-body {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: none;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .quadrant-body::-webkit-scrollbar { display: none; }
+
+  /* ── MATRIX CARD ── */
+  .mcard {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .mcard:hover { background: var(--bg-card-hover); border-color: var(--border-hover); transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.25); }
+  .mcard.agent-mod { border-color: rgba(0,212,200,0.16); }
+  .mcard.dragging { opacity: 0.4; transform: scale(0.97); }
+
+  .mcard-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .mcard-icon { font-size: 12px; flex-shrink: 0; margin-top: 1px; }
+  .mcard-title { font-size: 12px; font-weight: 500; color: var(--text-primary); line-height: 1.35; flex: 1; }
+
+  .mcard-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .mmeta-tag {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1.5px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .mmeta-tag .dot { width: 4px; height: 4px; border-radius: 50%; }
+  .mmeta-tag.blue { background: rgba(59,125,216,0.08); border-color: rgba(59,125,216,0.18); color: #6baae0; }
+  .mmeta-tag.blue .dot { background: var(--proj-blue); }
+  .mmeta-tag.green { background: rgba(46,189,124,0.08); border-color: rgba(46,189,124,0.18); color: #5dd49a; }
+  .mmeta-tag.green .dot { background: var(--proj-green); }
+  .mmeta-tag.orange { background: rgba(245,130,13,0.08); border-color: rgba(245,130,13,0.18); color: #f5a54c; }
+  .mmeta-tag.orange .dot { background: var(--proj-orange); }
+  .mmeta-tag.purple { background: rgba(155,89,182,0.08); border-color: rgba(155,89,182,0.18); color: #b07cc6; }
+  .mmeta-tag.purple .dot { background: var(--proj-purple); }
+  .mmeta-tag.agent { background: rgba(0,212,200,0.06); border-color: rgba(0,212,200,0.18); color: var(--accent-agent); }
+  .mcard-deadline { font-size: 10.5px; color: var(--accent-urgent); margin-left: auto; font-weight: 500; display: flex; align-items: center; gap: 3px; }
+  .mcard-deadline svg { width: 10px; height: 10px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* Agent suggestion arrow */
+  .agent-move-hint {
+    position: absolute;
+    top: 4px; right: 6px;
+    font-size: 10px;
+    color: rgba(0,212,200,0.5);
+  }
+
+  /* ── ADD CARD BUTTON ── */
+  .add-to-quadrant {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.12s;
+    border: 1px dashed rgba(255,255,255,0.07);
+  }
+  .add-to-quadrant:hover { color: var(--text-secondary); background: var(--bg-elevated); border-color: var(--border-hover); }
+  .add-to-quadrant svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* ── CENTER CROSS ── */
+  .center-cross-h {
+    position: absolute;
+    /* decorative cross lines via box model in grid */
+  }
+
+  /* ── AGENT SUGGESTION OVERLAY ── */
+  .suggestion-overlay {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 300px;
+    background: var(--bg-card);
+    border: 1px solid rgba(0,212,200,0.25);
+    border-radius: 12px;
+    padding: 14px 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,212,200,0.08);
+    z-index: 200;
+  }
+  .so-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .so-dot { width: 8px; height: 8px; background: var(--accent-agent); border-radius: 50%; animation: agent-pulse 2s ease-in-out infinite; box-shadow: 0 0 8px rgba(0,212,200,0.5); }
+  .so-title { font-family: var(--font-display); font-size: 12px; font-weight: 700; color: var(--accent-agent); letter-spacing: 0.04em; }
+  .so-dismiss { margin-left: auto; color: var(--text-muted); cursor: pointer; font-size: 16px; line-height: 1; }
+  .so-text { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 10px; }
+  .so-text strong { color: var(--text-primary); }
+  .so-actions { display: flex; gap: 6px; }
+  .so-btn { flex: 1; text-align: center; padding: 6px; border-radius: 7px; font-size: 11.5px; font-weight: 600; cursor: pointer; font-family: var(--font-display); letter-spacing: 0.02em; transition: all 0.12s; }
+  .so-btn.accept { background: rgba(0,212,200,0.12); border: 1px solid rgba(0,212,200,0.28); color: var(--accent-agent); }
+  .so-btn.reject { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-muted); }
+  .so-btn:hover { filter: brightness(1.1); }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">Task<span>Flow</span></div>
+  <div class="breadcrumb">
+    <span class="crumb">Trabajo</span>
+    <span class="sep">/</span>
+    <span class="current">Matriz Eisenhower</span>
+  </div>
+  <div class="topbar-center">
+    <div class="view-tabs">
+      <div class="view-tab">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Kanban
+      </div>
+      <div class="view-tab active">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Eisenhower
+      </div>
+      <div class="view-tab">
+        <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>
+        Lista
+      </div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="agent-indicator">
+      <div class="agent-dot"></div>
+      <span>OpenClaw activo</span>
+    </div>
+    <div class="topbar-btn">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="badge">3</span>
+    </div>
+    <div class="add-btn">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nuevo
+    </div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section-title">Navegación</div>
+    <div class="nav-link">
+      <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      Inbox
+      <span class="inbox-badge">5</span>
+    </div>
+    <div class="nav-link">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Kanban
+      <span class="count">14</span>
+    </div>
+    <div class="nav-link active">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      Eisenhower
+      <span class="count">14</span>
+    </div>
+    <div class="nav-link" style="color: var(--accent-agent);">
+      <svg viewBox="0 0 24 24" style="stroke: var(--accent-agent)"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M5.76 4.93a10 10 0 0 0 0 14.14"/></svg>
+      Agente OpenClaw
+      <span class="count" style="background: rgba(0,212,200,0.1); color: var(--accent-agent); border: 1px solid rgba(0,212,200,0.2);">3</span>
+    </div>
+    <div class="divider"></div>
+    <div class="sidebar-section-title">Proyectos</div>
+    <div class="project-item"><div class="project-dot" style="background: var(--proj-blue)"></div>Pliegos Q1<span class="count">6</span></div>
+    <div class="project-item"><div class="project-dot" style="background: var(--proj-green)"></div>Cliente García<span class="count">4</span></div>
+    <div class="project-item"><div class="project-dot" style="background: var(--proj-orange)"></div>OpenClaw Dev<span class="count">3</span></div>
+    <div class="project-item"><div class="project-dot" style="background: var(--proj-purple)"></div>Casa - Reforma<span class="count">2</span></div>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="avatar">PT</div>
+        <div class="user-details">
+          <div class="name">P. Tavares</div>
+          <div class="role">Administrador</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MATRIX MAIN -->
+  <div class="matrix-main">
+    <div class="matrix-toolbar">
+      <div class="matrix-title">Matriz Eisenhower</div>
+      <div class="matrix-subtitle">· Revisión semanal</div>
+      <div class="toolbar-divider"></div>
+      <div class="filter-chip active">
+        <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        Todos los proyectos
+      </div>
+      <div class="filter-chip">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Vencen esta semana
+      </div>
+      <div class="suggestion-chip">
+        <span style="font-size: 11px;">✦</span>
+        Sugerencias agente
+        <span class="count">2</span>
+      </div>
+    </div>
+
+    <div class="matrix-wrapper">
+      <!-- X axis labels -->
+      <div class="axis-x-labels">
+        <div class="axis-x-label urgent-label">→ URGENTE</div>
+        <div class="axis-x-label not-urgent-label">NO URGENTE</div>
+      </div>
+
+      <div class="matrix-body">
+        <!-- Y axis labels -->
+        <div class="axis-y-labels">
+          <div class="axis-y-label important-label"><span>IMPORTANTE ↑</span></div>
+          <div class="axis-y-label not-important-label"><span>NO IMPORTANTE</span></div>
+        </div>
+
+        <!-- GRID -->
+        <div class="matrix-grid">
+
+          <!-- Q1: Urgente + Importante → HACER YA -->
+          <div class="quadrant q1">
+            <div class="quadrant-header">
+              <div class="quadrant-emoji">🔥</div>
+              <div class="quadrant-info">
+                <div class="quadrant-name">Hacer ya</div>
+                <div class="quadrant-subtitle">Urgente · Importante</div>
+              </div>
+              <div class="quadrant-count">3</div>
+            </div>
+            <div class="quadrant-body">
+              <div class="mcard agent-mod">
+                <div class="agent-move-hint">✦ AI</div>
+                <div class="mcard-top">
+                  <div class="mcard-icon">☑️</div>
+                  <div class="mcard-title">Preparar documentación pliego Ayuntamiento Madrid</div>
+                </div>
+                <div class="mcard-meta">
+                  <div class="mmeta-tag blue"><span class="dot"></span>Pliegos Q1</div>
+                  <div class="mcard-deadline">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    15 mar
+                  </div>
+                </div>
+              </div>
+              <div class="mcard">
+                <div class="mcard-top">
+                  <div class="mcard-icon">✉️</div>
+                  <div class="mcard-title">Responder email García sobre cambios en presupuesto</div>
+                </div>
+                <div class="mcard-meta">
+                  <div class="mmeta-tag green"><span class="dot"></span>García</div>
+                </div>
+              </div>
+              <div class="mcard">
+                <div class="mcard-top">
+                  <div class="mcard-icon">☑️</div>
+                  <div class="mcard-title">Enviar presupuesto actualizado a cliente antes del lunes</div>
+                </div>
+                <div class="mcard-meta">
+                  <div class="mmeta-tag green"><span class="dot"></span>García</div>
+                  <div class="mcard-deadline">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Lunes
+                  </div>
+                </div>
+              </div>
+              <div class="add-to-quadrant">
+                <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Añadir aquí
+              </div>
+            </div>
+          </div>
+
+          <!-- Q2: No urgente + Importante → PLANIFICAR -->
+          <div class="quadrant q2">
+            <div class="quadrant-header">
+              <div class="quadrant-emoji">📅</div>
+              <div class="quadrant-info">
+                <div class="quadrant-name">Planificar</div>
+                <div class="quadrant-subtitle">No urgente · Importante</div>
+              </div>
+              <div class="quadrant-count">4</div>
+            </div>
+            <div class="quadrant-body">
+              <div class="mcard">
+                <div class="mcard-top">
+                  <div class="mcard-icon">☑️</div>
+                  <div class="mcard-title">Ideas para propuesta técnica pliego Barcelona</div>
+                </div>
+                <div class="mcard-meta">
+                  <div class="mmeta-tag blue"><span class="dot"></span>Pliegos Q1</div>
+                  <div class="mcard-deadline">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    28 mar
+                  </div>
+                </div>
+              </div>
+              <div class="mcard agent-mod">
+                <div class="agent-move-hint">✦ AI</div>
+                <div class="mcard-top">
+                  <div class="mcard-icon">☑️</div>
+                  <div class="mcard-title">Revisar contrato Lisboa — pendiente 8 días</div>
+                </div>
+                <div class="mcard-meta">
+                  <div class="mmeta-tag green"><span class="dot"></span>García</div>
+                  <div class="mmeta-tag agent">Mover</div>
+                </div>
+              </div>
+              <div class="mcard">
+                <div class="mcard-top">
+                  <div class="mcard-icon">💡</div>
+                  <div class="mcard-title">AI para automatizar respuestas a pliegos — investigar</div>
+                </div>
+                <div class="mcard-meta">
+                  <div class="mmeta-tag orange"><span class="dot"></span>OpenClaw Dev</div>
+                </div>
+              </div>
+              <div class="mcard">
+                <div class="mcard-top">
+                  <div class="mcard-icon">📝</div>
+                  <div class="mcard-title">Documento de estrategia de negocio Q2 2024</div>
+                </div>
+                <div class="mcard-meta">
+                  <div class="mmeta-tag orange"><span class="dot"></span>OpenClaw Dev</div>
+                </div>
+              </div>
+              <div class="add-to-quadrant">
+                <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Añadir aquí
+              </div>
+            </div>
+          </div>
+
+          <!-- Q3: Urgente + No importante → DELEGAR -->
+          <div class="quadrant q3">
+            <div class="quadrant-header">
+              <div class="quadrant-emoji">👤</div>
+              <div class="quadrant-info">
+                <div class="quadrant-name">Delegar</div>
+                <div class="quadrant-subtitle">Urgente · No importante</div>
+              </div>
+              <div class="quadrant-count">2</div>
+            </div>
+            <div class="quadrant-body">
+              <div class="mcard">
+                <div class="mcard-top">
+                  <div class="mcard-icon">☑️</div>
+                  <div class="mcard-title">Actualizar perfil en plataforma contratación del estado</div>
+                </div>
+                <div class="mcard-meta">
+                  <div class="mmeta-tag blue"><span class="dot"></span>Pliegos Q1</div>
+                </div>
+              </div>
+              <div class="mcard">
+                <div class="mcard-top">
+                  <div class="mcard-icon">✉️</div>
+                  <div class="mcard-title">Responder consulta genérica de proveedor</div>
+                </div>
+                <div class="mcard-meta">
+                  <div class="mmeta-tag" style="color: var(--text-muted)">Admin</div>
+                </div>
+              </div>
+              <div class="add-to-quadrant">
+                <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Añadir aquí
+              </div>
+            </div>
+          </div>
+
+          <!-- Q4: No urgente + No importante → ELIMINAR / ALGÚN DÍA -->
+          <div class="quadrant q4">
+            <div class="quadrant-header">
+              <div class="quadrant-emoji">🗑️</div>
+              <div class="quadrant-info">
+                <div class="quadrant-name">Algún día / Eliminar</div>
+                <div class="quadrant-subtitle">No urgente · No importante</div>
+              </div>
+              <div class="quadrant-count">3</div>
+            </div>
+            <div class="quadrant-body" style="opacity: 0.75;">
+              <div class="mcard">
+                <div class="mcard-top">
+                  <div class="mcard-icon">🔗</div>
+                  <div class="mcard-title">Leer artículo sobre tendencias en licitaciones públicas 2024</div>
+                </div>
+                <div class="mcard-meta">
+                  <div class="mmeta-tag blue"><span class="dot"></span>Pliegos Q1</div>
+                </div>
+              </div>
+              <div class="mcard">
+                <div class="mcard-top">
+                  <div class="mcard-icon">💡</div>
+                  <div class="mcard-title">Rediseñar página web corporativa — idea futura</div>
+                </div>
+                <div class="mcard-meta">
+                  <div class="mmeta-tag" style="color: var(--text-muted)">Sin proyecto</div>
+                </div>
+              </div>
+              <div class="mcard">
+                <div class="mcard-top">
+                  <div class="mcard-icon">📝</div>
+                  <div class="mcard-title">Ordenar archivos del baño antiguo</div>
+                </div>
+                <div class="mcard-meta">
+                  <div class="mmeta-tag purple"><span class="dot"></span>Casa - Reforma</div>
+                </div>
+              </div>
+              <div class="add-to-quadrant">
+                <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Añadir aquí
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AGENT SUGGESTION OVERLAY -->
+<div class="suggestion-overlay" id="suggestionOverlay">
+  <div class="so-header">
+    <div class="so-dot"></div>
+    <div class="so-title">✦ OpenClaw — Sugerencia</div>
+    <div class="so-dismiss" onclick="document.getElementById('suggestionOverlay').style.display='none'">×</div>
+  </div>
+  <div class="so-text">
+    La tarea <strong>"Revisar contrato Lisboa"</strong> lleva <strong>8 días en Por hacer</strong>. He detectado que es importante pero no urgente. ¿La movemos al cuadrante <strong>Planificar</strong> con una fecha límite para la semana que viene?
+  </div>
+  <div class="so-actions">
+    <button class="so-btn accept" onclick="document.getElementById('suggestionOverlay').style.display='none'">Mover a Q2</button>
+    <button class="so-btn reject" onclick="document.getElementById('suggestionOverlay').style.display='none'">Ignorar</button>
+  </div>
+</div>
+
+<script>
+// View tabs
+document.querySelectorAll('.view-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+  });
+});
+
+// Nav links
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', () => {
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    link.classList.add('active');
+  });
+});
+
+// Drag & Drop simulation
+let dragCard = null;
+document.querySelectorAll('.mcard').forEach(card => {
+  card.setAttribute('draggable', 'true');
+  card.addEventListener('dragstart', () => {
+    dragCard = card;
+    setTimeout(() => card.classList.add('dragging'), 0);
+  });
+  card.addEventListener('dragend', () => {
+    card.classList.remove('dragging');
+    dragCard = null;
+    document.querySelectorAll('.quadrant').forEach(q => q.style.outline = '');
+  });
+});
+
+document.querySelectorAll('.quadrant-body').forEach(qBody => {
+  qBody.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const quadrant = qBody.closest('.quadrant');
+    quadrant.style.outline = '2px dashed rgba(0,212,200,0.3)';
+  });
+  qBody.addEventListener('dragleave', () => {
+    const quadrant = qBody.closest('.quadrant');
+    quadrant.style.outline = '';
+  });
+  qBody.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const quadrant = qBody.closest('.quadrant');
+    quadrant.style.outline = '';
+    if (dragCard) {
+      const addBtn = qBody.querySelector('.add-to-quadrant');
+      qBody.insertBefore(dragCard, addBtn);
+    }
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Dashboard Kanban</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep:       #09090e;
+    --bg-surface:    #0f0f16;
+    --bg-elevated:   #161620;
+    --bg-card:       #1c1c28;
+    --bg-card-hover: #22222e;
+    --bg-input:      #1e1e2a;
+    --border:        rgba(255,255,255,0.06);
+    --border-hover:  rgba(255,255,255,0.12);
+    --text-primary:  #eeeef5;
+    --text-secondary:#7878a0;
+    --text-muted:    #44445a;
+    --accent-agent:  #00d4c8;
+    --accent-urgent: #ff4757;
+    --accent-high:   #ff8c42;
+    --accent-medium: #4a9eff;
+    --accent-low:    #444460;
+    --proj-blue:     #3b7dd8;
+    --proj-green:    #2ebd7c;
+    --proj-orange:   #f5820d;
+    --proj-purple:   #9b59b6;
+    --sidebar-w:     240px;
+    --detail-w:      320px;
+    --topbar-h:      52px;
+    --font-display:  'Syne', sans-serif;
+    --font-body:     'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 13px;
+    line-height: 1.5;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    height: var(--topbar-h);
+    background: rgba(9,9,14,0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 100;
+  }
+  .topbar-logo {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 17px;
+    letter-spacing: -0.04em;
+    color: var(--text-primary);
+    white-space: nowrap;
+    padding-right: 12px;
+    border-right: 1px solid var(--border);
+  }
+  .topbar-logo span { color: var(--accent-agent); }
+
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .breadcrumb .crumb { font-weight: 500; }
+  .breadcrumb .sep { color: var(--text-muted); }
+  .breadcrumb .current { color: var(--text-primary); font-weight: 500; }
+
+  .topbar-search {
+    flex: 1;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+  .search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .search-box:hover { border-color: var(--border-hover); }
+  .search-box svg { width: 14px; height: 14px; stroke: var(--text-muted); fill: none; stroke-width: 2; flex-shrink: 0; }
+  .search-box span { font-size: 13px; color: var(--text-muted); flex: 1; }
+  .search-kbd {
+    display: flex;
+    gap: 2px;
+  }
+  .kbd {
+    background: var(--bg-card);
+    border: 1px solid var(--border-hover);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    font-weight: 600;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+  .topbar-info {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    padding: 0 12px;
+    border-left: 1px solid var(--border);
+  }
+  .topbar-info span { color: var(--text-secondary); }
+  .topbar-info .alert { color: var(--accent-urgent); }
+
+  .agent-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,212,200,0.07);
+    border: 1px solid rgba(0,212,200,0.18);
+    border-radius: 7px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  .agent-dot { width: 6px; height: 6px; background: var(--accent-agent); border-radius: 50%; animation: agent-pulse 2s ease-in-out infinite; box-shadow: 0 0 6px rgba(0,212,200,0.5); }
+  @keyframes agent-pulse { 0%,100%{opacity:1;box-shadow:0 0 6px rgba(0,212,200,0.5)} 50%{opacity:0.6;box-shadow:0 0 12px rgba(0,212,200,0.8)} }
+  .agent-indicator span { font-size: 11.5px; color: var(--accent-agent); font-weight: 500; }
+
+  .topbar-btn {
+    width: 30px; height: 30px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .topbar-btn:hover { background: var(--bg-card); border-color: var(--border-hover); }
+  .topbar-btn svg { width: 14px; height: 14px; stroke: var(--text-secondary); fill: none; stroke-width: 2; }
+  .topbar-btn .badge { position: absolute; top: -4px; right: -4px; background: var(--accent-urgent); color: white; font-size: 8px; font-weight: 700; padding: 1px 4px; border-radius: 5px; font-family: var(--font-display); min-width: 14px; text-align: center; }
+
+  .add-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-agent);
+    border-radius: 7px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #09090e;
+    cursor: pointer;
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+    box-shadow: 0 0 16px rgba(0,212,200,0.2);
+    transition: box-shadow 0.15s;
+  }
+  .add-btn svg { width: 13px; height: 13px; stroke: #09090e; fill: none; stroke-width: 2.5; }
+  .add-btn:hover { box-shadow: 0 0 24px rgba(0,212,200,0.35); }
+
+  /* ── LAYOUT ── */
+  .layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .sidebar::-webkit-scrollbar { display: none; }
+
+  .sidebar-section { padding: 16px 12px 8px; }
+  .sidebar-section-title {
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0 8px;
+    margin-bottom: 4px;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 8px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.12s;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 400;
+    position: relative;
+  }
+  .nav-link:hover { background: var(--bg-elevated); color: var(--text-primary); }
+  .nav-link.active { background: var(--bg-card); color: var(--text-primary); }
+  .nav-link svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; flex-shrink: 0; }
+  .nav-link .count {
+    margin-left: auto;
+    font-size: 11px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    border-radius: 5px;
+    padding: 1px 6px;
+  }
+  .nav-link.active .count { background: rgba(255,255,255,0.08); color: var(--text-secondary); }
+  .nav-link .inbox-badge { background: var(--accent-urgent); color: white; font-size: 10px; font-weight: 700; font-family: var(--font-display); margin-left: auto; padding: 1px 6px; border-radius: 5px; }
+
+  .divider { height: 1px; background: var(--border); margin: 8px 12px; }
+
+  .project-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.12s;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+  }
+  .project-item:hover { background: var(--bg-elevated); color: var(--text-primary); }
+  .project-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .project-item .count { margin-left: auto; font-size: 10.5px; color: var(--text-muted); font-family: var(--font-display); font-weight: 600; }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .user-info:hover { background: var(--bg-elevated); }
+  .avatar {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--proj-blue), var(--accent-agent));
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+  }
+  .user-details .name { font-size: 12.5px; font-weight: 500; color: var(--text-primary); }
+  .user-details .role { font-size: 11px; color: var(--text-muted); }
+
+  /* ── MAIN CONTENT ── */
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-deep);
+  }
+
+  /* ── KANBAN TOOLBAR ── */
+  .kanban-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .view-tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px;
+  }
+  .view-tab {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.12s;
+    font-family: var(--font-body);
+  }
+  .view-tab svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .view-tab.active { background: var(--bg-card); color: var(--text-primary); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
+  }
+  .filter-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.12s;
+    font-family: var(--font-body);
+  }
+  .filter-chip:hover { border-color: var(--border-hover); color: var(--text-primary); }
+  .filter-chip svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .filter-chip .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .filter-chip.active { background: var(--bg-card); border-color: var(--border-hover); color: var(--text-primary); }
+
+  .toolbar-right { margin-left: auto; display: flex; gap: 6px; }
+
+  /* ── KANBAN BOARD ── */
+  .kanban-board {
+    flex: 1;
+    display: flex;
+    gap: 0;
+    padding: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg-card) transparent;
+  }
+
+  .kanban-col {
+    min-width: 268px;
+    width: 268px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+
+  .col-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px;
+  }
+  .col-indicator {
+    width: 10px; height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .col-title {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    flex: 1;
+  }
+  .col-count {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+  .col-menu { opacity: 0; color: var(--text-muted); cursor: pointer; font-size: 16px; line-height: 1; transition: opacity 0.15s; }
+  .kanban-col:hover .col-menu { opacity: 1; }
+
+  .cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: none;
+    padding: 2px;
+  }
+  .cards-container::-webkit-scrollbar { display: none; }
+
+  /* ── KANBAN CARD ── */
+  .kcard {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .kcard::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+  .kcard.p-urgent::before { background: var(--accent-urgent); }
+  .kcard.p-high::before { background: var(--accent-high); }
+  .kcard.p-medium::before { background: var(--accent-medium); }
+  .kcard.agent-mod { border-color: rgba(0,212,200,0.14); }
+  .kcard:hover { background: var(--bg-card-hover); border-color: var(--border-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+  .kcard.selected { border-color: rgba(0,212,200,0.4); box-shadow: 0 0 0 1px rgba(0,212,200,0.15), 0 4px 16px rgba(0,0,0,0.4); background: var(--bg-card-hover); }
+
+  .kcard-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .kcard-type { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+  .kcard-title { font-size: 12.5px; font-weight: 500; color: var(--text-primary); line-height: 1.35; flex: 1; }
+  .kcard-menu { opacity: 0; color: var(--text-muted); font-size: 16px; transition: opacity 0.15s; cursor: pointer; flex-shrink: 0; }
+  .kcard:hover .kcard-menu { opacity: 1; }
+
+  .kcard-meta {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .kmeta-tag {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-weight: 500;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+  }
+  .kmeta-tag .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .kmeta-tag.blue { background: rgba(59,125,216,0.08); border-color: rgba(59,125,216,0.2); color: #6baae0; }
+  .kmeta-tag.blue .dot { background: var(--proj-blue); }
+  .kmeta-tag.green { background: rgba(46,189,124,0.08); border-color: rgba(46,189,124,0.2); color: #5dd49a; }
+  .kmeta-tag.green .dot { background: var(--proj-green); }
+  .kmeta-tag.orange { background: rgba(245,130,13,0.08); border-color: rgba(245,130,13,0.2); color: #f5a54c; }
+  .kmeta-tag.orange .dot { background: var(--proj-orange); }
+  .kmeta-tag.urgent { background: rgba(255,71,87,0.08); border-color: rgba(255,71,87,0.2); color: #ff7080; }
+  .kmeta-tag.agent { background: rgba(0,212,200,0.06); border-color: rgba(0,212,200,0.2); color: var(--accent-agent); }
+  .kmeta-tag.agent::before { content: '✦ '; font-size: 9px; }
+
+  .kcard-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .kcard-deadline {
+    font-size: 11px;
+    color: var(--accent-urgent);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-weight: 500;
+  }
+  .kcard-deadline svg { width: 10px; height: 10px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .kcard-icons {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    color: var(--text-muted);
+  }
+  .kcard-icons svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .kcard-icons span { font-size: 10px; }
+
+  .add-card-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 8px;
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.12s;
+    border: 1px dashed var(--border);
+    margin-top: 2px;
+  }
+  .add-card-btn:hover { background: var(--bg-elevated); color: var(--text-secondary); border-color: var(--border-hover); }
+  .add-card-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* ── DETAIL PANEL ── */
+  .detail-panel {
+    width: var(--detail-w);
+    background: var(--bg-surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .detail-header {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .detail-header-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .detail-close {
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 5px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.12s;
+    margin-left: auto;
+  }
+  .detail-close:hover { background: var(--bg-elevated); color: var(--text-primary); }
+  .detail-close svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  .detail-type-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .detail-status {
+    padding: 3px 8px;
+    background: rgba(255,71,87,0.1);
+    border: 1px solid rgba(255,71,87,0.25);
+    border-radius: 5px;
+    font-size: 11px;
+    color: var(--accent-urgent);
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .detail-title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+  }
+
+  .detail-priority-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 10px;
+  }
+  .priority-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-display);
+    letter-spacing: 0.03em;
+    border: 1px solid;
+    transition: all 0.12s;
+  }
+  .priority-btn.urgent { background: rgba(255,71,87,0.1); border-color: rgba(255,71,87,0.3); color: var(--accent-urgent); }
+  .priority-btn.important { background: rgba(74,158,255,0.1); border-color: rgba(74,158,255,0.25); color: var(--accent-medium); }
+
+  .detail-scroll {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg-card) transparent;
+    padding: 14px 16px;
+  }
+
+  .detail-section-title {
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .detail-section-title:first-child { margin-top: 0; }
+  .detail-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .detail-content {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    padding: 10px 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 4px;
+  }
+
+  .detail-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-field:last-child { border-bottom: none; }
+  .field-label { font-size: 12px; color: var(--text-muted); }
+  .field-value {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .field-value .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  .attachments-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .attachment-item {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    transition: border-color 0.12s;
+  }
+  .attachment-item:hover { border-color: var(--border-hover); }
+  .attachment-icon { font-size: 16px; }
+  .attachment-info .name { font-size: 11.5px; color: var(--text-primary); font-weight: 500; }
+  .attachment-info .size { font-size: 10.5px; color: var(--text-muted); }
+
+  .relations-list { display: flex; flex-direction: column; gap: 5px; }
+  .relation-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: border-color 0.12s;
+  }
+  .relation-item:hover { border-color: var(--border-hover); }
+  .relation-icon { font-size: 13px; }
+  .relation-info { flex: 1; }
+  .relation-info .title { font-size: 12px; color: var(--text-primary); font-weight: 500; }
+  .relation-info .type { font-size: 10.5px; color: var(--text-muted); }
+  .relation-arrow { color: var(--text-muted); font-size: 12px; }
+
+  .agent-notes {
+    background: linear-gradient(135deg, rgba(0,212,200,0.06) 0%, rgba(0,212,200,0.02) 100%);
+    border: 1px solid rgba(0,212,200,0.18);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .agent-notes-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: var(--accent-agent);
+    font-weight: 600;
+    font-family: var(--font-display);
+    letter-spacing: 0.04em;
+  }
+  .agent-notes-text { font-size: 12px; color: rgba(0,212,200,0.7); line-height: 1.5; }
+
+  /* ── FILTER ACTIVE INDICATOR ── */
+  .active-filter {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    background: rgba(59,125,216,0.08);
+    border: 1px solid rgba(59,125,216,0.2);
+    border-radius: 5px;
+    font-size: 11px;
+    color: #6baae0;
+    font-family: var(--font-body);
+  }
+  .active-filter svg { width: 10px; height: 10px; stroke: currentColor; fill: none; stroke-width: 2; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">Task<span>Flow</span></div>
+  <div class="breadcrumb">
+    <span class="crumb">Trabajo</span>
+    <span class="sep">/</span>
+    <span class="current">Kanban</span>
+  </div>
+  <div class="topbar-search">
+    <div class="search-box">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span>Buscar en todo TaskFlow...</span>
+      <div class="search-kbd"><span class="kbd">⌘</span><span class="kbd">K</span></div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-info">
+      <span class="alert">3 tareas vencen hoy</span> · <span>5 en inbox</span> · hace 2h
+    </div>
+    <div class="agent-indicator">
+      <div class="agent-dot"></div>
+      <span>OpenClaw</span>
+    </div>
+    <div class="topbar-btn">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="badge">3</span>
+    </div>
+    <div class="topbar-btn">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
+    </div>
+    <div class="add-btn">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nuevo
+    </div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Navegación</div>
+      <div class="nav-link">
+        <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Inbox
+        <span class="inbox-badge">5</span>
+      </div>
+      <div class="nav-link active">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Kanban
+        <span class="count">14</span>
+      </div>
+      <div class="nav-link">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Matriz Eisenhower
+        <span class="count">14</span>
+      </div>
+      <div class="nav-link">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Búsqueda
+      </div>
+      <div class="nav-link" style="color: var(--accent-agent); opacity: 0.9;">
+        <svg viewBox="0 0 24 24" style="stroke: var(--accent-agent)"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M5.76 4.93a10 10 0 0 0 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+        Agente OpenClaw
+        <span class="count" style="background: rgba(0,212,200,0.1); color: var(--accent-agent); border: 1px solid rgba(0,212,200,0.2);">3</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Proyectos</div>
+      <div class="project-item">
+        <div class="project-dot" style="background: var(--proj-blue)"></div>
+        Pliegos Públicos Q1
+        <span class="count">6</span>
+      </div>
+      <div class="project-item">
+        <div class="project-dot" style="background: var(--proj-green)"></div>
+        Cliente García
+        <span class="count">4</span>
+      </div>
+      <div class="project-item">
+        <div class="project-dot" style="background: var(--proj-orange)"></div>
+        OpenClaw Dev
+        <span class="count">3</span>
+      </div>
+      <div class="project-item">
+        <div class="project-dot" style="background: var(--proj-purple)"></div>
+        Casa - Reforma baño
+        <span class="count">2</span>
+      </div>
+      <div class="nav-link" style="padding-top: 8px; font-size: 12px; color: var(--text-muted);">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nuevo proyecto
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Etiquetas</div>
+      <div class="project-item"><div class="project-dot" style="background: #888"></div> urgente<span class="count">3</span></div>
+      <div class="project-item"><div class="project-dot" style="background: #4a9eff"></div> licitación<span class="count">4</span></div>
+      <div class="project-item"><div class="project-dot" style="background: #2ebd7c"></div> contrato<span class="count">2</span></div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="avatar">PT</div>
+        <div class="user-details">
+          <div class="name">P. Tavares</div>
+          <div class="role">Administrador</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+
+    <!-- KANBAN TOOLBAR -->
+    <div class="kanban-toolbar">
+      <div class="view-tabs">
+        <div class="view-tab active">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Kanban
+        </div>
+        <div class="view-tab">
+          <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          Lista
+        </div>
+        <div class="view-tab">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Calendario
+        </div>
+      </div>
+      <div class="filter-group">
+        <div class="filter-chip active">
+          <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          Filtros
+        </div>
+        <div class="active-filter">
+          <span class="dot" style="width:7px;height:7px;border-radius:50%;background:var(--proj-blue);display:inline-block;"></span>
+          Pliegos Q1
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
+        <div class="filter-chip">
+          <svg viewBox="0 0 24 24"><line x1="21" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="3" y2="18"/></svg>
+          Agrupar
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <div class="filter-chip">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M5.76 4.93a10 10 0 0 0 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+          Sugerencias agente
+        </div>
+      </div>
+    </div>
+
+    <!-- KANBAN BOARD -->
+    <div class="kanban-board">
+
+      <!-- COL: TODO -->
+      <div class="kanban-col">
+        <div class="col-header">
+          <div class="col-indicator" style="background: var(--text-muted)"></div>
+          <div class="col-title">Por hacer</div>
+          <div class="col-count">4</div>
+          <div class="col-menu">···</div>
+        </div>
+        <div class="cards-container">
+          <div class="kcard p-medium">
+            <div class="kcard-top">
+              <div class="kcard-type">📝</div>
+              <div class="kcard-title">Ideas para propuesta técnica pliego Barcelona</div>
+              <div class="kcard-menu">···</div>
+            </div>
+            <div class="kcard-meta">
+              <div class="kmeta-tag blue"><span class="dot"></span>Pliegos Q1</div>
+              <div class="kmeta-tag" style="color: var(--accent-medium); border-color: rgba(74,158,255,0.2); background: rgba(74,158,255,0.06)">Medio</div>
+            </div>
+          </div>
+
+          <div class="kcard p-medium agent-mod">
+            <div class="kcard-top">
+              <div class="kcard-type">☑️</div>
+              <div class="kcard-title">Revisar contrato Lisboa — pendiente 8 días</div>
+              <div class="kcard-menu">···</div>
+            </div>
+            <div class="kcard-meta">
+              <div class="kmeta-tag green"><span class="dot"></span>Cliente García</div>
+              <div class="kmeta-tag agent">Sugerencia</div>
+            </div>
+            <div style="font-size: 11px; color: rgba(0,212,200,0.6); margin-top: 8px; padding: 6px 8px; background: rgba(0,212,200,0.04); border-radius: 5px; border: 1px solid rgba(0,212,200,0.12)">
+              ✦ OpenClaw: lleva 8 días aquí, ¿lo movemos a En Progreso?
+            </div>
+          </div>
+
+          <div class="kcard">
+            <div class="kcard-top">
+              <div class="kcard-type">🔗</div>
+              <div class="kcard-title">Revisar pliego Barcelona en plataforma contratación</div>
+              <div class="kcard-menu">···</div>
+            </div>
+            <div class="kcard-meta">
+              <div class="kmeta-tag blue"><span class="dot"></span>Pliegos Q1</div>
+            </div>
+          </div>
+
+          <div class="kcard">
+            <div class="kcard-top">
+              <div class="kcard-type">💡</div>
+              <div class="kcard-title">AI para automatizar borradores de respuesta a pliegos</div>
+              <div class="kcard-menu">···</div>
+            </div>
+            <div class="kcard-meta">
+              <div class="kmeta-tag orange"><span class="dot"></span>OpenClaw Dev</div>
+            </div>
+          </div>
+        </div>
+        <div class="add-card-btn">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Añadir tarea
+        </div>
+      </div>
+
+      <!-- COL: IN PROGRESS -->
+      <div class="kanban-col">
+        <div class="col-header">
+          <div class="col-indicator" style="background: var(--accent-medium)"></div>
+          <div class="col-title">En progreso</div>
+          <div class="col-count">3</div>
+          <div class="col-menu">···</div>
+        </div>
+        <div class="cards-container">
+          <div class="kcard p-urgent selected">
+            <div class="kcard-top">
+              <div class="kcard-type">☑️</div>
+              <div class="kcard-title">Preparar documentación pliego Ayuntamiento Madrid</div>
+              <div class="kcard-menu">···</div>
+            </div>
+            <div class="kcard-meta">
+              <div class="kmeta-tag blue"><span class="dot"></span>Pliegos Q1</div>
+              <div class="kmeta-tag urgent">Urgente</div>
+              <div class="kmeta-tag agent">OpenClaw</div>
+            </div>
+            <div class="kcard-footer">
+              <div class="kcard-deadline">
+                <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                15 marzo
+              </div>
+              <div class="kcard-icons">
+                <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                <span>2</span>
+                <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                <span>1</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="kcard p-high">
+            <div class="kcard-top">
+              <div class="kcard-type">✉️</div>
+              <div class="kcard-title">Responder email García sobre cambios presupuesto</div>
+              <div class="kcard-menu">···</div>
+            </div>
+            <div class="kcard-meta">
+              <div class="kmeta-tag green"><span class="dot"></span>Cliente García</div>
+              <div class="kmeta-tag" style="color: var(--accent-high); border-color: rgba(255,140,66,0.2); background: rgba(255,140,66,0.06)">Alto</div>
+            </div>
+          </div>
+
+          <div class="kcard">
+            <div class="kcard-top">
+              <div class="kcard-type">📎</div>
+              <div class="kcard-title">Revisar Presupuesto_Garcia_v3.xlsx cambios</div>
+              <div class="kcard-menu">···</div>
+            </div>
+            <div class="kcard-meta">
+              <div class="kmeta-tag green"><span class="dot"></span>Cliente García</div>
+            </div>
+          </div>
+        </div>
+        <div class="add-card-btn">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Añadir tarea
+        </div>
+      </div>
+
+      <!-- COL: WAITING -->
+      <div class="kanban-col">
+        <div class="col-header">
+          <div class="col-indicator" style="background: var(--accent-high)"></div>
+          <div class="col-title">Esperando</div>
+          <div class="col-count">2</div>
+          <div class="col-menu">···</div>
+        </div>
+        <div class="cards-container">
+          <div class="kcard p-medium">
+            <div class="kcard-top">
+              <div class="kcard-type">☑️</div>
+              <div class="kcard-title">Confirmación de García sobre versión final del presupuesto</div>
+              <div class="kcard-menu">···</div>
+            </div>
+            <div class="kcard-meta">
+              <div class="kmeta-tag green"><span class="dot"></span>Cliente García</div>
+            </div>
+          </div>
+          <div class="kcard">
+            <div class="kcard-top">
+              <div class="kcard-type">☑️</div>
+              <div class="kcard-title">Respuesta del Ayuntamiento sobre aclaraciones pliego</div>
+              <div class="kcard-menu">···</div>
+            </div>
+            <div class="kcard-meta">
+              <div class="kmeta-tag blue"><span class="dot"></span>Pliegos Q1</div>
+            </div>
+          </div>
+        </div>
+        <div class="add-card-btn">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Añadir tarea
+        </div>
+      </div>
+
+      <!-- COL: DONE -->
+      <div class="kanban-col">
+        <div class="col-header">
+          <div class="col-indicator" style="background: var(--proj-green)"></div>
+          <div class="col-title">Hecho</div>
+          <div class="col-count">5</div>
+          <div class="col-menu">···</div>
+        </div>
+        <div class="cards-container" style="opacity: 0.6;">
+          <div class="kcard" style="text-decoration: none;">
+            <div class="kcard-top">
+              <div class="kcard-type">☑️</div>
+              <div class="kcard-title" style="text-decoration: line-through; color: var(--text-muted);">Enviar oferta pliego Sevilla 2024</div>
+              <div class="kcard-menu">···</div>
+            </div>
+            <div class="kcard-meta">
+              <div class="kmeta-tag blue"><span class="dot"></span>Pliegos Q1</div>
+            </div>
+          </div>
+          <div class="kcard">
+            <div class="kcard-top">
+              <div class="kcard-type">📝</div>
+              <div class="kcard-title" style="text-decoration: line-through; color: var(--text-muted);">Reunión inicial con García</div>
+              <div class="kcard-menu">···</div>
+            </div>
+            <div class="kcard-meta">
+              <div class="kmeta-tag green"><span class="dot"></span>Cliente García</div>
+            </div>
+          </div>
+        </div>
+        <div class="add-card-btn">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Añadir tarea
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- DETAIL PANEL -->
+  <div class="detail-panel">
+    <div class="detail-header">
+      <div class="detail-header-top">
+        <div class="detail-type-badge">☑️ Tarea</div>
+        <div class="detail-status">Urgente</div>
+        <div class="detail-close">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
+      </div>
+      <div class="detail-title">Preparar documentación pliego Ayuntamiento Madrid</div>
+      <div class="detail-priority-row">
+        <div class="priority-btn urgent">🔴 Urgente</div>
+        <div class="priority-btn important">⚡ Importante</div>
+      </div>
+    </div>
+
+    <div class="detail-scroll">
+      <div class="detail-section-title">Descripción</div>
+      <div class="detail-content">
+        Documentación técnica y económica para la licitación del Ayuntamiento de Madrid. Incluir: memoria descriptiva del proyecto, presupuesto desglosado por partidas, CVs del equipo técnico (mín. 3 personas), certificados de solvencia técnica y económica.
+      </div>
+
+      <div class="detail-section-title">Detalles</div>
+      <div class="detail-field">
+        <div class="field-label">Proyecto</div>
+        <div class="field-value"><span class="dot" style="background: var(--proj-blue)"></span>Pliegos Públicos Q1</div>
+      </div>
+      <div class="detail-field">
+        <div class="field-label">Contexto</div>
+        <div class="field-value">💼 Trabajo</div>
+      </div>
+      <div class="detail-field">
+        <div class="field-label">Fecha límite</div>
+        <div class="field-value" style="color: var(--accent-urgent)">⚠ 15 marzo 2024</div>
+      </div>
+      <div class="detail-field">
+        <div class="field-label">Recordatorio</div>
+        <div class="field-value">13 marzo · 9:00</div>
+      </div>
+      <div class="detail-field">
+        <div class="field-label">Etiquetas</div>
+        <div class="field-value">licitación, madrid, urgente</div>
+      </div>
+      <div class="detail-field">
+        <div class="field-label">Modificado por</div>
+        <div class="field-value" style="color: var(--accent-agent)">✦ OpenClaw</div>
+      </div>
+
+      <div class="detail-section-title">Adjuntos</div>
+      <div class="attachments-grid">
+        <div class="attachment-item">
+          <div class="attachment-icon">📄</div>
+          <div class="attachment-info">
+            <div class="name">Memoria_v2.pdf</div>
+            <div class="size">1.2 MB</div>
+          </div>
+        </div>
+        <div class="attachment-item">
+          <div class="attachment-icon">📊</div>
+          <div class="attachment-info">
+            <div class="name">Presupuesto.xlsx</div>
+            <div class="size">248 KB</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section-title">Relaciones</div>
+      <div class="relations-list">
+        <div class="relation-item">
+          <div class="relation-icon">🔗</div>
+          <div class="relation-info">
+            <div class="title">Pliego BCN 2024 — contratacion.es</div>
+            <div class="type">referencia</div>
+          </div>
+          <div class="relation-arrow">›</div>
+        </div>
+        <div class="relation-item">
+          <div class="relation-icon">✉️</div>
+          <div class="relation-info">
+            <div class="title">Email aclaraciones Ayuntamiento Madrid</div>
+            <div class="type">relacionado con</div>
+          </div>
+          <div class="relation-arrow">›</div>
+        </div>
+      </div>
+
+      <div class="detail-section-title">Notas del agente</div>
+      <div class="agent-notes">
+        <div class="agent-notes-header">✦ OpenClaw</div>
+        <div class="agent-notes-text">He movido este item a urgente porque el plazo de presentación del pliego es en 3 días (15 marzo). También he relacionado los adjuntos existentes y el email de aclaraciones del Ayuntamiento.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// View tab switching
+document.querySelectorAll('.view-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+  });
+});
+
+// Card selection
+document.querySelectorAll('.kcard').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.kcard').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+  });
+});
+
+// Nav link active state
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', () => {
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    link.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

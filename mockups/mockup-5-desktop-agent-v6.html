@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow v6 — Agente OpenClaw</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root {
+  --bg: #13141f; --surface: #1a1b2e; --elevated: #1f2035; --card: #242540; --sidebar-ai: #111220;
+  --border: rgba(255,255,255,0.07); --border-hover: rgba(255,255,255,0.13);
+  --text: #f0f1ff; --text-sub: rgba(240,241,255,0.6); --text-muted: rgba(240,241,255,0.35);
+  --accent: #2fd4aa; --accent-dim: rgba(47,212,170,0.1);
+  --accent-blue: #60a5fa; --accent-purple: #a78bfa; --accent-orange: #fb923c;
+  --accent-pink: #f472b6; --accent-green: #4ade80;
+  --urgent: #f87171; --high: #fb923c; --medium: #60a5fa;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4); --shadow-md: 0 4px 20px rgba(0,0,0,0.5); --shadow-lg: 0 12px 40px rgba(0,0,0,0.6);
+}
+html,body{height:100vh;overflow:hidden;font-family:'Outfit',sans-serif;color:var(--text);}
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 60% 50% at 30% 0%, rgba(167,139,250,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 60% at 80% 100%, rgba(47,212,170,0.05) 0%, transparent 55%),
+    radial-gradient(circle, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: auto, auto, 24px 24px;
+}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px;}
+
+.shell{display:flex;height:100vh;overflow:hidden;}
+
+/* ── AI SIDEBAR ── */
+.ai-sidebar{
+  width:220px;flex-shrink:0;
+  background:var(--sidebar-ai);
+  background-image:radial-gradient(ellipse 80% 60% at 50% 20%, rgba(167,139,250,0.07) 0%, transparent 60%);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+}
+.sidebar-header{padding:18px 14px 14px;border-bottom:1px solid var(--border);}
+.logo{display:flex;align-items:center;gap:8px;}
+.logo-text{font-size:16px;font-weight:700;}
+.logo-text em{font-style:normal;color:var(--accent);}
+.ai-badge{font-size:10px;font-weight:600;background:rgba(167,139,250,0.18);color:var(--accent-purple);border:1px solid rgba(167,139,250,0.25);border-radius:5px;padding:2px 7px;}
+
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0;}
+.nav-section{padding:6px 14px 4px;}
+.nav-section-label{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 14px;cursor:pointer;color:var(--text-muted);font-size:13px;font-weight:500;transition:all 0.15s;border-radius:0;position:relative;}
+.nav-item:hover{background:rgba(255,255,255,0.04);color:var(--text-sub);}
+.nav-item.active{background:rgba(47,212,170,0.08);color:var(--accent);}
+.nav-badge{font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;margin-left:auto;}
+.nav-badge.orange{background:rgba(251,146,60,0.15);color:var(--accent-orange);}
+.nav-badge.teal{background:rgba(47,212,170,0.15);color:var(--accent);}
+
+.proj-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+
+.sidebar-user{padding:12px 14px;border-top:1px solid var(--border);}
+.user-row{display:flex;align-items:center;gap:9px;}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:rgba(47,212,170,0.15);border:1px solid rgba(47,212,170,0.25);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
+.user-name{font-size:12px;font-weight:600;color:var(--text);}
+.user-email{font-size:10px;color:var(--text-muted);font-family:'DM Mono';}
+
+/* ── FEED PANEL ── */
+.feed-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--surface);}
+
+.feed-topbar{
+  height:52px;background:var(--elevated);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 18px;gap:12px;flex-shrink:0;
+}
+.feed-title-row{display:flex;align-items:center;gap:8px;flex:0 0 auto;}
+.feed-title{font-size:16px;font-weight:700;}
+.pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--accent-green);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(74,222,128,0.4);}50%{opacity:0.8;box-shadow:0 0 0 5px rgba(74,222,128,0);}}
+
+.feed-tabs{display:flex;align-items:center;gap:4px;flex:1;}
+.ftab{font-size:12.5px;font-weight:500;padding:5px 12px;border-radius:20px;cursor:pointer;color:var(--text-muted);transition:all 0.15s;border:1px solid transparent;}
+.ftab:hover{color:var(--text-sub);}
+.ftab.active{background:var(--accent);color:#13141f;font-weight:600;}
+.feed-icons{display:flex;gap:6px;margin-left:auto;}
+.icon-btn{width:32px;height:32px;border-radius:8px;background:transparent;border:1px solid var(--border);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.icon-btn:hover{background:rgba(255,255,255,0.05);color:var(--text-sub);}
+
+.feed-scroll{flex:1;overflow-y:auto;padding:16px 18px;}
+
+/* digest banner */
+.digest-banner{
+  background:var(--elevated);border:1px solid var(--border);border-left:3px solid var(--accent);
+  border-radius:14px;padding:16px;margin-bottom:16px;
+  animation:fade-up 0.3s ease;
+}
+.digest-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;}
+.digest-avatar{width:40px;height:40px;border-radius:12px;background:rgba(47,212,170,0.12);border:1px solid rgba(47,212,170,0.22);color:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.digest-title{font-size:14px;font-weight:600;color:var(--text);}
+.digest-meta{font-size:11px;color:var(--text-muted);font-family:'DM Mono';margin-top:2px;}
+.digest-text{font-size:13px;line-height:1.55;color:var(--text-sub);margin-bottom:12px;}
+.digest-stats{display:flex;gap:8px;flex-wrap:wrap;}
+.stat-chip{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11.5px;color:var(--text-sub);}
+.stat-chip strong{color:var(--text);font-weight:600;}
+
+.section-sep{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);padding:4px 0 10px;display:flex;align-items:center;gap:8px;}
+.section-sep::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* feed cards */
+.feed-card{
+  background:var(--elevated);border:1px solid var(--border);border-radius:12px;
+  padding:14px;margin-bottom:8px;
+  transition:border-color 0.15s;
+  animation:fade-up 0.35s ease both;
+}
+.feed-card:hover{border-color:var(--border-hover);}
+.feed-card.dismissed{opacity:0.4;pointer-events:none;}
+.fc-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;}
+.fc-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.fc-icon-red{background:rgba(248,113,113,0.12);}
+.fc-icon-teal{background:rgba(47,212,170,0.12);}
+.fc-icon-orange{background:rgba(251,146,60,0.12);}
+.fc-title{font-size:13.5px;font-weight:600;color:var(--text);line-height:1.3;}
+.fc-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;}
+.fc-tag{font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500;}
+.fc-tag-red{background:rgba(248,113,113,0.1);color:var(--urgent);}
+.fc-tag-blue{background:rgba(96,165,250,0.1);color:var(--accent-blue);}
+.fc-tag-purple{background:rgba(167,139,250,0.1);color:var(--accent-purple);}
+.fc-tag-orange{background:rgba(251,146,60,0.1);color:var(--accent-orange);}
+
+.fc-reasoning{
+  background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.12);
+  border-left:3px solid var(--accent-purple);border-radius:8px;padding:9px 12px;
+  font-size:12px;line-height:1.5;color:var(--text-sub);margin-bottom:10px;
+}
+.fc-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.btn-sm-teal{background:var(--accent);color:#13141f;border:none;border-radius:8px;font-family:'Outfit';font-size:12px;font-weight:600;padding:6px 14px;cursor:pointer;box-shadow:0 0 14px rgba(47,212,170,0.2);transition:all 0.15s;}
+.btn-sm-teal:hover{opacity:0.9;}
+.btn-sm-ghost{background:transparent;border:1px solid var(--border);color:var(--text-sub);border-radius:8px;font-family:'Outfit';font-size:12px;font-weight:500;padding:6px 12px;cursor:pointer;transition:all 0.15s;}
+.btn-sm-ghost:hover{border-color:var(--border-hover);color:var(--text);}
+.btn-sm-link{background:none;border:none;color:var(--accent);font-family:'Outfit';font-size:12px;font-weight:500;cursor:pointer;padding:6px 0;transition:opacity 0.15s;}
+.btn-sm-link:hover{opacity:0.8;}
+
+/* recent activity */
+.activity-card{
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;
+}
+.act-icon{font-size:16px;width:28px;text-align:center;flex-shrink:0;}
+.act-body{flex:1;}
+.act-title{font-size:12.5px;color:var(--text-sub);}
+.act-time{font-family:'DM Mono';font-size:10px;color:var(--text-muted);margin-top:2px;}
+
+/* ── CONFIG PANEL ── */
+.config-panel{
+  width:272px;flex-shrink:0;
+  background:var(--elevated);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.config-header{padding:16px 16px 12px;border-bottom:1px solid var(--border);}
+.config-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;}
+.config-subtitle{font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:5px;}
+.active-dot{width:6px;height:6px;border-radius:50%;background:var(--accent-green);}
+
+.config-body{flex:1;overflow-y:auto;padding:14px;}
+
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px;}
+.stat-block{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
+.stat-val{font-size:20px;font-weight:800;line-height:1;}
+.stat-label{font-size:10px;color:var(--text-muted);margin-top:3px;}
+.stat-teal{color:var(--accent);}
+.stat-green{color:var(--accent-green);}
+.stat-blue{color:var(--accent-blue);}
+.stat-orange{color:var(--accent-orange);}
+
+.config-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;}
+.config-card-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;}
+
+/* slider */
+.slider-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:8px;}
+.slider-track{position:relative;height:6px;background:var(--bg);border-radius:3px;cursor:pointer;}
+.slider-fill{position:absolute;left:0;top:0;height:100%;width:65%;background:linear-gradient(90deg,rgba(47,212,170,0.3),var(--accent));border-radius:3px;}
+.slider-thumb{position:absolute;top:50%;left:65%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--accent);box-shadow:0 0 8px rgba(47,212,170,0.3);cursor:grab;}
+.slider-val{font-size:11px;color:var(--text-sub);margin-top:8px;text-align:center;}
+
+/* toggles */
+.toggle-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:5px;}
+.toggle-label{flex:1;font-size:12.5px;color:var(--text-sub);}
+.toggle{width:36px;height:20px;border-radius:10px;position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0;}
+.toggle.on{background:var(--accent);}
+.toggle.off{background:var(--border-hover);}
+.toggle-thumb{position:absolute;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.3);}
+.toggle.on .toggle-thumb{left:18px;}
+.toggle.off .toggle-thumb{left:2px;}
+
+.config-section-label{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;margin-top:14px;}
+
+@keyframes fade-up{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+.feed-card:nth-child(1){animation-delay:0.05s;}
+.feed-card:nth-child(2){animation-delay:0.1s;}
+.feed-card:nth-child(3){animation-delay:0.15s;}
+
+@media(max-width:1100px){.config-panel{display:none;}}
+@media(max-width:768px){.ai-sidebar{display:none;}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- AI SIDEBAR -->
+  <aside class="ai-sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-text">Task<em>Flow</em></div>
+        <span class="ai-badge">AI</span>
+      </div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section" style="margin-bottom:4px;">
+        <div class="nav-section-label" style="margin-bottom:6px;">Navegación</div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h7"/></svg>
+          Inbox
+          <span class="nav-badge orange">7</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
+          Kanban
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Eisenhower
+        </div>
+        <div class="nav-item active">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          OpenClaw
+          <span class="nav-badge teal">3</span>
+        </div>
+      </div>
+      <div class="nav-section" style="margin-top:8px;">
+        <div class="nav-section-label" style="margin-bottom:6px;">Proyectos</div>
+        <div class="nav-item">
+          <span class="proj-dot" style="background:var(--accent-blue);"></span>
+          Pliegos Q1
+        </div>
+        <div class="nav-item">
+          <span class="proj-dot" style="background:var(--accent-green);"></span>
+          Cliente García
+        </div>
+        <div class="nav-item">
+          <span class="proj-dot" style="background:var(--accent-purple);"></span>
+          OpenClaw Dev
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-row">
+        <div class="user-avatar">PT</div>
+        <div>
+          <div class="user-name">P. Tavares</div>
+          <div class="user-email">ptavares@openclaw.io</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- FEED PANEL -->
+  <div class="feed-panel">
+    <div class="feed-topbar">
+      <div class="feed-title-row">
+        <span class="feed-title">OpenClaw</span>
+        <div class="pulse-dot"></div>
+      </div>
+      <div class="feed-tabs">
+        <span class="ftab active" onclick="switchFeedTab(this)">Feed</span>
+        <span class="ftab" onclick="switchFeedTab(this)">Historial</span>
+        <span class="ftab" onclick="switchFeedTab(this)">Memoria</span>
+      </div>
+      <div class="feed-icons">
+        <button class="icon-btn"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M6.34 17.66l-1.41 1.41M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M12 2v2M12 20v2"/></svg></button>
+      </div>
+    </div>
+
+    <div class="feed-scroll">
+
+      <!-- Digest Banner -->
+      <div class="digest-banner">
+        <div class="digest-header">
+          <div class="digest-avatar">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          </div>
+          <div>
+            <div class="digest-title">Resumen diario · 3 mar 2026</div>
+            <div class="digest-meta">08:00 · 27 inputs procesados</div>
+          </div>
+        </div>
+        <p class="digest-text">He procesado 27 elementos esta mañana. Detecté 3 tareas críticas en Pliegos Q1 que vencen esta semana, incluyendo la propuesta técnica de Madrid. También encontré 4 emails sin respuesta en OpenClaw Dev relacionados con el lanzamiento beta.</p>
+        <div class="digest-stats">
+          <div class="stat-chip"><strong>27</strong> procesados</div>
+          <div class="stat-chip"><strong>3</strong> acciones pendientes</div>
+          <div class="stat-chip"><strong>94%</strong> confianza</div>
+        </div>
+      </div>
+
+      <div class="section-sep">Pendientes de revisión (3)</div>
+
+      <!-- Card 1 -->
+      <div class="feed-card" id="fc1" style="border-left:3px solid var(--urgent);">
+        <div class="fc-header">
+          <div class="fc-icon fc-icon-red">⚠️</div>
+          <div>
+            <div class="fc-title">Detectado riesgo en propuesta técnica Pliegos Q1</div>
+            <div class="fc-meta">
+              <span class="fc-tag fc-tag-red">Urgente</span>
+              <span class="fc-tag fc-tag-blue">Pliegos Q1</span>
+            </div>
+          </div>
+        </div>
+        <div class="fc-reasoning">El pliego municipal exige 3 referencias en administración pública. La versión actual solo incluye 2. Plazo de entrega en 48 horas. Recomiendo crear una tarea urgente para completar la documentación.</div>
+        <div class="fc-actions">
+          <button class="btn-sm-teal" onclick="dismissCard('fc1')">Crear tarea urgente</button>
+          <button class="btn-sm-ghost" onclick="dismissCard('fc1')">Ignorar</button>
+          <button class="btn-sm-link">Ver tarea →</button>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="feed-card" id="fc2" style="border-left:3px solid var(--accent);">
+        <div class="fc-header">
+          <div class="fc-icon fc-icon-teal">📧</div>
+          <div>
+            <div class="fc-title">4 emails de OpenClaw Dev sin procesar</div>
+            <div class="fc-meta">
+              <span class="fc-tag fc-tag-purple">OpenClaw Dev</span>
+              <span class="fc-tag fc-tag-blue">Inbox</span>
+            </div>
+          </div>
+        </div>
+        <div class="fc-reasoning">Hay 4 emails de feedback beta sin procesar: 2 usuarios reportan el bug de OAuth, 1 solicita integración con Notion y 1 pregunta sobre pricing. Puedo crear 3 tareas directamente desde estos emails.</div>
+        <div class="fc-actions">
+          <button class="btn-sm-teal" onclick="dismissCard('fc2')">Crear 3 tareas</button>
+          <button class="btn-sm-ghost">Revisar manualmente</button>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="feed-card" id="fc3" style="border-left:3px solid var(--accent-orange);">
+        <div class="fc-header">
+          <div class="fc-icon fc-icon-orange">🗓️</div>
+          <div>
+            <div class="fc-title">Reunión Cliente García — preparar agenda</div>
+            <div class="fc-meta">
+              <span class="fc-tag fc-tag-orange">Mañana · 10:00</span>
+              <span class="fc-tag fc-tag-blue">Cliente García</span>
+            </div>
+          </div>
+        </div>
+        <div class="fc-reasoning">Tienes reunión mañana con Cliente García a las 10:00. He identificado 5 puntos pendientes de discusión basados en las últimas conversaciones y tareas del proyecto. Puedo generar el borrador de agenda automáticamente.</div>
+        <div class="fc-actions">
+          <button class="btn-sm-teal" onclick="dismissCard('fc3')">Generar agenda</button>
+          <button class="btn-sm-ghost">Yo la preparo</button>
+        </div>
+      </div>
+
+      <div class="section-sep" style="margin-top:8px;">Actividad reciente</div>
+
+      <div class="activity-card">
+        <div class="act-icon">✅</div>
+        <div class="act-body">
+          <div class="act-title">Tarea completada: <strong>Actualizar README OpenClaw SDK</strong></div>
+          <div class="act-time">Hoy · 10:30</div>
+        </div>
+      </div>
+      <div class="activity-card">
+        <div class="act-icon">📥</div>
+        <div class="act-body">
+          <div class="act-title">7 tareas clasificadas desde Inbox automáticamente</div>
+          <div class="act-time">Hoy · 08:03</div>
+        </div>
+      </div>
+      <div class="activity-card">
+        <div class="act-icon">🔀</div>
+        <div class="act-body">
+          <div class="act-title">Reorganización Eisenhower aceptada · <strong>3 tareas movidas</strong></div>
+          <div class="act-time">Ayer · 15:22</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIG PANEL -->
+  <aside class="config-panel">
+    <div class="config-header">
+      <div class="config-title">Configuración</div>
+      <div class="config-subtitle">
+        <div class="active-dot"></div>
+        OpenClaw · Agente activo
+      </div>
+    </div>
+    <div class="config-body">
+
+      <div class="stats-grid">
+        <div class="stat-block">
+          <div class="stat-val stat-teal">142</div>
+          <div class="stat-label">Tareas procesadas</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-val stat-green">94%</div>
+          <div class="stat-label">Precisión</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-val stat-blue">27</div>
+          <div class="stat-label">Inputs hoy</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-val stat-orange">4.2h</div>
+          <div class="stat-label">Tiempo ahorrado</div>
+        </div>
+      </div>
+
+      <div class="config-card">
+        <div class="config-card-title">Nivel de autonomía</div>
+        <div class="slider-labels">
+          <span>Asistente</span><span>Copiloto</span><span>Autónomo</span>
+        </div>
+        <div class="slider-track" onclick="updateSlider(event,this)">
+          <div class="slider-fill" id="sliderFill"></div>
+          <div class="slider-thumb" id="sliderThumb"></div>
+        </div>
+        <div class="slider-val" id="sliderVal">Copiloto (65%)</div>
+      </div>
+
+      <div class="config-section-label">Permisos</div>
+      <div class="toggle-row">
+        <span class="toggle-label">📧 Leer emails</span>
+        <div class="toggle on" onclick="toggleSwitch(this)"><div class="toggle-thumb"></div></div>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">📋 Crear tareas</span>
+        <div class="toggle on" onclick="toggleSwitch(this)"><div class="toggle-thumb"></div></div>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">🗓️ Leer calendario</span>
+        <div class="toggle on" onclick="toggleSwitch(this)"><div class="toggle-thumb"></div></div>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">📤 Enviar emails</span>
+        <div class="toggle off" onclick="toggleSwitch(this)"><div class="toggle-thumb"></div></div>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">💳 Acceso a pagos</span>
+        <div class="toggle off" onclick="toggleSwitch(this)"><div class="toggle-thumb"></div></div>
+      </div>
+
+      <div class="config-section-label">Fuentes de datos</div>
+      <div class="toggle-row">
+        <span class="toggle-label">📂 Google Drive</span>
+        <div class="toggle on" onclick="toggleSwitch(this)"><div class="toggle-thumb"></div></div>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">💬 Slack</span>
+        <div class="toggle off" onclick="toggleSwitch(this)"><div class="toggle-thumb"></div></div>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">📓 Notion</span>
+        <div class="toggle off" onclick="toggleSwitch(this)"><div class="toggle-thumb"></div></div>
+      </div>
+
+    </div>
+  </aside>
+
+</div>
+
+<script>
+function switchFeedTab(el){
+  document.querySelectorAll('.ftab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+function dismissCard(id){
+  const el=document.getElementById(id);
+  el.style.transition='all 0.3s ease';
+  el.style.opacity='0';
+  el.style.transform='translateX(20px)';
+  setTimeout(()=>{el.style.display='none';},300);
+}
+function toggleSwitch(el){
+  if(el.classList.contains('on')){el.classList.remove('on');el.classList.add('off');}
+  else{el.classList.remove('off');el.classList.add('on');}
+}
+function updateSlider(e,track){
+  const rect=track.getBoundingClientRect();
+  let pct=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+  const fill=document.getElementById('sliderFill');
+  const thumb=document.getElementById('sliderThumb');
+  const val=document.getElementById('sliderVal');
+  const p=Math.round(pct*100);
+  fill.style.width=p+'%';
+  thumb.style.left=p+'%';
+  const labels=['Asistente','Copiloto','Autónomo'];
+  const label=p<34?labels[0]:p<67?labels[1]:labels[2];
+  val.textContent=label+' ('+p+'%)';
+}
+</script>
+</body>
+</html>

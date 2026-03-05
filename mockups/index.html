@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Mockups v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:           #141418;
+    --surface:      #1a1a20;
+    --card:         #1e1e26;
+    --card-hover:   #232330;
+    --border:       rgba(255,255,255,0.09);
+    --border-hover: rgba(255,255,255,0.16);
+    --text:         #e8e8f0;
+    --text-sub:     #9090a8;
+    --text-muted:   #50506a;
+    --accent:       #00d4c8;
+    --accent-dim:   rgba(0,212,200,0.12);
+    --accent-glow:  rgba(0,212,200,0.25);
+    --font-d: 'Playfair Display', serif;
+    --font-b: 'Plus Jakarta Sans', sans-serif;
+    --radius: 14px;
+    --transition: 0.2s cubic-bezier(0.16,1,0.3,1);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-b);
+    min-height: 100vh;
+  }
+
+  /* subtle noise texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(20,20,24,0.92);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    border-bottom: 1px solid var(--border);
+    padding: 0 48px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .logo {
+    font-family: var(--font-d);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  .logo em { color: var(--accent); font-style: italic; }
+
+  .header-sep { width: 1px; height: 18px; background: var(--border); }
+
+  .header-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 400;
+    letter-spacing: 0.01em;
+  }
+
+  .header-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .v-badge {
+    padding: 3px 10px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(0,212,200,0.22);
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+  }
+
+  .v1-link {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    transition: all 0.15s;
+  }
+  .v1-link:hover { color: var(--text-sub); border-color: var(--border-hover); background: var(--surface); }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative;
+    z-index: 1;
+    padding: 64px 48px 48px;
+    max-width: 700px;
+  }
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 12px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(0,212,200,0.2);
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .agent-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: blink 2s ease-in-out infinite; box-shadow: 0 0 6px var(--accent-glow); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .hero-title {
+    font-family: var(--font-d);
+    font-size: 40px;
+    font-weight: 500;
+    line-height: 1.18;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 14px;
+  }
+  .hero-title em { color: var(--accent); font-style: italic; }
+
+  .hero-desc {
+    font-size: 15px;
+    color: var(--text-sub);
+    line-height: 1.7;
+    font-weight: 300;
+    max-width: 520px;
+  }
+
+  /* ── GRID ── */
+  .grid-section {
+    position: relative;
+    z-index: 1;
+    padding: 0 48px 64px;
+  }
+
+  .grid-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .grid-label::after { content: ''; flex: 1; max-width: 120px; height: 1px; background: var(--border); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+  }
+
+  /* ── CARD ── */
+  .mockup-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+    cursor: default;
+    display: flex;
+    flex-direction: column;
+  }
+  .mockup-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,212,200,0.1);
+    border-color: rgba(0,212,200,0.18);
+  }
+
+  .card-thumb {
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 44px;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .card-thumb::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(20,20,24,0.6) 100%);
+  }
+
+  .card-body {
+    padding: 18px 20px 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 8px;
+  }
+  .card-num {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .card-type {
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .card-type.mobile { background: rgba(74,158,255,0.1); border: 1px solid rgba(74,158,255,0.2); color: #7eb8ff; }
+  .card-type.desktop { background: rgba(46,189,124,0.1); border: 1px solid rgba(46,189,124,0.2); color: #5dd49a; }
+
+  .card-title {
+    font-family: var(--font-d);
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin-bottom: 6px;
+    line-height: 1.3;
+  }
+  .card-desc {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.55;
+    flex: 1;
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 7px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  .card-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 7px 13px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+    font-family: var(--font-b);
+    border: 1px solid var(--border);
+    color: var(--text-sub);
+    background: transparent;
+    flex: 1;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  .card-btn:hover { background: var(--surface); border-color: var(--border-hover); color: var(--text); }
+  .card-btn.primary {
+    background: var(--accent-dim);
+    border-color: rgba(0,212,200,0.25);
+    color: var(--accent);
+  }
+  .card-btn.primary:hover { background: rgba(0,212,200,0.18); }
+  .card-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* ── PHONE PREVIEW MODAL ── */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,14,0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    animation: modal-in 0.2s ease-out;
+  }
+  .modal-backdrop.open { display: flex; }
+
+  @keyframes modal-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .modal-close-area {
+    position: absolute;
+    inset: 0;
+    cursor: pointer;
+  }
+
+  .modal-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    animation: content-up 0.25s cubic-bezier(0.16,1,0.3,1);
+  }
+  @keyframes content-up {
+    from { opacity: 0; transform: translateY(16px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .modal-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .modal-title {
+    font-family: var(--font-d);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+
+  .modal-view-toggle {
+    display: flex;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .mvt-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    font-family: var(--font-b);
+  }
+  .mvt-btn.active { background: var(--card); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+
+  .modal-close-btn {
+    width: 32px; height: 32px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: var(--text-sub);
+    transition: all 0.15s;
+    font-size: 18px;
+    line-height: 1;
+  }
+  .modal-close-btn:hover { background: var(--card-hover); color: var(--text); }
+
+  /* Phone frame */
+  .phone-frame-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .phone-frame {
+    width: 390px;
+    height: 844px;
+    background: #1a1a22;
+    border-radius: 50px;
+    border: 2px solid rgba(255,255,255,0.12);
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.8),
+      inset 0 0 0 1px rgba(255,255,255,0.05),
+      0 40px 80px rgba(0,0,0,0.7),
+      0 0 40px rgba(0,212,200,0.06);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Dynamic island */
+  .phone-island {
+    width: 120px;
+    height: 34px;
+    background: #000;
+    border-radius: 0 0 22px 22px;
+    margin: 0 auto;
+    flex-shrink: 0;
+    z-index: 10;
+    position: relative;
+  }
+  .phone-island::after {
+    content: '';
+    position: absolute;
+    width: 80px; height: 20px;
+    background: #0a0a0e;
+    border-radius: 20px;
+    top: 8px; left: 50%; transform: translateX(-50%);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .phone-screen {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background: #141418;
+  }
+
+  .phone-screen iframe {
+    width: 390px;
+    height: 100%;
+    border: none;
+    transform-origin: top left;
+    display: block;
+  }
+
+  /* Reflection glare */
+  .phone-frame::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.025) 0%, transparent 100%);
+    border-radius: 50px 50px 0 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Desktop preview */
+  .desktop-frame {
+    width: min(90vw, 1100px);
+    height: min(80vh, 700px);
+    background: #1a1a22;
+    border-radius: 12px;
+    border: 1.5px solid rgba(255,255,255,0.1);
+    box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .browser-bar {
+    height: 38px;
+    background: #141418;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+  .browser-dot { width: 11px; height: 11px; border-radius: 50%; }
+  .browser-bar .url-bar {
+    flex: 1;
+    max-width: 320px;
+    margin: 0 auto;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 6px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--font-b);
+  }
+
+  .desktop-frame iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* ── FOOTER ── */
+  .page-footer {
+    position: relative; z-index: 1;
+    text-align: center;
+    padding: 32px 48px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* ── AMBIENT LIGHT ── */
+  .ambient {
+    position: fixed;
+    top: 0; left: 0;
+    width: 600px; height: 600px;
+    background: radial-gradient(ellipse at center, rgba(0,212,200,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="ambient"></div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">Task<em>Flow</em></div>
+  <div class="header-sep"></div>
+  <div class="header-sub">Mockups de inspiración · Especificación MVP</div>
+  <div class="header-right">
+    <a href="index-v1.html" class="v1-link">Ver v1 →</a>
+    <div class="v-badge">v2 · Refined Obsidian</div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-eyebrow">
+    <div class="agent-dot"></div>
+    8 mockups · OpenClaw integrado
+  </div>
+  <h1 class="hero-title">
+    Sistema de productividad<br>
+    con agente <em>AI</em> integrado
+  </h1>
+  <p class="hero-desc">
+    Mockups de alta fidelidad para TaskFlow — captura, organización y priorización con OpenClaw como copiloto inteligente. Haz clic para abrir o previsualiza con el marco de dispositivo.
+  </p>
+</section>
+
+<!-- GRID -->
+<section class="grid-section">
+  <div class="grid-label">Todas las pantallas</div>
+  <div class="grid" id="mockupGrid"></div>
+</section>
+
+<!-- FOOTER -->
+<footer class="page-footer">
+  TaskFlow — Mockups generados con frontend-design skill · <span style="color: var(--accent)">v2 Refined Obsidian</span>
+</footer>
+
+<!-- MODAL -->
+<div class="modal-backdrop" id="previewModal">
+  <div class="modal-close-area" onclick="closeModal()"></div>
+  <div class="modal-content">
+    <div class="modal-toolbar">
+      <div class="modal-title" id="modalTitle">Preview</div>
+      <div class="modal-view-toggle">
+        <div class="mvt-btn active" id="btnPhone" onclick="setView('phone')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
+          Móvil
+        </div>
+        <div class="mvt-btn" id="btnDesktop" onclick="setView('desktop')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Desktop
+        </div>
+      </div>
+      <div class="modal-close-btn" onclick="closeModal()">×</div>
+    </div>
+    <div id="phoneWrap" class="phone-frame-wrap">
+      <div class="phone-frame">
+        <div class="phone-island"></div>
+        <div class="phone-screen">
+          <iframe id="phoneIframe" src="" title="Mobile Preview"></iframe>
+        </div>
+      </div>
+    </div>
+    <div id="desktopWrap" style="display:none;">
+      <div class="desktop-frame">
+        <div class="browser-bar">
+          <div class="browser-dot" style="background:#ff5f57"></div>
+          <div class="browser-dot" style="background:#febc2e"></div>
+          <div class="browser-dot" style="background:#28c840"></div>
+          <div class="url-bar">localhost:3333/<span id="urlText"></span></div>
+        </div>
+        <iframe id="desktopIframe" src="" title="Desktop Preview"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const mockups = [
+  {
+    num: '00',
+    file: 'mockup-0-login.html',
+    emoji: '🔐',
+    title: 'Login & Acceso',
+    desc: 'Pantalla de bienvenida con branding editorial, form de acceso y teaser del agente OpenClaw.',
+    type: 'desktop',
+    bg: 'linear-gradient(135deg, #141418 0%, #0d1525 60%, #141418 100%)',
+  },
+  {
+    num: '01',
+    file: 'mockup-1-mobile-inbox.html',
+    emoji: '📥',
+    title: 'Mobile — Inbox',
+    desc: 'Captura rápida con campo de entrada prominente, lista de items y sugerencias del agente.',
+    type: 'mobile',
+    bg: 'linear-gradient(135deg, #141418 0%, #0f1a1a 60%, #141418 100%)',
+  },
+  {
+    num: '02',
+    file: 'mockup-2-desktop-kanban.html',
+    emoji: '🗂',
+    title: 'Desktop — Kanban',
+    desc: 'Dashboard completo: sidebar, tablero Kanban de 4 columnas y panel de detalle lateral.',
+    type: 'desktop',
+    bg: 'linear-gradient(135deg, #141418 0%, #101828 60%, #141418 100%)',
+  },
+  {
+    num: '03',
+    file: 'mockup-3-desktop-eisenhower.html',
+    emoji: '🎯',
+    title: 'Desktop — Eisenhower',
+    desc: 'Matriz 2×2 con drag & drop entre cuadrantes y sugerencias flotantes del agente.',
+    type: 'desktop',
+    bg: 'linear-gradient(135deg, #141418 0%, #180e0e 60%, #141418 100%)',
+  },
+  {
+    num: '04',
+    file: 'mockup-4-mobile-detail.html',
+    emoji: '📄',
+    title: 'Mobile — Detalle',
+    desc: 'Vista detallada con tabs: contenido, adjuntos, relaciones, info y log de actividad.',
+    type: 'mobile',
+    bg: 'linear-gradient(135deg, #141418 0%, #0a1020 60%, #141418 100%)',
+  },
+  {
+    num: '05',
+    file: 'mockup-5-desktop-agent.html',
+    emoji: '🤖',
+    title: 'Desktop — OpenClaw',
+    desc: 'Panel del agente: feed de actividad, acciones pendientes y configuración de autonomía.',
+    type: 'desktop',
+    bg: 'linear-gradient(135deg, #141418 0%, #061612 60%, #141418 100%)',
+  },
+  {
+    num: '06',
+    file: 'mockup-6-mobile-capture.html',
+    emoji: '📎',
+    title: 'Mobile — Captura',
+    desc: 'Flujo de 3 pasos para subir y clasificar archivos con análisis del agente en tiempo real.',
+    type: 'mobile',
+    bg: 'linear-gradient(135deg, #141418 0%, #0d1614 60%, #141418 100%)',
+  },
+  {
+    num: '07',
+    file: 'mockup-7-desktop-search.html',
+    emoji: '🔍',
+    title: 'Desktop — Búsqueda',
+    desc: 'Modal Cmd+K con resultados agrupados, filtros combinables y navegación por teclado.',
+    type: 'desktop',
+    bg: 'linear-gradient(135deg, #141418 0%, #0a1020 60%, #141418 100%)',
+  },
+];
+
+// Render cards
+const grid = document.getElementById('mockupGrid');
+mockups.forEach(m => {
+  const card = document.createElement('div');
+  card.className = 'mockup-card';
+  card.innerHTML = `
+    <div class="card-thumb" style="background: ${m.bg}">
+      <span>${m.emoji}</span>
+    </div>
+    <div class="card-body">
+      <div class="card-meta">
+        <span class="card-num">Mockup ${m.num}</span>
+        <span class="card-type ${m.type}">${m.type === 'mobile' ? '📱 Mobile' : '🖥 Desktop'}</span>
+      </div>
+      <div class="card-title">${m.title}</div>
+      <div class="card-desc">${m.desc}</div>
+      <div class="card-actions">
+        <a href="${m.file}" target="_blank" class="card-btn">
+          <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Abrir
+        </a>
+        <button class="card-btn primary" onclick="openPreview('${m.file}', '${m.title}', '${m.type}')">
+          <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/></svg>
+          Preview
+        </button>
+      </div>
+    </div>
+  `;
+  grid.appendChild(card);
+});
+
+// Modal logic
+let currentView = 'phone';
+
+function openPreview(file, title, type) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('urlText').textContent = file;
+
+  // Default to phone for mobile items, desktop for desktop items
+  const defaultView = type === 'mobile' ? 'phone' : 'desktop';
+  setView(defaultView);
+
+  document.getElementById('phoneIframe').src = file;
+  document.getElementById('desktopIframe').src = file;
+
+  document.getElementById('previewModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('previewModal').classList.remove('open');
+  document.body.style.overflow = '';
+  setTimeout(() => {
+    document.getElementById('phoneIframe').src = '';
+    document.getElementById('desktopIframe').src = '';
+  }, 200);
+}
+
+function setView(view) {
+  currentView = view;
+  const phoneWrap = document.getElementById('phoneWrap');
+  const desktopWrap = document.getElementById('desktopWrap');
+  const btnPhone = document.getElementById('btnPhone');
+  const btnDesktop = document.getElementById('btnDesktop');
+
+  if (view === 'phone') {
+    phoneWrap.style.display = 'flex';
+    desktopWrap.style.display = 'none';
+    btnPhone.classList.add('active');
+    btnDesktop.classList.remove('active');
+  } else {
+    phoneWrap.style.display = 'none';
+    desktopWrap.style.display = 'block';
+    btnPhone.classList.remove('active');
+    btnDesktop.classList.add('active');
+  }
+}
+
+// Close on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+</script>
+</body>
+</html>

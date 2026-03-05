@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Kanban</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:           #0d1526;
+  --surface:      #111d36;
+  --elevated:     #172040;
+  --card:         #1a2645;
+  --card-hover:   #1e2c50;
+  --border:       rgba(255,255,255,0.07);
+  --border-hover: rgba(255,255,255,0.14);
+  --text:         #f0f4ff;
+  --text-sub:     #94a3c4;
+  --text-muted:   #5a6a8a;
+  --accent:       #f0c040;
+  --accent-dark:  #d4a020;
+  --accent-dim:   rgba(240,192,64,0.12);
+  --accent-glow:  rgba(240,192,64,0.25);
+  --urgent:       #e8304a;
+  --high:         #f07832;
+  --medium:       #4a9ef0;
+  --p-blue:       #4a8ff0;
+  --p-green:      #2fba7a;
+  --p-orange:     #f07820;
+  --p-purple:     #9060d8;
+  --shadow-sm:    0 1px 4px rgba(0,0,0,0.3);
+  --shadow-md:    0 4px 20px rgba(0,0,0,0.35);
+  --shadow-lg:    0 12px 48px rgba(0,0,0,0.45);
+}
+
+html, body {
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 20% -10%, rgba(30,60,120,0.35) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 110%, rgba(15,40,90,0.45) 0%, transparent 60%),
+    radial-gradient(circle, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: auto, auto, 28px 28px;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text);
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+/* === LAYOUT === */
+.app-shell {
+  display: flex;
+  height: 100vh;
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(240,192,64,0.2), transparent);
+}
+
+.sidebar-logo {
+  padding: 20px 16px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.logo-lockup { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.logo-icon {
+  width: 33px; height: 33px;
+  background: linear-gradient(135deg, rgba(240,192,64,0.15), rgba(240,192,64,0.05));
+  border: 1px solid rgba(240,192,64,0.2);
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+}
+.logo-icon svg { width: 16px; height: 16px; stroke: var(--accent); fill: none; stroke-width: 2; }
+.logo-name {
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.logo-name em { color: var(--accent); font-style: italic; }
+
+.sidebar-nav { padding: 12px 8px; flex: 1; overflow-y: auto; }
+.nav-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 8px 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  text-decoration: none;
+  margin-bottom: 1px;
+}
+.nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text-sub); }
+.nav-item.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 600;
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 4px; bottom: 4px;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+.nav-item svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--urgent);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+.nav-badge.gold { background: var(--accent); color: #0d1526; }
+
+.project-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+.sidebar-footer {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+}
+.user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.user-row:hover { background: rgba(255,255,255,0.04); }
+.user-avatar {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--p-blue), var(--p-purple));
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.user-name  { font-size: 13px; font-weight: 600; color: var(--text); }
+.user-email { font-size: 11px; color: var(--text-muted); }
+
+/* ===== MAIN AREA ===== */
+.main-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+/* Topbar */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  box-shadow: 0 1px 0 var(--border);
+}
+.topbar-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 19px;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.topbar-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.btn-new {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  color: #0d1526;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: 0 3px 12px rgba(240,192,64,0.25);
+}
+.btn-new:hover { background: #f5cc50; box-shadow: 0 4px 16px rgba(240,192,64,0.35); transform: translateY(-1px); }
+.btn-new svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.5; }
+.topbar-icon-btn {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+.topbar-icon-btn:hover { background: rgba(255,255,255,0.07); border-color: var(--border-hover); color: var(--text-sub); }
+.topbar-icon-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+/* ===== KANBAN BOARD ===== */
+.kanban-wrap {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  gap: 0;
+}
+
+.kanban-scroll {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 16px 16px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* Column */
+.kanban-col {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: fade-up 0.4s ease both;
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.col-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--border);
+}
+.col-indicator {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.col-indicator.todo     { background: var(--text-muted); }
+.col-indicator.progress { background: var(--medium); box-shadow: 0 0 6px rgba(74,158,240,0.4); }
+.col-indicator.waiting  { background: var(--high); }
+.col-indicator.done     { background: var(--p-green); }
+
+.col-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-sub);
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.col-count {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.col-add-btn {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+  font-size: 16px;
+  transition: all 0.15s;
+  line-height: 1;
+}
+.col-add-btn:hover { background: rgba(255,255,255,0.06); color: var(--text-sub); }
+
+/* Cards in column */
+.col-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 40px;
+}
+
+.task-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 13px 12px 16px;
+  cursor: pointer;
+  transition: all 0.18s;
+  position: relative;
+  overflow: hidden;
+}
+.task-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+}
+.task-card.urgent::before  { background: var(--urgent); }
+.task-card.high::before    { background: var(--high); }
+.task-card.medium::before  { background: var(--medium); }
+.task-card.low::before     { background: var(--p-green); }
+.task-card.done-card::before { background: var(--text-muted); }
+
+.task-card:hover {
+  background: var(--card-hover);
+  border-color: var(--border-hover);
+  box-shadow: 0 0 0 1px rgba(240,192,64,0.1), 0 6px 20px rgba(0,0,0,0.35);
+  transform: translateY(-1px);
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.45;
+  margin-bottom: 9px;
+}
+.task-card.done-card .card-title {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.card-bottom {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.card-chip {
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.chip-blue   { background: rgba(74,143,240,0.12); color: var(--p-blue); }
+.chip-green  { background: rgba(47,186,122,0.12); color: var(--p-green); }
+.chip-purple { background: rgba(144,96,216,0.12); color: var(--p-purple); }
+.chip-orange { background: rgba(240,120,32,0.12); color: var(--p-orange); }
+
+.card-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex; align-items: center; gap: 4px;
+  margin-left: auto;
+}
+.card-date.overdue { color: var(--urgent); }
+.card-date svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+.card-avatar {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--p-blue), var(--p-purple));
+  color: white;
+  font-size: 8px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Agent suggestion card */
+.agent-card {
+  background: linear-gradient(135deg, rgba(240,192,64,0.07), rgba(240,192,64,0.03));
+  border: 1px solid rgba(240,192,64,0.18);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 11px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.agent-card:hover { border-color: rgba(240,192,64,0.35); border-left-color: var(--accent); }
+.agent-card-header {
+  display: flex; align-items: center; gap: 7px;
+  margin-bottom: 6px;
+}
+.agent-card-icon {
+  width: 20px; height: 20px;
+  border-radius: 5px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.agent-card-title { font-size: 11px; font-weight: 700; color: var(--accent); }
+.agent-card-text {
+  font-size: 12px;
+  color: var(--text-sub);
+  line-height: 1.5;
+  margin-bottom: 9px;
+}
+.agent-card-actions { display: flex; gap: 6px; }
+.ac-btn-a {
+  padding: 4px 12px;
+  background: var(--accent);
+  color: #0d1526;
+  border: none;
+  border-radius: 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ac-btn-a:hover { background: #f5cc50; }
+.ac-btn-d {
+  padding: 4px 10px;
+  background: rgba(255,255,255,0.04);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ac-btn-d:hover { border-color: var(--border-hover); }
+
+/* Add card button */
+.add-card-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.025);
+  border: 1px dashed rgba(255,255,255,0.1);
+  color: var(--text-muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+}
+.add-card-btn:hover { background: rgba(255,255,255,0.05); border-color: var(--border-hover); color: var(--text-sub); }
+.add-card-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+/* ===== DETAIL PANEL ===== */
+.detail-panel {
+  width: 320px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.detail-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(240,192,64,0.3), transparent);
+  z-index: 1;
+}
+
+.detail-header {
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.detail-title {
+  flex: 1;
+  font-family: 'DM Serif Display', serif;
+  font-size: 17px;
+  font-weight: 400;
+  color: var(--text);
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+.detail-close {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.detail-close:hover { background: rgba(255,255,255,0.08); color: var(--text-sub); }
+.detail-close svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2.5; }
+
+.detail-scroll { flex: 1; overflow-y: auto; padding: 14px 16px; }
+
+/* Status chips */
+.detail-chips-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.detail-chip {
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.detail-chip:hover { border-color: var(--border-hover); }
+.detail-chip.active-chip {
+  background: var(--accent-dim);
+  border-color: rgba(240,192,64,0.25);
+  color: var(--accent);
+}
+
+/* Section label */
+.detail-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  margin-top: 16px;
+}
+.detail-section-label:first-of-type { margin-top: 0; }
+
+.detail-description {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-sub);
+}
+
+/* Agent notes */
+.detail-agent-card {
+  background: linear-gradient(135deg, rgba(240,192,64,0.06), rgba(240,192,64,0.02));
+  border: 1px solid rgba(240,192,64,0.14);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 4px;
+}
+.dag-header {
+  display: flex; align-items: center; gap: 7px;
+  margin-bottom: 7px;
+}
+.dag-icon {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 10px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.dag-name { font-size: 12px; font-weight: 700; color: var(--accent); }
+.dag-time { margin-left: auto; font-size: 10.5px; color: var(--text-muted); }
+.dag-text { font-size: 12.5px; color: var(--text-sub); line-height: 1.55; }
+
+/* Attachments */
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.attachment-item:last-child { border-bottom: none; }
+.att-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.att-info { flex: 1; }
+.att-name { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.att-meta { font-size: 11px; color: var(--text-muted); }
+.att-dl {
+  width: 26px; height: 26px;
+  border-radius: 7px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+.att-dl:hover { background: var(--accent-dim); border-color: rgba(240,192,64,0.25); color: var(--accent); }
+.att-dl svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+/* Activity */
+.activity-item {
+  display: flex;
+  gap: 9px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.activity-item:last-child { border-bottom: none; }
+.act-avatar {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--p-blue), var(--p-purple));
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.act-body { flex: 1; }
+.act-text { font-size: 12px; color: var(--text-sub); line-height: 1.5; }
+.act-text strong { color: var(--text); font-weight: 600; }
+.act-time { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
+
+/* Responsive */
+@media (max-width: 1200px) { .detail-panel { display: none; } }
+@media (max-width: 768px)  { .sidebar { display: none; } }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <a class="logo-lockup" href="#">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <span class="logo-name">Task<em>Flow</em></span>
+      </a>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Inbox <span class="nav-badge">7</span>
+      </a>
+      <a class="nav-item active" href="#">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Kanban
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+        Eisenhower
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        OpenClaw <span class="nav-badge gold">3</span>
+      </a>
+
+      <div class="nav-section-label" style="margin-top:16px">Proyectos</div>
+      <a class="nav-item" href="#">
+        <span class="project-dot" style="background:var(--p-blue)"></span>
+        Pliegos Q1
+      </a>
+      <a class="nav-item" href="#">
+        <span class="project-dot" style="background:var(--p-green)"></span>
+        Cliente García
+      </a>
+      <a class="nav-item" href="#">
+        <span class="project-dot" style="background:var(--p-purple)"></span>
+        OpenClaw Dev
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="user-avatar">PT</div>
+        <div>
+          <div class="user-name">P. Tavares</div>
+          <div class="user-email">ptavares@openclaw.io</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN AREA -->
+  <main class="main-area">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <span class="topbar-title">Tablero</span>
+      <div class="topbar-actions">
+        <button class="topbar-icon-btn" title="Filtrar">
+          <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        </button>
+        <button class="topbar-icon-btn" title="Agrupar">
+          <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        </button>
+        <button class="btn-new">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nueva tarea
+        </button>
+      </div>
+    </div>
+
+    <!-- Kanban board -->
+    <div class="kanban-wrap">
+      <div class="kanban-scroll">
+
+        <!-- Por hacer -->
+        <div class="kanban-col" style="animation-delay:0.05s">
+          <div class="col-header">
+            <span class="col-indicator todo"></span>
+            <span class="col-name">Por hacer</span>
+            <span class="col-count">4</span>
+            <button class="col-add-btn">+</button>
+          </div>
+          <div class="col-cards">
+
+            <div class="task-card urgent">
+              <div class="card-title">Carta de referencia a Cliente García</div>
+              <div class="card-bottom">
+                <span class="card-chip chip-blue">📋 Pliegos Q1</span>
+                <span class="card-date overdue">
+                  <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  Vence hoy
+                </span>
+                <div class="card-avatar">PT</div>
+              </div>
+            </div>
+
+            <div class="task-card medium">
+              <div class="card-title">Configurar webhook OAuth en API v2</div>
+              <div class="card-bottom">
+                <span class="card-chip chip-purple">🤖 OC Dev</span>
+                <span class="card-date">
+                  <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  8 mar
+                </span>
+                <div class="card-avatar">PT</div>
+              </div>
+            </div>
+
+            <!-- Agent suggestion -->
+            <div class="agent-card">
+              <div class="agent-card-header">
+                <div class="agent-card-icon">✦</div>
+                <span class="agent-card-title">OpenClaw sugiere</span>
+              </div>
+              <div class="agent-card-text">Mover "Revisión legal" a esta columna — detectado en email de ayer de Legal.</div>
+              <div class="agent-card-actions">
+                <button class="ac-btn-a" onclick="this.closest('.agent-card').remove()">Aceptar</button>
+                <button class="ac-btn-d" onclick="this.closest('.agent-card').remove()">Ignorar</button>
+              </div>
+            </div>
+
+            <div class="task-card low">
+              <div class="card-title">Leer nuevas regulaciones licitación 2026</div>
+              <div class="card-bottom">
+                <span class="card-chip chip-blue">📋 Pliegos Q1</span>
+                <span class="card-date">10 mar</span>
+              </div>
+            </div>
+
+          </div>
+          <button class="add-card-btn">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Añadir tarea
+          </button>
+        </div>
+
+        <!-- En progreso -->
+        <div class="kanban-col" style="animation-delay:0.1s">
+          <div class="col-header">
+            <span class="col-indicator progress"></span>
+            <span class="col-name">En progreso</span>
+            <span class="col-count">3</span>
+            <button class="col-add-btn">+</button>
+          </div>
+          <div class="col-cards">
+
+            <div class="task-card urgent" id="selectedCard" onclick="highlightCard(this)">
+              <div class="card-title">Revisar propuesta técnica licitación municipal</div>
+              <div class="card-bottom">
+                <span class="card-chip chip-blue">📋 Pliegos Q1</span>
+                <span class="card-date overdue">
+                  <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  5 mar
+                </span>
+                <div class="card-avatar">PT</div>
+              </div>
+            </div>
+
+            <div class="task-card high">
+              <div class="card-title">Preparar agenda reunión Cliente García</div>
+              <div class="card-bottom">
+                <span class="card-chip chip-green">👤 García</span>
+                <span class="card-date">Mañana</span>
+                <div class="card-avatar">PT</div>
+              </div>
+            </div>
+
+            <div class="task-card medium">
+              <div class="card-title">Actualizar README documentación SDK</div>
+              <div class="card-bottom">
+                <span class="card-chip chip-purple">🤖 OC Dev</span>
+                <span class="card-date">7 mar</span>
+              </div>
+            </div>
+
+          </div>
+          <button class="add-card-btn">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Añadir tarea
+          </button>
+        </div>
+
+        <!-- Esperando -->
+        <div class="kanban-col" style="animation-delay:0.15s">
+          <div class="col-header">
+            <span class="col-indicator waiting"></span>
+            <span class="col-name">Esperando</span>
+            <span class="col-count">2</span>
+            <button class="col-add-btn">+</button>
+          </div>
+          <div class="col-cards">
+
+            <div class="task-card high">
+              <div class="card-title">Firma contrato marco — pendiente de Legal</div>
+              <div class="card-bottom">
+                <span class="card-chip chip-green">👤 García</span>
+                <span class="card-date">12 mar</span>
+                <div class="card-avatar">PT</div>
+              </div>
+            </div>
+
+            <div class="task-card medium">
+              <div class="card-title">Revisión código PR #47 — esperando revisor</div>
+              <div class="card-bottom">
+                <span class="card-chip chip-purple">🤖 OC Dev</span>
+                <span class="card-date">9 mar</span>
+              </div>
+            </div>
+
+          </div>
+          <button class="add-card-btn">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Añadir tarea
+          </button>
+        </div>
+
+        <!-- Hecho -->
+        <div class="kanban-col" style="animation-delay:0.2s">
+          <div class="col-header">
+            <span class="col-indicator done"></span>
+            <span class="col-name">Hecho</span>
+            <span class="col-count">5</span>
+            <button class="col-add-btn">+</button>
+          </div>
+          <div class="col-cards">
+
+            <div class="task-card done-card">
+              <div class="card-title">Actualizar certificación ISO 9001</div>
+              <div class="card-bottom">
+                <span class="card-chip chip-blue">📋 Pliegos Q1</span>
+                <span class="card-date">1 mar ✓</span>
+              </div>
+            </div>
+
+            <div class="task-card done-card">
+              <div class="card-title">Deploy API v2 en staging</div>
+              <div class="card-bottom">
+                <span class="card-chip chip-purple">🤖 OC Dev</span>
+                <span class="card-date">28 feb ✓</span>
+              </div>
+            </div>
+
+            <div class="task-card done-card">
+              <div class="card-title">Reunión kickoff Pliegos Q1</div>
+              <div class="card-bottom">
+                <span class="card-chip chip-blue">📋 Pliegos Q1</span>
+                <span class="card-date">25 feb ✓</span>
+              </div>
+            </div>
+
+          </div>
+          <button class="add-card-btn">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Añadir tarea
+          </button>
+        </div>
+
+      </div>
+
+      <!-- DETAIL PANEL -->
+      <aside class="detail-panel">
+        <div class="detail-header">
+          <h2 class="detail-title">Revisar propuesta técnica licitación municipal</h2>
+          <button class="detail-close">
+            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <div class="detail-scroll">
+
+          <div class="detail-chips-row">
+            <button class="detail-chip">Por hacer</button>
+            <button class="detail-chip active-chip">En progreso</button>
+            <button class="detail-chip">Esperando</button>
+            <button class="detail-chip">Hecho</button>
+          </div>
+          <div class="detail-chips-row" style="margin-top:-8px">
+            <button class="detail-chip active-chip" style="background:rgba(232,48,74,0.1);border-color:rgba(232,48,74,0.25);color:var(--urgent)">🔴 Urgente</button>
+            <button class="detail-chip">🟠 Alta</button>
+            <button class="detail-chip">🔵 Media</button>
+          </div>
+
+          <div class="detail-section-label">Descripción</div>
+          <p class="detail-description">
+            Revisar la propuesta técnica elaborada por el equipo para la licitación del Ayuntamiento de Madrid. Verificar cumplimiento de los apartados 3.2 (capacidad técnica) y 4.1 (metodología). Asegurar que la certificación ISO está vigente.
+          </p>
+
+          <div class="detail-section-label">Notas de OpenClaw</div>
+          <div class="detail-agent-card">
+            <div class="dag-header">
+              <div class="dag-icon">✦</div>
+              <span class="dag-name">OpenClaw · Análisis</span>
+              <span class="dag-time">hace 2h</span>
+            </div>
+            <p class="dag-text">El pliego exige 3 referencias de proyectos similares en los últimos 5 años. Solo tienes 2 documentadas. Recomiendo contactar a Cliente García para obtener la carta de referencia antes del jueves.</p>
+          </div>
+
+          <div class="detail-section-label">Adjuntos</div>
+          <div class="attachment-item">
+            <div class="att-icon" style="background:rgba(232,48,74,0.1)">📄</div>
+            <div class="att-info">
+              <div class="att-name">Pliego_Condiciones.pdf</div>
+              <div class="att-meta">2.4 MB · 28 feb</div>
+            </div>
+            <button class="att-dl"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+          </div>
+          <div class="attachment-item">
+            <div class="att-icon" style="background:rgba(47,186,122,0.1)">📊</div>
+            <div class="att-info">
+              <div class="att-name">Presupuesto_v4.xlsx</div>
+              <div class="att-meta">890 KB · 1 mar</div>
+            </div>
+            <button class="att-dl"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+          </div>
+
+          <div class="detail-section-label">Actividad</div>
+          <div class="activity-item">
+            <div class="act-avatar">PT</div>
+            <div class="act-body">
+              <div class="act-text"><strong>P. Tavares</strong> añadió un comentario: "Esperando confirmación de García."</div>
+              <div class="act-time">Hace 2h</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="act-avatar" style="background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#0d1526">OC</div>
+            <div class="act-body">
+              <div class="act-text"><strong>OpenClaw</strong> detectó posible riesgo en requisitos de acreditación.</div>
+              <div class="act-time">Hace 3h</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="act-avatar" style="background:linear-gradient(135deg,var(--p-green),#16855a)">MR</div>
+            <div class="act-body">
+              <div class="act-text"><strong>M. Rodríguez</strong> cambió el estado a <em>En progreso</em>.</div>
+              <div class="act-time">Ayer 16:30</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+</div>
+
+<script>
+// Nav items
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+
+// Status chips
+document.querySelectorAll('.detail-chips-row').forEach(row => {
+  row.querySelectorAll('.detail-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      row.querySelectorAll('.detail-chip').forEach(c => {
+        c.classList.remove('active-chip');
+        c.style.background = '';
+        c.style.borderColor = '';
+        c.style.color = '';
+      });
+      chip.classList.add('active-chip');
+    });
+  });
+});
+
+function highlightCard(card) {
+  document.querySelectorAll('.task-card').forEach(c => c.style.boxShadow = '');
+  card.style.boxShadow = '0 0 0 2px rgba(240,192,64,0.4), 0 6px 20px rgba(0,0,0,0.4)';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Búsqueda Global</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #f0ede8;
+  --surface:     #faf8f5;
+  --elevated:    #ffffff;
+  --card:        #ffffff;
+  --border:      rgba(0,0,0,0.08);
+  --border-hover:rgba(0,0,0,0.16);
+  --text:        #1a1a2e;
+  --text-sub:    #6b6b8a;
+  --text-muted:  #a8a8c0;
+  --accent:      #00b8ad;
+  --accent-dark: #008f86;
+  --accent-dim:  rgba(0,184,173,0.1);
+  --accent-glow: rgba(0,184,173,0.2);
+  --urgent:      #e8304a;
+  --high:        #f07832;
+  --p-blue:      #3d7fd8;
+  --p-green:     #1faa6b;
+  --p-purple:    #7c52c8;
+  --shadow-sm:   0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:   0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:   0 12px 40px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.05);
+}
+
+html, body {
+  height: 100vh;
+  background-color: var(--bg);
+  background-image: radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--text);
+  overflow: hidden;
+}
+
+/* Background desktop UI (blurred, just for context) */
+.desktop-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.bg-sidebar {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 216px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  opacity: 0.7;
+}
+.bg-topbar {
+  position: absolute;
+  left: 216px; right: 0; top: 0;
+  height: 56px;
+  background: rgba(255,255,255,0.7);
+  border-bottom: 1px solid var(--border);
+}
+.bg-content {
+  position: absolute;
+  left: 216px; right: 0;
+  top: 56px; bottom: 0;
+  opacity: 0.5;
+}
+.bg-card {
+  position: absolute;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+/* Overlay */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(240,237,232,0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 80px;
+  z-index: 100;
+  animation: overlay-in 0.2s ease both;
+}
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Search modal */
+.search-modal {
+  width: 100%;
+  max-width: 680px;
+  background: var(--card);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(0,0,0,0.04);
+  overflow: hidden;
+  animation: modal-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  max-height: calc(100vh - 140px);
+  display: flex;
+  flex-direction: column;
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Search input */
+.search-bar {
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.search-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.search-icon svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+.search-input {
+  flex: 1;
+  font-family: 'Playfair Display', serif;
+  font-size: 17px;
+  color: var(--text);
+  background: none;
+  border: none;
+  outline: none;
+}
+.search-input::placeholder { color: var(--text-muted); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; }
+
+.search-kbd {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  min-width: 24px;
+}
+
+/* Filter chips */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+.filter-bar::-webkit-scrollbar { display: none; }
+
+.filter-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.filter-chip {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sub);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.filter-chip:hover { border-color: var(--border-hover); background: white; }
+.filter-chip.active {
+  background: var(--accent-dim);
+  border-color: rgba(0,184,173,0.3);
+  color: var(--accent-dark);
+}
+
+/* Results area */
+.results-area {
+  flex: 1;
+  overflow-y: auto;
+}
+.results-area::-webkit-scrollbar { width: 4px; }
+.results-area::-webkit-scrollbar-track { background: transparent; }
+.results-area::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
+
+/* Result group */
+.result-group { padding: 0; }
+.result-group-header {
+  padding: 10px 18px 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  z-index: 10;
+}
+.result-count {
+  background: var(--bg);
+  color: var(--text-muted);
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 10px;
+}
+
+/* Result item */
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 18px;
+  cursor: pointer;
+  transition: all 0.12s;
+  border-left: 2px solid transparent;
+  position: relative;
+}
+.result-item:hover {
+  background: var(--surface);
+}
+.result-item.selected {
+  background: var(--accent-dim);
+  border-left-color: var(--accent);
+}
+
+.result-icon {
+  width: 34px; height: 34px;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.result-body { flex: 1; min-width: 0; }
+.result-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.result-meta {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+mark {
+  background: rgba(0,184,173,0.18);
+  color: var(--accent-dark);
+  border-radius: 2px;
+  padding: 0 2px;
+  font-style: normal;
+}
+
+.result-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.badge-task   { background: rgba(61,142,240,0.1); color: var(--medium); }
+.badge-note   { background: rgba(240,120,50,0.1); color: var(--high); }
+.badge-link   { background: rgba(124,82,200,0.1); color: var(--p-purple); }
+.badge-file   { background: rgba(31,170,107,0.1); color: var(--p-green); }
+
+.result-priority {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.result-kbd {
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+.result-item:hover .result-kbd,
+.result-item.selected .result-kbd { opacity: 1; }
+
+/* Group divider */
+.result-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+/* Quick actions */
+.quick-actions {
+  padding: 10px 18px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.qa-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.qa-grid {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.qa-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sub);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.qa-btn:hover { border-color: var(--border-hover); background: white; color: var(--text); }
+.qa-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+/* Footer */
+.modal-footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.kbd-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.kbd-hint-sep {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+</style>
+</head>
+<body>
+
+<!-- Background desktop UI -->
+<div class="desktop-bg">
+  <div class="bg-sidebar"></div>
+  <div class="bg-topbar"></div>
+  <div class="bg-content">
+    <!-- Fake kanban cards for atmosphere -->
+    <div class="bg-card" style="left:20px;top:20px;width:200px;height:80px;opacity:0.4"></div>
+    <div class="bg-card" style="left:240px;top:20px;width:200px;height:100px;opacity:0.3"></div>
+    <div class="bg-card" style="left:460px;top:20px;width:200px;height:70px;opacity:0.4"></div>
+    <div class="bg-card" style="left:20px;top:120px;width:200px;height:90px;opacity:0.3"></div>
+    <div class="bg-card" style="left:240px;top:140px;width:200px;height:80px;opacity:0.3"></div>
+    <div class="bg-card" style="left:680px;top:20px;width:180px;height:60px;opacity:0.3"></div>
+    <div class="bg-card" style="left:680px;top:100px;width:180px;height:80px;opacity:0.2"></div>
+  </div>
+</div>
+
+<!-- Search overlay -->
+<div class="overlay" onclick="handleOverlayClick(event)">
+  <div class="search-modal" id="searchModal">
+
+    <!-- Search bar -->
+    <div class="search-bar">
+      <div class="search-icon">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </div>
+      <input
+        class="search-input"
+        id="searchInput"
+        type="text"
+        placeholder="Buscar tareas, notas, archivos..."
+        value="propuesta técnica"
+        oninput="handleSearch(this.value)"
+        autofocus
+      />
+      <div class="search-kbd">
+        <kbd class="kbd">Esc</kbd>
+      </div>
+    </div>
+
+    <!-- Filter chips -->
+    <div class="filter-bar">
+      <span class="filter-label">Filtrar:</span>
+      <button class="filter-chip active" onclick="toggleFilter(this)">Todos</button>
+      <button class="filter-chip" onclick="toggleFilter(this)">📋 Tareas</button>
+      <button class="filter-chip" onclick="toggleFilter(this)">📝 Notas</button>
+      <button class="filter-chip" onclick="toggleFilter(this)">🔗 Links</button>
+      <button class="filter-chip" onclick="toggleFilter(this)">📄 Archivos</button>
+      <button class="filter-chip" onclick="toggleFilter(this)">📋 Pliegos Q1</button>
+      <button class="filter-chip" onclick="toggleFilter(this)">👤 García</button>
+    </div>
+
+    <!-- Results -->
+    <div class="results-area" id="resultsArea">
+
+      <!-- Tasks group -->
+      <div class="result-group">
+        <div class="result-group-header">
+          Tareas <span class="result-count">3</span>
+        </div>
+
+        <div class="result-item selected" tabindex="0">
+          <div class="result-icon" style="background:rgba(232,48,74,0.08)">📋</div>
+          <div class="result-body">
+            <div class="result-title">Revisar y validar <mark>propuesta técnica</mark> para licitación municipal</div>
+            <div class="result-meta">
+              <span class="result-badge badge-task">Tarea</span>
+              <span style="display:flex;align-items:center;gap:4px"><span class="result-priority" style="background:var(--urgent)"></span>Urgente</span>
+              <span>Pliegos Q1</span>
+              <span>Vence 5 mar</span>
+            </div>
+          </div>
+          <span class="result-kbd"><kbd class="kbd">↵</kbd></span>
+        </div>
+
+        <div class="result-item" tabindex="0">
+          <div class="result-icon" style="background:rgba(240,120,50,0.08)">📋</div>
+          <div class="result-body">
+            <div class="result-title">Actualizar <mark>propuesta técnica</mark> con referencias adicionales</div>
+            <div class="result-meta">
+              <span class="result-badge badge-task">Tarea</span>
+              <span style="display:flex;align-items:center;gap:4px"><span class="result-priority" style="background:var(--high)"></span>Alta</span>
+              <span>Pliegos Q1</span>
+            </div>
+          </div>
+          <span class="result-kbd"><kbd class="kbd">↵</kbd></span>
+        </div>
+
+        <div class="result-item" tabindex="0">
+          <div class="result-icon" style="background:rgba(61,127,216,0.08)">📋</div>
+          <div class="result-body">
+            <div class="result-title">Enviar <mark>propuesta técnica</mark> a Cliente García para revisión</div>
+            <div class="result-meta">
+              <span class="result-badge badge-task">Tarea</span>
+              <span style="display:flex;align-items:center;gap:4px"><span class="result-priority" style="background:var(--medium)"></span>Media</span>
+              <span>Cliente García</span>
+            </div>
+          </div>
+          <span class="result-kbd"><kbd class="kbd">↵</kbd></span>
+        </div>
+      </div>
+
+      <div class="result-divider"></div>
+
+      <!-- Notes group -->
+      <div class="result-group">
+        <div class="result-group-header">
+          Notas <span class="result-count">1</span>
+        </div>
+
+        <div class="result-item" tabindex="0">
+          <div class="result-icon" style="background:rgba(240,120,50,0.08)">📝</div>
+          <div class="result-body">
+            <div class="result-title">Puntos clave de la <mark>propuesta técnica</mark> — reunión 28 feb</div>
+            <div class="result-meta">
+              <span class="result-badge badge-note">Nota</span>
+              <span>Pliegos Q1</span>
+              <span>28 feb · 15:30</span>
+            </div>
+          </div>
+          <span class="result-kbd"><kbd class="kbd">↵</kbd></span>
+        </div>
+      </div>
+
+      <div class="result-divider"></div>
+
+      <!-- Links group -->
+      <div class="result-group">
+        <div class="result-group-header">
+          Links <span class="result-count">1</span>
+        </div>
+
+        <div class="result-item" tabindex="0">
+          <div class="result-icon" style="background:rgba(124,82,200,0.08)">🔗</div>
+          <div class="result-body">
+            <div class="result-title">Guía de <mark>propuestas técnicas</mark> — Ministerio de Hacienda</div>
+            <div class="result-meta">
+              <span class="result-badge badge-link">Link</span>
+              <span>hacienda.gob.es</span>
+              <span>Guardado 1 mar</span>
+            </div>
+          </div>
+          <span class="result-kbd"><kbd class="kbd">↵</kbd></span>
+        </div>
+      </div>
+
+      <div class="result-divider"></div>
+
+      <!-- Files group -->
+      <div class="result-group">
+        <div class="result-group-header">
+          Archivos <span class="result-count">2</span>
+        </div>
+
+        <div class="result-item" tabindex="0">
+          <div class="result-icon" style="background:rgba(31,170,107,0.08)">📄</div>
+          <div class="result-body">
+            <div class="result-title"><mark>Propuesta_Tecnica</mark>_Draft_v2.docx</div>
+            <div class="result-meta">
+              <span class="result-badge badge-file">Archivo</span>
+              <span>Word · 320 KB</span>
+              <span>Pliegos Q1</span>
+              <span>Hoy · 10:12</span>
+            </div>
+          </div>
+          <span class="result-kbd"><kbd class="kbd">↵</kbd></span>
+        </div>
+
+        <div class="result-item" tabindex="0">
+          <div class="result-icon" style="background:rgba(31,170,107,0.08)">📊</div>
+          <div class="result-body">
+            <div class="result-title">Presupuesto_<mark>Propuesta</mark>_v4.xlsx</div>
+            <div class="result-meta">
+              <span class="result-badge badge-file">Archivo</span>
+              <span>Excel · 890 KB</span>
+              <span>Pliegos Q1</span>
+              <span>1 mar</span>
+            </div>
+          </div>
+          <span class="result-kbd"><kbd class="kbd">↵</kbd></span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Quick actions -->
+    <div class="quick-actions">
+      <div class="qa-title">Acciones rápidas</div>
+      <div class="qa-grid">
+        <button class="qa-btn">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nueva tarea
+        </button>
+        <button class="qa-btn">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Nueva nota
+        </button>
+        <button class="qa-btn">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Subir archivo
+        </button>
+        <button class="qa-btn">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Preguntar a OpenClaw
+        </button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <div class="kbd-hint">
+        <kbd class="kbd">↑↓</kbd>
+        <span>Navegar</span>
+      </div>
+      <div class="kbd-hint">
+        <kbd class="kbd">↵</kbd>
+        <span>Abrir</span>
+      </div>
+      <div class="kbd-hint">
+        <kbd class="kbd">⌘</kbd><kbd class="kbd">↵</kbd>
+        <span>Abrir en nuevo tab</span>
+      </div>
+      <div class="kbd-hint-sep">
+        <span id="resultSummary">7 resultados para "propuesta técnica"</span>
+      </div>
+      <div class="kbd-hint">
+        <kbd class="kbd">Esc</kbd>
+        <span>Cerrar</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Close on Esc
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+  if (e.key === 'ArrowDown') navigate(1);
+  if (e.key === 'ArrowUp')   navigate(-1);
+  if (e.key === 'Enter') {
+    const sel = document.querySelector('.result-item.selected');
+    if (sel) { sel.style.transform = 'scale(0.99)'; setTimeout(() => sel.style.transform = '', 150); }
+  }
+});
+
+function closeModal() {
+  const overlay = document.querySelector('.overlay');
+  overlay.style.opacity = '0';
+  overlay.style.transition = 'opacity 0.2s';
+}
+
+function handleOverlayClick(e) {
+  if (e.target === e.currentTarget) closeModal();
+}
+
+// Keyboard navigation
+let selectedIdx = 0;
+function navigate(dir) {
+  const items = [...document.querySelectorAll('.result-item')];
+  items[selectedIdx]?.classList.remove('selected');
+  selectedIdx = Math.max(0, Math.min(items.length - 1, selectedIdx + dir));
+  items[selectedIdx]?.classList.add('selected');
+  items[selectedIdx]?.scrollIntoView({ block: 'nearest' });
+}
+
+// Click to select
+document.querySelectorAll('.result-item').forEach((item, idx) => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.result-item').forEach(i => i.classList.remove('selected'));
+    item.classList.add('selected');
+    selectedIdx = idx;
+  });
+});
+
+// Filter chips
+function toggleFilter(btn) {
+  const chips = document.querySelectorAll('.filter-chip');
+  chips.forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// Search input
+function handleSearch(val) {
+  const total = val.length > 2 ? Math.floor(Math.random() * 8) + 3 : 0;
+  document.getElementById('resultSummary').textContent =
+    val ? `${total} resultados para "${val}"` : 'Escribe para buscar...';
+
+  // Update mark highlights
+  document.querySelectorAll('.result-title').forEach(title => {
+    if (!val) return;
+    const html = title.innerHTML.replace(/<mark>(.*?)<\/mark>/g, '$1');
+    const regex = new RegExp(val.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    title.innerHTML = html.replace(regex, '<mark>$&</mark>');
+  });
+}
+
+// Auto-focus input
+document.getElementById('searchInput').focus();
+document.getElementById('searchInput').select();
+</script>
+</body>
+</html>

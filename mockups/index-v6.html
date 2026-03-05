@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow v6 — Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:           #13141f;
+  --surface:      #1a1b2e;
+  --elevated:     #1f2035;
+  --card:         #242540;
+  --border:       rgba(255,255,255,0.07);
+  --border-hover: rgba(255,255,255,0.16);
+  --text:         #f0f1ff;
+  --text-sub:     rgba(240,241,255,0.6);
+  --text-muted:   rgba(240,241,255,0.35);
+  --accent:       #2fd4aa;
+  --accent-blue:  #60a5fa;
+  --accent-purple:#a78bfa;
+  --accent-orange:#fb923c;
+  --accent-green: #4ade80;
+}
+
+html { height: 100%; }
+body {
+  min-height: 100vh;
+  font-family: 'Outfit', sans-serif;
+  color: var(--text);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 70% 55% at 10% 0%,   rgba(167,139,250,0.14) 0%, transparent 55%),
+    radial-gradient(ellipse 55% 65% at 92% 100%,  rgba(47,212,170,0.11) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 45% at 85% 12%,   rgba(96,165,250,0.08) 0%, transparent 50%),
+    radial-gradient(circle, rgba(255,255,255,0.016) 1px, transparent 1px);
+  background-size: auto, auto, auto, 22px 22px;
+  overflow-x: hidden;
+}
+
+/* Ambient orbs */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+.orb-purple {
+  width: 900px; height: 900px;
+  top: -300px; left: -250px;
+  background: radial-gradient(circle, rgba(167,139,250,0.15) 0%, transparent 60%);
+  filter: blur(120px);
+  animation: drift 25s ease-in-out infinite;
+}
+.orb-teal {
+  width: 700px; height: 700px;
+  bottom: -200px; right: -150px;
+  background: radial-gradient(circle, rgba(47,212,170,0.13) 0%, transparent 60%);
+  filter: blur(110px);
+  animation: drift 18s ease-in-out infinite reverse;
+}
+@keyframes drift {
+  0%, 100% { transform: translate(0,0); }
+  33%  { transform: translate(30px,-35px); }
+  66%  { transform: translate(-20px,20px); }
+}
+
+/* ===== LAYOUT ===== */
+.page {
+  position: relative;
+  z-index: 1;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 72px 32px 80px;
+}
+
+/* ===== HEADER ===== */
+.header {
+  text-align: center;
+  margin-bottom: 64px;
+  animation: fade-up 0.7s cubic-bezier(0.16,1,0.3,1) both;
+}
+.logo-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.logo-mark {
+  width: 48px; height: 48px;
+  background: rgba(47,212,170,0.12);
+  border: 1px solid rgba(47,212,170,0.25);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 24px rgba(47,212,170,0.15);
+}
+.logo-mark svg { width: 22px; height: 22px; stroke: var(--accent); fill: none; stroke-width: 2; }
+.logo-text {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.logo-text em { color: var(--accent); font-style: normal; }
+
+.version-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(167,139,250,0.10);
+  border: 1px solid rgba(167,139,250,0.22);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-purple);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.version-badge-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent-purple);
+  animation: blink 2.5s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.header-title {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+}
+
+/* ===== CARDS GRID ===== */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 700px) {
+  .grid { grid-template-columns: 1fr; }
+  .page { padding: 48px 20px 60px; }
+}
+
+.card {
+  position: relative;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  cursor: pointer;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.22s cubic-bezier(0.16,1,0.3,1), border-color 0.2s, box-shadow 0.2s;
+  animation: fade-up 0.7s cubic-bezier(0.16,1,0.3,1) both;
+}
+.card:nth-child(1) { animation-delay: 0.08s; }
+.card:nth-child(2) { animation-delay: 0.16s; }
+.card:nth-child(3) { animation-delay: 0.24s; }
+.card:nth-child(4) { animation-delay: 0.32s; }
+.card:nth-child(5) { animation-delay: 0.40s; }
+.card:nth-child(6) { animation-delay: 0.48s; }
+.card:nth-child(7) { animation-delay: 0.56s; }
+.card:nth-child(8) { animation-delay: 0.64s; }
+
+.card:hover {
+  transform: translateY(-6px);
+  border-color: var(--border-hover);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px var(--border-hover);
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Top accent strip per card */
+.card-strip {
+  height: 3px;
+  width: 100%;
+  flex-shrink: 0;
+}
+.card-strip.teal    { background: linear-gradient(90deg, var(--accent-purple), var(--accent)); }
+.card-strip.blue    { background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple)); }
+.card-strip.kanban  { background: linear-gradient(90deg, var(--accent), var(--accent-blue), var(--accent-purple)); }
+.card-strip.red     { background: linear-gradient(90deg, var(--accent-orange), #f87171); }
+.card-strip.mobile  { background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink)); }
+.card-strip.agent   { background: linear-gradient(90deg, var(--accent), var(--accent-green)); }
+.card-strip.capture { background: linear-gradient(90deg, var(--accent-blue), var(--accent)); }
+.card-strip.search  { background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue)); }
+
+/* Preview area */
+.card-preview {
+  background: var(--card);
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Mini preview illustrations */
+.preview-inner {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+
+/* Login preview */
+.prev-login {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  width: 120px;
+}
+.prev-login .prev-logo {
+  width: 28px; height: 28px;
+  background: rgba(47,212,170,0.15);
+  border: 1px solid rgba(47,212,170,0.3);
+  border-radius: 8px;
+  margin-bottom: 2px;
+}
+.prev-login .prev-line {
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.08);
+}
+.prev-login .prev-line.w-full  { width: 100%; }
+.prev-login .prev-line.w-80    { width: 80%; }
+.prev-login .prev-btn {
+  width: 100%;
+  height: 20px;
+  border-radius: 5px;
+  background: rgba(47,212,170,0.35);
+  margin-top: 4px;
+}
+.prev-login .prev-strip {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue), var(--accent));
+}
+.prev-login-wrap {
+  background: var(--elevated);
+  border: 1px solid var(--border-hover);
+  border-radius: 10px;
+  padding: 14px 16px 16px;
+  width: 130px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Mobile preview */
+.prev-mobile {
+  width: 80px;
+  background: var(--elevated);
+  border: 1px solid var(--border-hover);
+  border-radius: 12px;
+  padding: 10px 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow: hidden;
+}
+.prev-mobile .pm-topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 3px;
+}
+.prev-mobile .pm-logo { width: 30px; height: 5px; border-radius: 2px; background: rgba(255,255,255,0.2); }
+.prev-mobile .pm-avatar { width: 10px; height: 10px; border-radius: 50%; background: rgba(47,212,170,0.4); }
+.prev-mobile .pm-pills {
+  display: flex; gap: 3px; margin-bottom: 2px;
+}
+.prev-mobile .pm-pill {
+  height: 8px; border-radius: 4px; background: rgba(255,255,255,0.06);
+}
+.prev-mobile .pm-pill.active { background: rgba(47,212,170,0.4); }
+.prev-mobile .pm-card {
+  height: 22px; border-radius: 5px;
+  background: var(--card);
+  border-left: 2px solid var(--accent-orange);
+  margin-bottom: 1px;
+}
+.prev-mobile .pm-card:nth-child(2) { border-left-color: var(--accent-purple); }
+.prev-mobile .pm-card:nth-child(3) { border-left-color: var(--accent-blue); }
+.prev-mobile .pm-nav {
+  display: flex; justify-content: space-around; align-items: center;
+  margin-top: 4px; padding-top: 5px;
+  border-top: 1px solid var(--border);
+}
+.prev-mobile .pm-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.1); }
+.prev-mobile .pm-dot.active { background: rgba(47,212,170,0.6); }
+
+/* Kanban preview */
+.prev-kanban {
+  display: flex;
+  gap: 5px;
+  padding: 0 8px;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+}
+.prev-kanban .pk-col {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  height: 140px;
+  overflow: hidden;
+}
+.prev-kanban .pk-col-head {
+  height: 6px; border-radius: 3px;
+  background: rgba(255,255,255,0.12);
+  margin-bottom: 3px;
+}
+.prev-kanban .pk-card {
+  height: 18px; border-radius: 4px;
+  background: var(--card);
+  border-left: 2px solid rgba(255,255,255,0.1);
+}
+.prev-kanban .pk-card.urgent  { border-left-color: var(--accent-orange); }
+.prev-kanban .pk-card.high    { border-left-color: var(--accent-purple); }
+.prev-kanban .pk-card.med     { border-left-color: var(--accent-blue); }
+.prev-kanban .pk-card.ai-card { border-left-color: var(--accent-purple); background: rgba(167,139,250,0.08); }
+.prev-kanban .pk-ai-strip {
+  width: 28px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  border-radius: 6px 0 0 6px;
+  display: flex; flex-direction: column;
+  align-items: center;
+  padding-top: 8px;
+  gap: 5px;
+  height: 140px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.prev-kanban .pk-ai-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(47,212,170,0.5);
+}
+.prev-kanban .pk-ai-line {
+  width: 16px; height: 4px; border-radius: 2px;
+  background: rgba(255,255,255,0.08);
+}
+
+/* Hover glow overlay */
+.card-preview-glow {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.card:hover .card-preview-glow { opacity: 1; }
+.card-strip.teal    ~ .card-preview .card-preview-glow { background: radial-gradient(circle at 50% 80%, rgba(47,212,170,0.06) 0%, transparent 60%); }
+
+/* Card body */
+.card-body {
+  padding: 20px 22px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+.card-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.card-type-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+}
+.card-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.card-desc {
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--text-muted);
+  line-height: 1.6;
+  flex: 1;
+}
+.card-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: gap 0.2s;
+}
+.card:hover .card-cta { gap: 10px; }
+.card-cta svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2.5; }
+
+.card-cta.teal   { color: var(--accent); }
+.card-cta.blue   { color: var(--accent-blue); }
+.card-cta.purple { color: var(--accent-purple); }
+
+/* ===== FOOTER ===== */
+.footer {
+  text-align: center;
+  margin-top: 56px;
+  font-size: 12px;
+  color: var(--text-muted);
+  animation: fade-up 0.7s cubic-bezier(0.16,1,0.3,1) 0.4s both;
+}
+.footer a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.footer a:hover { color: var(--accent); }
+.footer-divider { margin: 0 10px; opacity: 0.4; }
+</style>
+</head>
+<body>
+
+<div class="orb orb-purple"></div>
+<div class="orb orb-teal"></div>
+
+<div class="page">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="logo-row">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      </div>
+      <span class="logo-text">Task<em>Flow</em></span>
+    </div>
+    <div class="version-badge">
+      <span class="version-badge-dot"></span>
+      Versión 6 · Cosmic Studio
+    </div>
+    <p class="header-title">Selecciona un mockup para previsualizarlo</p>
+  </header>
+
+  <!-- Cards -->
+  <div class="grid">
+
+    <!-- Login -->
+    <a href="mockup-0-login-v6.html" class="card">
+      <div class="card-strip teal"></div>
+      <div class="card-preview">
+        <div class="card-preview-glow"></div>
+        <div class="preview-inner">
+          <div class="prev-login-wrap">
+            <div class="prev-strip"></div>
+            <div class="prev-login">
+              <div class="prev-logo"></div>
+              <div class="prev-line w-80" style="width:70%;height:9px;background:rgba(255,255,255,0.15);border-radius:4px;margin-bottom:6px;"></div>
+              <div class="prev-line w-full"></div>
+              <div class="prev-line w-full"></div>
+              <div class="prev-btn"></div>
+              <div class="prev-line w-80" style="width:60%;height:5px;"></div>
+              <div class="prev-line w-full" style="height:18px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <span class="card-type">
+          <span class="card-type-dot" style="background:var(--accent);"></span>
+          Pantalla de acceso
+        </span>
+        <div class="card-title">Login</div>
+        <p class="card-desc">Ventana de autenticación con efectos aurora, gradiente de fondo y badge AI.</p>
+        <span class="card-cta teal">
+          Ver mockup
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </span>
+      </div>
+    </a>
+
+    <!-- Mobile Inbox -->
+    <a href="mockup-1-mobile-inbox-v6.html" class="card">
+      <div class="card-strip blue"></div>
+      <div class="card-preview">
+        <div class="card-preview-glow"></div>
+        <div class="preview-inner" style="flex-direction:row;gap:12px;justify-content:center;">
+          <div class="prev-mobile">
+            <div class="pm-topbar">
+              <div class="pm-logo"></div>
+              <div class="pm-avatar"></div>
+            </div>
+            <div class="pm-pills">
+              <div class="pm-pill active" style="width:22px;"></div>
+              <div class="pm-pill" style="width:18px;"></div>
+              <div class="pm-pill" style="width:16px;"></div>
+              <div class="pm-pill" style="width:20px;background:rgba(167,139,250,0.3);"></div>
+            </div>
+            <div class="pm-card"></div>
+            <div class="pm-card"></div>
+            <div class="pm-card" style="border-left-color:var(--accent-green);height:28px;background:rgba(167,139,250,0.06);border-color:var(--accent-purple);"></div>
+            <div class="pm-nav">
+              <div class="pm-dot active"></div>
+              <div class="pm-dot"></div>
+              <div class="pm-dot"></div>
+              <div class="pm-dot"></div>
+              <div class="pm-dot"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <span class="card-type">
+          <span class="card-type-dot" style="background:var(--accent-blue);"></span>
+          Vista móvil
+        </span>
+        <div class="card-title">Inbox Mobile</div>
+        <p class="card-desc">Bandeja de entrada mobile con asistente AI, pills de contexto y tarjetas de tareas.</p>
+        <span class="card-cta blue">
+          Ver mockup
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </span>
+      </div>
+    </a>
+
+    <!-- Desktop Kanban -->
+    <a href="mockup-2-desktop-kanban-v6.html" class="card">
+      <div class="card-strip kanban"></div>
+      <div class="card-preview">
+        <div class="card-preview-glow"></div>
+        <div class="preview-inner" style="padding:10px 6px;">
+          <div class="prev-kanban">
+            <!-- AI sidebar strip -->
+            <div class="pk-ai-strip">
+              <div class="pk-ai-dot"></div>
+              <div class="pk-ai-line"></div>
+              <div class="pk-ai-line"></div>
+              <div class="pk-ai-line"></div>
+            </div>
+            <!-- Kanban cols -->
+            <div class="pk-col">
+              <div class="pk-col-head"></div>
+              <div class="pk-card urgent"></div>
+              <div class="pk-card high"></div>
+              <div class="pk-card med"></div>
+            </div>
+            <div class="pk-col">
+              <div class="pk-col-head" style="background:rgba(47,212,170,0.2);"></div>
+              <div class="pk-card ai-card"></div>
+              <div class="pk-card med"></div>
+            </div>
+            <div class="pk-col">
+              <div class="pk-col-head" style="background:rgba(96,165,250,0.2);"></div>
+              <div class="pk-card high"></div>
+              <div class="pk-card med"></div>
+            </div>
+            <div class="pk-col">
+              <div class="pk-col-head" style="background:rgba(74,222,128,0.2);"></div>
+              <div class="pk-card" style="border-left-color:var(--accent-green);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <span class="card-type">
+          <span class="card-type-dot" style="background:var(--accent-purple);"></span>
+          Vista desktop
+        </span>
+        <div class="card-title">Kanban Desktop</div>
+        <p class="card-desc">Panel Kanban 3 columnas con sidebar AI EVE, tablero de tareas y panel de detalle.</p>
+        <span class="card-cta purple">
+          Ver mockup
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </span>
+      </div>
+    </a>
+
+
+    <!-- Eisenhower Desktop -->
+    <a href="mockup-3-desktop-eisenhower-v6.html" class="card">
+      <div class="card-strip red"></div>
+      <div class="card-preview">
+        <div class="card-preview-glow"></div>
+        <div class="preview-inner" style="padding:10px 8px;">
+          <!-- 2x2 matrix mini -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;width:100%;height:100%;">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px;border-top:2px solid #f87171;display:flex;flex-direction:column;gap:3px;">
+              <div style="height:5px;width:30px;border-radius:3px;background:rgba(248,113,113,0.4);"></div>
+              <div style="height:10px;border-radius:3px;background:var(--card);border-left:2px solid #f87171;"></div>
+              <div style="height:10px;border-radius:3px;background:var(--card);border-left:2px solid #f87171;"></div>
+              <div style="height:10px;border-radius:3px;background:var(--card);border-left:2px solid #f87171;"></div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px;border-top:2px solid var(--accent-blue);display:flex;flex-direction:column;gap:3px;">
+              <div style="height:5px;width:30px;border-radius:3px;background:rgba(96,165,250,0.4);"></div>
+              <div style="height:10px;border-radius:3px;background:var(--card);border-left:2px solid var(--accent-blue);"></div>
+              <div style="height:10px;border-radius:3px;background:var(--card);border-left:2px solid var(--accent-blue);"></div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px;border-top:2px solid var(--accent-orange);display:flex;flex-direction:column;gap:3px;">
+              <div style="height:5px;width:30px;border-radius:3px;background:rgba(251,146,60,0.4);"></div>
+              <div style="height:10px;border-radius:3px;background:var(--card);border-left:2px solid var(--accent-orange);"></div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px;border-top:2px solid rgba(255,255,255,0.15);opacity:0.7;display:flex;flex-direction:column;gap:3px;">
+              <div style="height:5px;width:22px;border-radius:3px;background:rgba(255,255,255,0.1);"></div>
+              <div style="height:10px;border-radius:3px;background:var(--card);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <span class="card-type">
+          <span class="card-type-dot" style="background:#f87171;"></span>
+          Vista desktop
+        </span>
+        <div class="card-title">Matriz Eisenhower</div>
+        <p class="card-desc">Matriz 2×2 urgente/importante con panel AI, sugerencias automáticas y drag & drop.</p>
+        <span class="card-cta" style="color:#f87171;">
+          Ver mockup
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </span>
+      </div>
+    </a>
+
+    <!-- Mobile Detail -->
+    <a href="mockup-4-mobile-detail-v6.html" class="card">
+      <div class="card-strip mobile"></div>
+      <div class="card-preview">
+        <div class="card-preview-glow"></div>
+        <div class="preview-inner" style="flex-direction:row;justify-content:center;">
+          <div class="prev-mobile" style="width:88px;">
+            <div style="height:5px;width:60%;border-radius:3px;background:rgba(255,255,255,0.15);margin-bottom:6px;"></div>
+            <div style="display:flex;gap:3px;margin-bottom:5px;">
+              <div style="height:7px;width:28px;border-radius:3px;background:rgba(248,113,113,0.3);"></div>
+              <div style="height:7px;width:24px;border-radius:3px;background:rgba(251,146,60,0.3);"></div>
+              <div style="height:7px;width:30px;border-radius:3px;background:rgba(96,165,250,0.25);"></div>
+            </div>
+            <div style="height:20px;border-radius:4px;background:rgba(47,212,170,0.25);margin-bottom:4px;"></div>
+            <div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-left:2px solid var(--accent-purple);border-radius:4px;padding:4px;margin-bottom:3px;">
+              <div style="height:4px;width:70%;border-radius:2px;background:rgba(167,139,250,0.4);margin-bottom:3px;"></div>
+              <div style="height:3px;width:100%;border-radius:2px;background:rgba(255,255,255,0.08);"></div>
+              <div style="height:3px;width:85%;border-radius:2px;background:rgba(255,255,255,0.06);margin-top:2px;"></div>
+            </div>
+            <div style="height:14px;border-radius:4px;background:rgba(47,212,170,0.3);margin-top:5px;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <span class="card-type">
+          <span class="card-type-dot" style="background:var(--accent-purple);"></span>
+          Vista móvil
+        </span>
+        <div class="card-title">Detalle de Tarea</div>
+        <p class="card-desc">Vista detallada de tarea mobile con análisis AI, actividad, adjuntos y relaciones.</p>
+        <span class="card-cta purple">
+          Ver mockup
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </span>
+      </div>
+    </a>
+
+    <!-- Desktop Agent -->
+    <a href="mockup-5-desktop-agent-v6.html" class="card">
+      <div class="card-strip agent"></div>
+      <div class="card-preview">
+        <div class="card-preview-glow"></div>
+        <div class="preview-inner" style="padding:8px;gap:5px;flex-direction:row;align-items:stretch;">
+          <!-- Sidebar -->
+          <div style="width:28px;background:var(--sidebar-ai);border:1px solid var(--border);border-radius:6px;padding:5px 4px;display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+            <div style="height:6px;border-radius:3px;background:rgba(47,212,170,0.4);"></div>
+            <div style="height:4px;border-radius:2px;background:rgba(255,255,255,0.08);"></div>
+            <div style="height:4px;border-radius:2px;background:rgba(255,255,255,0.08);"></div>
+            <div style="height:4px;border-radius:2px;background:rgba(47,212,170,0.2);"></div>
+          </div>
+          <!-- Feed -->
+          <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+            <div style="height:10px;background:var(--elevated);border:1px solid var(--border);border-radius:4px;"></div>
+            <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px;display:flex;flex-direction:column;gap:3px;">
+              <div style="height:28px;border-radius:4px;background:var(--elevated);border-left:2px solid var(--accent);padding:3px;"><div style="height:3px;width:60%;border-radius:2px;background:rgba(47,212,170,0.3);"></div></div>
+              <div style="height:22px;border-radius:4px;background:var(--elevated);border-left:2px solid #f87171;"></div>
+              <div style="height:22px;border-radius:4px;background:var(--elevated);border-left:2px solid var(--accent-orange);"></div>
+            </div>
+          </div>
+          <!-- Config -->
+          <div style="width:36px;background:var(--elevated);border:1px solid var(--border);border-radius:6px;padding:5px 4px;display:flex;flex-direction:column;gap:3px;flex-shrink:0;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:2px;">
+              <div style="height:12px;border-radius:3px;background:var(--card);"></div>
+              <div style="height:12px;border-radius:3px;background:var(--card);"></div>
+              <div style="height:12px;border-radius:3px;background:var(--card);"></div>
+              <div style="height:12px;border-radius:3px;background:var(--card);"></div>
+            </div>
+            <div style="height:4px;border-radius:2px;background:rgba(47,212,170,0.3);"></div>
+            <div style="height:4px;border-radius:2px;background:rgba(255,255,255,0.06);"></div>
+            <div style="height:4px;border-radius:2px;background:rgba(255,255,255,0.06);"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <span class="card-type">
+          <span class="card-type-dot" style="background:var(--accent-green);"></span>
+          Vista desktop
+        </span>
+        <div class="card-title">Agente OpenClaw</div>
+        <p class="card-desc">Feed del agente AI con acciones pendientes, configuración de autonomía y permisos.</p>
+        <span class="card-cta teal">
+          Ver mockup
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </span>
+      </div>
+    </a>
+
+    <!-- Mobile Capture -->
+    <a href="mockup-6-mobile-capture-v6.html" class="card">
+      <div class="card-strip capture"></div>
+      <div class="card-preview">
+        <div class="card-preview-glow"></div>
+        <div class="preview-inner" style="flex-direction:row;justify-content:center;">
+          <div class="prev-mobile" style="width:88px;">
+            <!-- Steps -->
+            <div style="display:flex;align-items:center;gap:3px;margin-bottom:6px;">
+              <div style="width:10px;height:10px;border-radius:50%;background:rgba(47,212,170,0.8);display:flex;align-items:center;justify-content:center;font-size:6px;color:#13141f;font-weight:bold;">✓</div>
+              <div style="flex:1;height:1px;background:var(--accent);"></div>
+              <div style="width:10px;height:10px;border-radius:50%;background:rgba(47,212,170,0.8);display:flex;align-items:center;justify-content:center;font-size:6px;color:#13141f;font-weight:bold;">✓</div>
+              <div style="flex:1;height:1px;background:var(--accent);"></div>
+              <div style="width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px rgba(47,212,170,0.2);display:flex;align-items:center;justify-content:center;font-size:6px;color:#13141f;font-weight:bold;">3</div>
+            </div>
+            <!-- File card -->
+            <div style="background:var(--elevated);border:1px solid var(--border);border-radius:5px;margin-bottom:4px;overflow:hidden;">
+              <div style="height:28px;background:linear-gradient(135deg,var(--card),var(--elevated));display:flex;align-items:center;justify-content:center;font-size:14px;">📄</div>
+              <div style="padding:4px;"><div style="height:3px;width:80%;border-radius:2px;background:linear-gradient(90deg,var(--accent-blue),var(--accent));"></div></div>
+            </div>
+            <!-- AI card -->
+            <div style="background:var(--elevated);border:1px solid rgba(47,212,170,0.2);border-left:2px solid var(--accent);border-radius:5px;padding:4px;margin-bottom:4px;">
+              <div style="height:3px;width:70%;border-radius:2px;background:rgba(47,212,170,0.4);margin-bottom:2px;"></div>
+              <div style="height:3px;width:100%;border-radius:2px;background:rgba(255,255,255,0.07);"></div>
+            </div>
+            <div style="height:12px;border-radius:4px;background:rgba(47,212,170,0.3);"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <span class="card-type">
+          <span class="card-type-dot" style="background:var(--accent-blue);"></span>
+          Vista móvil
+        </span>
+        <div class="card-title">Captura de Archivo</div>
+        <p class="card-desc">Flujo de 3 pasos para capturar y clasificar archivos con sugerencia automática de OpenClaw.</p>
+        <span class="card-cta blue">
+          Ver mockup
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </span>
+      </div>
+    </a>
+
+    <!-- Desktop Search -->
+    <a href="mockup-7-desktop-search-v6.html" class="card">
+      <div class="card-strip search"></div>
+      <div class="card-preview">
+        <div class="card-preview-glow"></div>
+        <div class="preview-inner" style="padding:10px;">
+          <!-- Blurred bg hint -->
+          <div style="position:absolute;inset:0;opacity:0.3;display:flex;">
+            <div style="width:40px;background:var(--sidebar-ai);"></div>
+            <div style="flex:1;background:var(--surface);"></div>
+          </div>
+          <!-- Modal -->
+          <div style="position:relative;width:100%;background:var(--elevated);border:1px solid rgba(167,139,250,0.25);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.6);overflow:hidden;">
+            <!-- Search bar -->
+            <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--border);">
+              <div style="width:8px;height:8px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);flex-shrink:0;"></div>
+              <div style="flex:1;height:6px;border-radius:3px;background:rgba(47,212,170,0.2);"></div>
+              <div style="width:16px;height:6px;border-radius:3px;background:rgba(255,255,255,0.06);flex-shrink:0;"></div>
+            </div>
+            <!-- Filter pills -->
+            <div style="display:flex;gap:3px;padding:5px 10px;border-bottom:1px solid var(--border);">
+              <div style="height:7px;width:20px;border-radius:4px;background:rgba(47,212,170,0.25);border:1px solid rgba(47,212,170,0.3);"></div>
+              <div style="height:7px;width:16px;border-radius:4px;background:rgba(255,255,255,0.05);"></div>
+              <div style="height:7px;width:16px;border-radius:4px;background:rgba(255,255,255,0.05);"></div>
+            </div>
+            <!-- Results -->
+            <div style="padding:6px 0;">
+              <div style="padding:4px 10px;border-left:2px solid var(--accent);background:rgba(47,212,170,0.05);">
+                <div style="height:5px;width:85%;border-radius:2px;background:rgba(255,255,255,0.12);"></div>
+                <div style="height:4px;width:50%;border-radius:2px;background:rgba(255,255,255,0.06);margin-top:2px;"></div>
+              </div>
+              <div style="padding:4px 10px;border-left:2px solid transparent;">
+                <div style="height:5px;width:75%;border-radius:2px;background:rgba(255,255,255,0.07);"></div>
+              </div>
+              <div style="padding:4px 10px;border-left:2px solid transparent;">
+                <div style="height:5px;width:65%;border-radius:2px;background:rgba(255,255,255,0.07);"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <span class="card-type">
+          <span class="card-type-dot" style="background:var(--accent-purple);"></span>
+          Overlay desktop
+        </span>
+        <div class="card-title">Búsqueda Global</div>
+        <p class="card-desc">Overlay de búsqueda con filtros, resultados agrupados, highlight de texto y acciones rápidas.</p>
+        <span class="card-cta purple">
+          Ver mockup
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </span>
+      </div>
+    </a>
+
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span>TaskFlow v6 · Cosmic Studio</span>
+    <span class="footer-divider">·</span>
+    <a href="index.html">Ver todas las versiones</a>
+    <span class="footer-divider">·</span>
+    <span style="font-family:'DM Mono',monospace;font-size:11px;">8 mockups · 2026</span>
+  </footer>
+
+</div>
+</body>
+</html>

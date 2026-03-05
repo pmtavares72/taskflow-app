@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Panel OpenClaw</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep:       #09090e;
+    --bg-surface:    #0f0f16;
+    --bg-elevated:   #161620;
+    --bg-card:       #1c1c28;
+    --bg-card-hover: #22222e;
+    --border:        rgba(255,255,255,0.06);
+    --border-hover:  rgba(255,255,255,0.12);
+    --text-primary:  #eeeef5;
+    --text-secondary:#7878a0;
+    --text-muted:    #44445a;
+    --accent-agent:  #00d4c8;
+    --accent-urgent: #ff4757;
+    --accent-high:   #ff8c42;
+    --accent-medium: #4a9eff;
+    --proj-blue:     #3b7dd8;
+    --proj-green:    #2ebd7c;
+    --proj-orange:   #f5820d;
+    --font-display:  'Syne', sans-serif;
+    --font-body:     'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 13px;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    height: 52px;
+    background: rgba(9,9,14,0.95);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+  .topbar-logo { font-family: var(--font-display); font-weight: 800; font-size: 17px; letter-spacing: -0.04em; padding-right: 12px; border-right: 1px solid var(--border); }
+  .topbar-logo span { color: var(--accent-agent); }
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+  .breadcrumb .sep { color: var(--text-muted); }
+  .breadcrumb .current { color: var(--accent-agent); font-weight: 500; }
+  .topbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .topbar-btn { width: 30px; height: 30px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 7px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .topbar-btn svg { width: 14px; height: 14px; stroke: var(--text-secondary); fill: none; stroke-width: 2; }
+  .add-btn { display: flex; align-items: center; gap: 6px; background: var(--accent-agent); border-radius: 7px; padding: 5px 12px; font-size: 12px; font-weight: 600; color: #09090e; cursor: pointer; font-family: var(--font-display); }
+  .add-btn svg { width: 13px; height: 13px; stroke: #09090e; fill: none; stroke-width: 2.5; }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── SIDEBAR ── */
+  .sidebar { width: 220px; background: var(--bg-surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; scrollbar-width: none; padding: 16px 12px; }
+  .sidebar::-webkit-scrollbar { display: none; }
+  .sidebar-title { font-family: var(--font-display); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); padding: 0 8px; margin-bottom: 4px; margin-top: 16px; }
+  .sidebar-title:first-child { margin-top: 0; }
+  .nav-link { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 7px; cursor: pointer; transition: all 0.12s; color: var(--text-secondary); font-size: 13px; }
+  .nav-link:hover { background: var(--bg-elevated); color: var(--text-primary); }
+  .nav-link.active { background: rgba(0,212,200,0.06); color: var(--accent-agent); border: 1px solid rgba(0,212,200,0.15); }
+  .nav-link svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; flex-shrink: 0; }
+  .nav-link .count { margin-left: auto; font-size: 11px; font-family: var(--font-display); font-weight: 600; color: var(--text-muted); background: var(--bg-elevated); border-radius: 5px; padding: 1px 6px; }
+  .nav-link.active .count { background: rgba(0,212,200,0.12); color: var(--accent-agent); }
+  .nav-link .inbox-badge { background: var(--accent-urgent); color: white; font-size: 10px; font-weight: 700; font-family: var(--font-display); margin-left: auto; padding: 1px 6px; border-radius: 5px; }
+  .divider { height: 1px; background: var(--border); margin: 8px 0; }
+  .project-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; cursor: pointer; color: var(--text-secondary); font-size: 12.5px; }
+  .project-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .project-item .count { margin-left: auto; font-size: 10.5px; color: var(--text-muted); }
+  .sidebar-footer { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+  .user-info { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; cursor: pointer; }
+  .avatar { width: 28px; height: 28px; background: linear-gradient(135deg, var(--proj-blue), var(--accent-agent)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 11px; font-weight: 700; color: white; flex-shrink: 0; }
+  .user-name { font-size: 12.5px; font-weight: 500; }
+  .user-role { font-size: 11px; color: var(--text-muted); }
+
+  /* ── MAIN ── */
+  .agent-main { flex: 1; display: flex; gap: 0; overflow: hidden; }
+
+  /* ── LEFT PANEL: FEED ── */
+  .agent-feed-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--border);
+  }
+
+  .panel-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .panel-header-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  /* ── AGENT AVATAR ── */
+  .agent-avatar {
+    width: 40px; height: 40px;
+    background: rgba(0,212,200,0.1);
+    border: 1px solid rgba(0,212,200,0.25);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .agent-avatar-icon { font-size: 20px; }
+  .agent-status-dot {
+    position: absolute;
+    bottom: -2px; right: -2px;
+    width: 10px; height: 10px;
+    background: var(--accent-agent);
+    border-radius: 50%;
+    border: 2px solid var(--bg-surface);
+    animation: agent-pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 6px rgba(0,212,200,0.5);
+  }
+  @keyframes agent-pulse { 0%,100%{opacity:1;box-shadow:0 0 6px rgba(0,212,200,0.5)} 50%{opacity:0.6;box-shadow:0 0 14px rgba(0,212,200,0.8)} }
+
+  .agent-header-info { flex: 1; }
+  .agent-name {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--accent-agent);
+  }
+  .agent-desc { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .agent-config-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--font-body);
+  }
+  .agent-config-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* ── DIGEST BANNER ── */
+  .digest-banner {
+    background: linear-gradient(135deg, rgba(0,212,200,0.07) 0%, rgba(74,158,255,0.04) 100%);
+    border: 1px solid rgba(0,212,200,0.18);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .digest-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+  .digest-text { flex: 1; }
+  .digest-greeting {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-agent);
+    margin-bottom: 4px;
+  }
+  .digest-body { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+  .digest-body strong { color: var(--text-primary); }
+  .digest-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .dstat {
+    padding: 4px 9px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-display);
+    letter-spacing: 0.03em;
+  }
+  .dstat.red { background: rgba(255,71,87,0.1); border: 1px solid rgba(255,71,87,0.2); color: #ff7080; }
+  .dstat.yellow { background: rgba(255,140,66,0.1); border: 1px solid rgba(255,140,66,0.2); color: #ffb074; }
+  .dstat.teal { background: rgba(0,212,200,0.08); border: 1px solid rgba(0,212,200,0.18); color: var(--accent-agent); }
+
+  /* ── FEED TABS ── */
+  .feed-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0;
+  }
+  .feed-tab {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: all 0.12s;
+    border: 1px solid transparent;
+  }
+  .feed-tab.active { background: var(--bg-elevated); border-color: var(--border); color: var(--text-primary); }
+  .feed-tab .tab-count { background: var(--bg-card); border-radius: 4px; padding: 0 5px; font-family: var(--font-display); font-weight: 700; font-size: 10px; }
+  .feed-tab.active .tab-count { background: rgba(0,212,200,0.1); color: var(--accent-agent); }
+
+  /* ── FEED SCROLL ── */
+  .feed-scroll {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg-card) transparent;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* ── FEED ITEM ── */
+  .feed-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    transition: border-color 0.15s;
+    cursor: pointer;
+    position: relative;
+  }
+  .feed-item:hover { border-color: var(--border-hover); }
+  .feed-item.pending {
+    border-color: rgba(0,212,200,0.2);
+    background: linear-gradient(135deg, rgba(0,212,200,0.04) 0%, var(--bg-card) 100%);
+  }
+
+  .fi-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  .fi-icon.agent { background: rgba(0,212,200,0.1); border: 1px solid rgba(0,212,200,0.2); }
+  .fi-icon.classify { background: rgba(74,158,255,0.08); border: 1px solid rgba(74,158,255,0.15); }
+  .fi-icon.suggest { background: rgba(255,140,66,0.08); border: 1px solid rgba(255,140,66,0.15); }
+
+  .fi-body { flex: 1; }
+  .fi-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .fi-actor {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--accent-agent);
+  }
+  .fi-action { font-size: 12.5px; color: var(--text-secondary); }
+  .fi-action strong { color: var(--text-primary); font-weight: 500; }
+  .fi-time { margin-left: auto; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+
+  .fi-reasoning {
+    font-size: 11.5px;
+    color: rgba(0,212,200,0.55);
+    line-height: 1.45;
+    margin-top: 5px;
+    padding: 6px 10px;
+    background: rgba(0,212,200,0.03);
+    border-left: 2px solid rgba(0,212,200,0.2);
+    border-radius: 0 5px 5px 0;
+  }
+
+  .fi-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .fi-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    font-family: var(--font-display);
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .fi-btn.accept { background: rgba(0,212,200,0.1); border: 1px solid rgba(0,212,200,0.25); color: var(--accent-agent); }
+  .fi-btn.modify { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); }
+  .fi-btn.reject { background: rgba(255,71,87,0.06); border: 1px solid rgba(255,71,87,0.15); color: #ff7080; }
+  .fi-btn svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  .pending-badge {
+    position: absolute;
+    top: 10px; right: 12px;
+    background: rgba(0,212,200,0.12);
+    border: 1px solid rgba(0,212,200,0.25);
+    border-radius: 20px;
+    padding: 2px 7px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent-agent);
+    font-family: var(--font-display);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .feed-date-separator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 4px 0 2px;
+  }
+  .feed-date-separator span {
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .feed-date-separator::before, .feed-date-separator::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── RIGHT PANEL: CONFIG ── */
+  .agent-config-panel {
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .config-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .config-scroll {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg-card) transparent;
+    padding: 14px 16px;
+  }
+
+  .config-section { margin-bottom: 20px; }
+  .config-section-title {
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .config-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── TOGGLE ── */
+  .config-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .config-row:last-child { border-bottom: none; }
+  .config-row-info .label { font-size: 12.5px; color: var(--text-primary); font-weight: 500; margin-bottom: 2px; }
+  .config-row-info .desc { font-size: 11px; color: var(--text-muted); line-height: 1.35; }
+  .toggle {
+    width: 34px; height: 19px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-hover);
+    border-radius: 10px;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.2s;
+    margin-top: 1px;
+  }
+  .toggle.on { background: rgba(0,212,200,0.3); border-color: rgba(0,212,200,0.4); }
+  .toggle-thumb {
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 13px; height: 13px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    transition: all 0.2s;
+  }
+  .toggle.on .toggle-thumb { left: 17px; background: var(--accent-agent); }
+
+  /* ── AUTONOMY SLIDER ── */
+  .autonomy-section {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 4px;
+  }
+  .autonomy-title { font-size: 12.5px; font-weight: 500; color: var(--text-primary); margin-bottom: 8px; }
+  .autonomy-track {
+    height: 4px;
+    background: var(--bg-card);
+    border-radius: 2px;
+    position: relative;
+    margin-bottom: 6px;
+  }
+  .autonomy-fill {
+    height: 100%;
+    width: 35%;
+    background: linear-gradient(90deg, rgba(0,212,200,0.4), var(--accent-agent));
+    border-radius: 2px;
+  }
+  .autonomy-thumb {
+    position: absolute;
+    top: -6px;
+    left: 35%;
+    transform: translateX(-50%);
+    width: 16px; height: 16px;
+    background: var(--accent-agent);
+    border-radius: 50%;
+    border: 2px solid var(--bg-deep);
+    box-shadow: 0 0 8px rgba(0,212,200,0.4);
+  }
+  .autonomy-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+  .autonomy-labels .active-label { color: var(--accent-agent); }
+
+  /* ── STATS ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .stat-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+  }
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--accent-agent);
+    line-height: 1;
+    margin-bottom: 3px;
+  }
+  .stat-label { font-size: 10.5px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">Task<span>Flow</span></div>
+  <div class="breadcrumb">
+    <span class="crumb" style="color: var(--text-secondary);">Workspace</span>
+    <span class="sep">/</span>
+    <span class="current">✦ Agente OpenClaw</span>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-btn">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <div class="topbar-btn">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </div>
+    <div class="add-btn">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nuevo
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-title">Navegación</div>
+    <div class="nav-link">
+      <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      Inbox <span class="inbox-badge">5</span>
+    </div>
+    <div class="nav-link">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Kanban <span class="count">14</span>
+    </div>
+    <div class="nav-link">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      Eisenhower <span class="count">14</span>
+    </div>
+    <div class="nav-link active">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M5.76 4.93a10 10 0 0 0 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+      Agente OpenClaw <span class="count">3</span>
+    </div>
+    <div class="divider"></div>
+    <div class="sidebar-title">Proyectos</div>
+    <div class="project-item"><div class="project-dot" style="background: var(--proj-blue)"></div>Pliegos Q1<span class="count">6</span></div>
+    <div class="project-item"><div class="project-dot" style="background: var(--proj-green)"></div>Cliente García<span class="count">4</span></div>
+    <div class="project-item"><div class="project-dot" style="background: var(--proj-orange)"></div>OpenClaw Dev<span class="count">3</span></div>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="avatar">PT</div>
+        <div>
+          <div class="user-name">P. Tavares</div>
+          <div class="user-role">Administrador</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AGENT MAIN -->
+  <div class="agent-main">
+
+    <!-- FEED PANEL -->
+    <div class="agent-feed-panel">
+      <div class="panel-header">
+        <div class="panel-header-top">
+          <div class="agent-avatar">
+            <div class="agent-avatar-icon">🤖</div>
+            <div class="agent-status-dot"></div>
+          </div>
+          <div class="agent-header-info">
+            <div class="agent-name">OpenClaw</div>
+            <div class="agent-desc">Agente activo · Última revisión hace 12 min</div>
+          </div>
+          <div class="agent-config-btn">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M5.76 4.93a10 10 0 0 0 0 14.14"/></svg>
+            Configurar
+          </div>
+        </div>
+
+        <div class="digest-banner">
+          <div class="digest-icon">☀️</div>
+          <div class="digest-text">
+            <div class="digest-greeting">Buenos días, P. Tavares.</div>
+            <div class="digest-body">Tienes <strong>3 tareas que vencen esta semana</strong>, <strong>5 items en inbox</strong> sin procesar y <strong>4 emails</strong> que he clasificado esta mañana.</div>
+            <div class="digest-stats">
+              <div class="dstat red">3 vencen hoy</div>
+              <div class="dstat yellow">5 en inbox</div>
+              <div class="dstat teal">4 emails procesados</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feed-tabs" style="margin-top: 12px;">
+          <div class="feed-tab active">
+            Actividad
+            <span class="tab-count">12</span>
+          </div>
+          <div class="feed-tab">
+            Pendiente aprobación
+            <span class="tab-count" style="background: rgba(0,212,200,0.12); color: var(--accent-agent)">3</span>
+          </div>
+          <div class="feed-tab">
+            Digestos
+          </div>
+        </div>
+      </div>
+
+      <div class="feed-scroll">
+
+        <!-- PENDING ITEMS FIRST -->
+        <div class="feed-date-separator"><span>⏳ Pendiente de aprobación</span></div>
+
+        <div class="feed-item pending">
+          <div class="pending-badge">Pendiente</div>
+          <div class="fi-icon suggest">💡</div>
+          <div class="fi-body">
+            <div class="fi-header">
+              <span class="fi-actor">✦ OpenClaw</span>
+              <span class="fi-time">Hace 5 min</span>
+            </div>
+            <div class="fi-action">Sugiere mover <strong>"Revisar contrato Lisboa"</strong> a <strong>En Progreso</strong></div>
+            <div class="fi-reasoning">La tarea lleva 8 días en "Por hacer". Basándome en el contexto del proyecto Cliente García y la relación con la renovación del contrato, creo que ya está lista para avanzar.</div>
+            <div class="fi-actions">
+              <button class="fi-btn accept">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                Mover a En Progreso
+              </button>
+              <button class="fi-btn modify">Modificar</button>
+              <button class="fi-btn reject">Ignorar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="feed-item pending">
+          <div class="pending-badge">Pendiente</div>
+          <div class="fi-icon classify">🏷️</div>
+          <div class="fi-body">
+            <div class="fi-header">
+              <span class="fi-actor">✦ OpenClaw</span>
+              <span class="fi-time">Hace 12 min</span>
+            </div>
+            <div class="fi-action">Ha clasificado <strong>"Email de Juan García: Presupuesto actualizado"</strong> y propone asignarlo al proyecto <strong>Cliente García</strong> con prioridad <strong>Alta</strong></div>
+            <div class="fi-reasoning">El email habla de cambios en el presupuesto y menciona "partidas 3 y 7". Detecté el nombre García y lo relacioné con el proyecto activo. El tono sugiere urgencia.</div>
+            <div class="fi-actions">
+              <button class="fi-btn accept">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                Aceptar clasificación
+              </button>
+              <button class="fi-btn modify">Modificar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="feed-item pending">
+          <div class="pending-badge">Pendiente</div>
+          <div class="fi-icon agent">⚡</div>
+          <div class="fi-body">
+            <div class="fi-header">
+              <span class="fi-actor">✦ OpenClaw</span>
+              <span class="fi-time">Hace 25 min</span>
+            </div>
+            <div class="fi-action">Sugiere añadir <strong>recordatorio</strong> para <strong>"Preparar documentación pliego Madrid"</strong> el 13 de marzo a las 9:00</div>
+            <div class="fi-reasoning">El plazo de entrega es el 15 de marzo. Quedan 2 días. Un recordatorio con 48h de antelación te daría tiempo de reacción si hay imprevistos.</div>
+            <div class="fi-actions">
+              <button class="fi-btn accept">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                Añadir recordatorio
+              </button>
+              <button class="fi-btn reject">No, gracias</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACTIVITY HISTORY -->
+        <div class="feed-date-separator"><span>Hoy</span></div>
+
+        <div class="feed-item">
+          <div class="fi-icon agent">🔥</div>
+          <div class="fi-body">
+            <div class="fi-header">
+              <span class="fi-actor">✦ OpenClaw</span>
+              <span class="fi-time">9:18</span>
+            </div>
+            <div class="fi-action">Movió <strong>"Preparar documentación pliego Ayuntamiento Madrid"</strong> a <strong>Urgente/Importante</strong> en la Matriz Eisenhower</div>
+            <div class="fi-reasoning">El plazo del pliego es en 3 días. Basándome en la fecha límite detectada en el título y el contexto del proyecto, reclasifiqué a Q1.</div>
+          </div>
+        </div>
+
+        <div class="feed-item">
+          <div class="fi-icon classify">✉️</div>
+          <div class="fi-body">
+            <div class="fi-header">
+              <span class="fi-actor">✦ OpenClaw</span>
+              <span class="fi-time">9:05</span>
+            </div>
+            <div class="fi-action">Procesó <strong>4 emails</strong> nuevos de la inbox de correo. Clasificó 3 en proyectos existentes, 1 en inbox sin clasificar</div>
+          </div>
+        </div>
+
+        <div class="feed-date-separator"><span>Ayer</span></div>
+
+        <div class="feed-item">
+          <div class="fi-icon agent">🔗</div>
+          <div class="fi-body">
+            <div class="fi-header">
+              <span class="fi-actor">✦ OpenClaw</span>
+              <span class="fi-time">18:45</span>
+            </div>
+            <div class="fi-action">Relacionó <strong>"Pliego BCN 2024 — contrataciondelestado.es"</strong> con la tarea <strong>"Ideas para propuesta técnica Barcelona"</strong></div>
+          </div>
+        </div>
+
+        <div class="feed-item">
+          <div class="fi-icon classify">📊</div>
+          <div class="fi-body">
+            <div class="fi-header">
+              <span class="fi-actor">✦ OpenClaw</span>
+              <span class="fi-time">16:12</span>
+            </div>
+            <div class="fi-action">Detectó y clasificó el archivo <strong>"Presupuesto_Garcia_v3.xlsx"</strong> como adjunto del proyecto <strong>Cliente García</strong></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CONFIG PANEL -->
+    <div class="agent-config-panel">
+      <div class="config-header">Configuración del Agente</div>
+      <div class="config-scroll">
+
+        <!-- STATS -->
+        <div class="config-section">
+          <div class="config-section-title">Esta semana</div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value">24</div>
+              <div class="stat-label">Acciones realizadas</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">8</div>
+              <div class="stat-label">Emails procesados</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">6</div>
+              <div class="stat-label">Items clasificados</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">94%</div>
+              <div class="stat-label">Sugerencias aceptadas</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AUTONOMY -->
+        <div class="config-section">
+          <div class="config-section-title">Nivel de autonomía</div>
+          <div class="autonomy-section">
+            <div class="autonomy-title">Modo actual: <strong style="color: var(--accent-agent)">Sugerir y esperar</strong></div>
+            <div class="autonomy-track">
+              <div class="autonomy-fill"></div>
+              <div class="autonomy-thumb"></div>
+            </div>
+            <div class="autonomy-labels">
+              <span>Solo sugerir</span>
+              <span class="active-label">↑ Actual</span>
+              <span>Todo automático</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PERMISOS -->
+        <div class="config-section">
+          <div class="config-section-title">Permisos</div>
+          <div class="config-row">
+            <div class="config-row-info">
+              <div class="label">Clasificar emails</div>
+              <div class="desc">Procesar inbox y crear items</div>
+            </div>
+            <div class="toggle on"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="config-row">
+            <div class="config-row-info">
+              <div class="label">Reclasificar prioridad</div>
+              <div class="desc">Mover entre urgente/importante</div>
+            </div>
+            <div class="toggle on"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="config-row">
+            <div class="config-row-info">
+              <div class="label">Crear relaciones</div>
+              <div class="desc">Enlazar items automáticamente</div>
+            </div>
+            <div class="toggle on"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="config-row">
+            <div class="config-row-info">
+              <div class="label">Mover en Kanban</div>
+              <div class="desc">Cambiar columna de los items</div>
+            </div>
+            <div class="toggle"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="config-row">
+            <div class="config-row-info">
+              <div class="label">Añadir etiquetas</div>
+              <div class="desc">Etiquetar items automáticamente</div>
+            </div>
+            <div class="toggle"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="config-row">
+            <div class="config-row-info">
+              <div class="label">Archivar completados</div>
+              <div class="desc">Archivar items marcados como hechos</div>
+            </div>
+            <div class="toggle on"><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+
+        <!-- NOTIFICACIONES -->
+        <div class="config-section">
+          <div class="config-section-title">Notificaciones</div>
+          <div class="config-row">
+            <div class="config-row-info">
+              <div class="label">Digesto matutino</div>
+              <div class="desc">Resumen diario a las 9:00</div>
+            </div>
+            <div class="toggle on"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="config-row">
+            <div class="config-row-info">
+              <div class="label">Alerta de plazos</div>
+              <div class="desc">Aviso 48h antes del vencimiento</div>
+            </div>
+            <div class="toggle on"><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Toggle interaction
+document.querySelectorAll('.toggle').forEach(toggle => {
+  toggle.addEventListener('click', () => {
+    toggle.classList.toggle('on');
+  });
+});
+// Feed tabs
+document.querySelectorAll('.feed-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.feed-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+  });
+});
+// Action buttons
+document.querySelectorAll('.fi-btn.accept, .fi-btn.reject').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const feedItem = btn.closest('.feed-item');
+    feedItem.style.transition = 'all 0.3s';
+    feedItem.style.opacity = '0';
+    feedItem.style.maxHeight = '0';
+    feedItem.style.padding = '0';
+    feedItem.style.margin = '0';
+    feedItem.style.overflow = 'hidden';
+    setTimeout(() => feedItem.remove(), 300);
+  });
+});
+</script>
+</body>
+</html>

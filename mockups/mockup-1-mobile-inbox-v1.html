@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>TaskFlow — Inbox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep:       #0a0a0c;
+    --bg-surface:    #111116;
+    --bg-elevated:   #18181f;
+    --bg-card:       #1e1e28;
+    --bg-input:      #22222e;
+    --border:        rgba(255,255,255,0.07);
+    --border-hover:  rgba(255,255,255,0.14);
+    --text-primary:  #f0f0f5;
+    --text-secondary:#8888a4;
+    --text-muted:    #4a4a62;
+    --accent-agent:  #00d4c8;
+    --accent-urgent: #ff4757;
+    --accent-high:   #ff8c42;
+    --accent-medium: #4a9eff;
+    --accent-low:    #555570;
+    --proj-blue:     #3b7dd8;
+    --proj-green:    #2ebd7c;
+    --proj-orange:   #f5820d;
+    --proj-purple:   #9b59b6;
+    --font-display:  'Syne', sans-serif;
+    --font-body:     'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: var(--font-display);
+    letter-spacing: 0.02em;
+  }
+  .status-bar .time { font-size: 15px; font-weight: 700; }
+  .status-icons { display: flex; gap: 5px; align-items: center; }
+  .status-icons svg { width: 14px; height: 14px; fill: var(--text-primary); }
+
+  /* ── TOP NAV ── */
+  .top-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 20px 12px;
+  }
+  .nav-logo {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -0.03em;
+    color: var(--text-primary);
+  }
+  .nav-logo span { color: var(--accent-agent); }
+  .nav-right { display: flex; gap: 8px; align-items: center; }
+  .nav-btn {
+    width: 36px; height: 36px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    position: relative;
+  }
+  .nav-btn svg { width: 16px; height: 16px; stroke: var(--text-secondary); fill: none; stroke-width: 2; }
+  .badge {
+    position: absolute;
+    top: -4px; right: -4px;
+    background: var(--accent-urgent);
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    border-radius: 6px;
+    padding: 1px 4px;
+    min-width: 16px;
+    text-align: center;
+    font-family: var(--font-display);
+    animation: pulse-badge 2s ease-in-out infinite;
+  }
+  @keyframes pulse-badge {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  /* ── AGENT STATUS BAR ── */
+  .agent-status {
+    margin: 0 16px 12px;
+    background: linear-gradient(135deg, rgba(0,212,200,0.08) 0%, rgba(0,212,200,0.03) 100%);
+    border: 1px solid rgba(0,212,200,0.2);
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .agent-pulse {
+    width: 8px; height: 8px;
+    background: var(--accent-agent);
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: agent-pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 8px rgba(0,212,200,0.5);
+  }
+  @keyframes agent-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 8px rgba(0,212,200,0.5); }
+    50% { opacity: 0.7; transform: scale(0.9); box-shadow: 0 0 16px rgba(0,212,200,0.8); }
+  }
+  .agent-text { font-size: 12px; color: var(--accent-agent); font-weight: 500; flex: 1; }
+  .agent-text strong { font-weight: 600; }
+  .agent-chevron { color: rgba(0,212,200,0.4); font-size: 14px; }
+
+  /* ── CAPTURE BOX ── */
+  .capture-section {
+    padding: 0 16px 16px;
+  }
+  .capture-box {
+    background: var(--bg-input);
+    border: 1.5px solid var(--border-hover);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  }
+  .capture-box.focused {
+    border-color: rgba(0,212,200,0.4);
+    box-shadow: 0 0 0 3px rgba(0,212,200,0.08), 0 4px 24px rgba(0,0,0,0.4);
+  }
+  .capture-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 400;
+    padding: 14px 16px 10px;
+    resize: none;
+    caret-color: var(--accent-agent);
+  }
+  .capture-input::placeholder { color: var(--text-muted); font-weight: 300; }
+  .capture-actions {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    gap: 4px;
+    border-top: 1px solid var(--border);
+  }
+  .capture-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 10px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: var(--font-body);
+    white-space: nowrap;
+  }
+  .capture-action-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .capture-send {
+    margin-left: auto;
+    width: 32px; height: 32px;
+    background: var(--accent-agent);
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .capture-send svg { width: 14px; height: 14px; stroke: #0a0a0c; fill: none; stroke-width: 2.5; }
+
+  /* ── INBOX HEADER ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 20px 12px;
+  }
+  .section-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .section-count {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .filter-pills {
+    display: flex;
+    gap: 6px;
+    padding: 0 16px 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filter-pills::-webkit-scrollbar { display: none; }
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: all 0.15s;
+  }
+  .pill.active {
+    background: var(--bg-card);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+  }
+  .pill-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* ── ITEM CARDS ── */
+  .items-list { padding: 0 16px; display: flex; flex-direction: column; gap: 8px; }
+
+  .item-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 13px 14px;
+    cursor: pointer;
+    transition: all 0.18s;
+    position: relative;
+    overflow: hidden;
+  }
+  .item-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: transparent;
+    transition: background 0.2s;
+  }
+  .item-card.urgent::before { background: var(--accent-urgent); }
+  .item-card.high::before { background: var(--accent-high); }
+  .item-card.medium::before { background: var(--accent-medium); }
+  .item-card.agent-touched {
+    border-color: rgba(0,212,200,0.15);
+  }
+
+  .item-card-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .item-type-icon {
+    width: 28px; height: 28px;
+    background: var(--bg-elevated);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 13px;
+    border: 1px solid var(--border);
+  }
+  .item-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.35;
+    flex: 1;
+  }
+  .item-time {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    font-weight: 400;
+    flex-shrink: 0;
+  }
+  .item-preview {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .item-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .tag {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+  }
+  .tag-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .tag.proj-blue { border-color: rgba(59,125,216,0.25); background: rgba(59,125,216,0.08); color: #5e9fe8; }
+  .tag.proj-blue .tag-dot { background: var(--proj-blue); }
+  .tag.proj-green { border-color: rgba(46,189,124,0.25); background: rgba(46,189,124,0.08); color: #4ed494; }
+  .tag.proj-green .tag-dot { background: var(--proj-green); }
+  .tag.proj-orange { border-color: rgba(245,130,13,0.25); background: rgba(245,130,13,0.08); color: #f5960d; }
+  .tag.proj-orange .tag-dot { background: var(--proj-orange); }
+  .tag.urgent { border-color: rgba(255,71,87,0.25); background: rgba(255,71,87,0.08); color: #ff6b77; }
+  .tag.agent { border-color: rgba(0,212,200,0.25); background: rgba(0,212,200,0.06); color: var(--accent-agent); }
+  .tag.agent::before { content: '✦'; font-size: 9px; margin-right: 2px; }
+
+  .item-deadline {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--accent-urgent);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .item-deadline svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* ── AGENT SUGGESTION BANNER ── */
+  .agent-suggestion {
+    background: linear-gradient(135deg, rgba(0,212,200,0.06) 0%, rgba(0,212,200,0.02) 100%);
+    border: 1px solid rgba(0,212,200,0.2);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-top: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .suggestion-icon {
+    font-size: 12px;
+    color: var(--accent-agent);
+    margin-top: 1px;
+    flex-shrink: 0;
+  }
+  .suggestion-text { font-size: 12px; color: var(--accent-agent); line-height: 1.4; flex: 1; }
+  .suggestion-text strong { font-weight: 600; }
+  .suggestion-actions { display: flex; gap: 5px; margin-top: 8px; }
+  .sug-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-display);
+    letter-spacing: 0.02em;
+  }
+  .sug-btn.accept {
+    background: rgba(0,212,200,0.15);
+    border: 1px solid rgba(0,212,200,0.3);
+    color: var(--accent-agent);
+  }
+  .sug-btn.reject {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+
+  /* ── BOTTOM NAV ── */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(10,10,12,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 10px 0 env(safe-area-inset-bottom, 16px);
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 0;
+    cursor: pointer;
+    position: relative;
+  }
+  .nav-item svg { width: 22px; height: 22px; stroke: var(--text-muted); fill: none; stroke-width: 1.8; transition: stroke 0.15s; }
+  .nav-item.active svg { stroke: var(--text-primary); }
+  .nav-item span {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    transition: color 0.15s;
+  }
+  .nav-item.active span { color: var(--text-primary); }
+  .nav-item .nav-badge {
+    position: absolute;
+    top: 0; right: calc(50% - 18px);
+    background: var(--accent-urgent);
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    font-size: 9px;
+    font-weight: 700;
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+  }
+  .nav-center-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 0;
+    cursor: pointer;
+  }
+  .center-circle {
+    width: 44px; height: 44px;
+    background: var(--accent-agent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 20px rgba(0,212,200,0.35);
+    transition: transform 0.15s, box-shadow 0.15s;
+    margin-top: -14px;
+  }
+  .center-circle svg { width: 20px; height: 20px; stroke: #0a0a0c; fill: none; stroke-width: 2.5; }
+  .center-circle:active { transform: scale(0.94); }
+
+  /* ── SCROLL PADDING ── */
+  .scroll-content { padding-bottom: 90px; }
+
+  /* ── DIVIDER ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 6px 16px 14px;
+  }
+
+  /* ── NEW BADGE ── */
+  .new-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: rgba(0,212,200,0.1);
+    border: 1px solid rgba(0,212,200,0.25);
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent-agent);
+    font-family: var(--font-display);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    animation: fade-in 0.4s ease;
+  }
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateX(-6px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* ── CONTEXT TOGGLE ── */
+  .context-toggle {
+    display: flex;
+    margin: 0 16px 14px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .ctx-btn {
+    flex: 1;
+    text-align: center;
+    padding: 6px;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-display);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+  }
+  .ctx-btn.active {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.3);
+  }
+</style>
+</head>
+<body>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <span class="time">9:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 6l5 5 6-11 6 11 5-5"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+    <!-- battery -->
+    <svg viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2"/><path d="M20 11h2v2h-2"/><rect x="3.5" y="8.5" width="12" height="7" rx="1" fill="currentColor" opacity="0.7"/></svg>
+  </div>
+</div>
+
+<!-- TOP NAV -->
+<div class="top-nav">
+  <div class="nav-logo">Task<span>Flow</span></div>
+  <div class="nav-right">
+    <div class="nav-btn">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="badge">3</span>
+    </div>
+    <div class="nav-btn">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEXT TOGGLE -->
+<div class="context-toggle">
+  <div class="ctx-btn">Todo</div>
+  <div class="ctx-btn active">Trabajo</div>
+  <div class="ctx-btn">Personal</div>
+</div>
+
+<!-- AGENT STATUS -->
+<div class="agent-status">
+  <div class="agent-pulse"></div>
+  <div class="agent-text">OpenClaw procesó <strong>4 emails</strong> nuevos y clasificó 2 items. <strong>3 sugerencias</strong> pendientes.</div>
+  <div class="agent-chevron">›</div>
+</div>
+
+<!-- CAPTURE SECTION -->
+<div class="capture-section">
+  <div class="capture-box focused">
+    <textarea class="capture-input" rows="2" placeholder="¿Qué tienes en mente? Escribe, pega una URL o arrastra un archivo…">Llamar a García por los cambios en el presupuesto</textarea>
+    <div class="capture-actions">
+      <button class="capture-action-btn">
+        <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        Adjuntar
+      </button>
+      <button class="capture-action-btn">
+        <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Link
+      </button>
+      <button class="capture-action-btn">
+        <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Foto
+      </button>
+      <div class="capture-send">
+        <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- INBOX LIST -->
+<div class="scroll-content">
+  <div class="section-header">
+    <span class="section-title">Inbox</span>
+    <span class="section-count">7 items</span>
+  </div>
+  <div class="filter-pills">
+    <div class="pill active">Todos</div>
+    <div class="pill">
+      <span class="pill-dot" style="background:var(--accent-urgent)"></span>Urgentes
+    </div>
+    <div class="pill">
+      <span class="pill-dot" style="background:var(--proj-blue)"></span>Pliegos Q1
+    </div>
+    <div class="pill">✦ Sugerencias agente</div>
+  </div>
+
+  <div class="items-list">
+
+    <!-- ITEM 1: Task - urgent, agent touched -->
+    <div class="item-card urgent agent-touched">
+      <div class="item-card-top">
+        <div class="item-type-icon">☑️</div>
+        <div class="item-title">Preparar documentación pliego Ayuntamiento Madrid</div>
+        <span class="item-time">Ahora</span>
+      </div>
+      <div class="item-preview">Documentación técnica y económica para la licitación. Incluir memoria descriptiva, presupuesto y CVs del equipo.</div>
+      <div class="item-footer">
+        <div class="tag proj-blue"><span class="tag-dot"></span>Pliegos Q1</div>
+        <div class="tag urgent">Urgente</div>
+        <div class="tag agent">OpenClaw</div>
+        <div class="item-deadline">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          15 mar
+        </div>
+      </div>
+      <div class="agent-suggestion">
+        <div class="suggestion-icon">✦</div>
+        <div class="suggestion-text">
+          <strong>Sugerencia:</strong> He movido esto a Urgente/Importante — el plazo del pliego es en 3 días. ¿Asigno a Pliegos Q1?
+          <div class="suggestion-actions">
+            <button class="sug-btn accept">Aceptar</button>
+            <button class="sug-btn reject">Modificar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ITEM 2: Email, unprocessed -->
+    <div class="item-card medium">
+      <div class="item-card-top">
+        <div class="item-type-icon">✉️</div>
+        <div class="item-title">Email de Juan García: Presupuesto actualizado — cambios urgentes</div>
+        <span class="item-time">32 min</span>
+      </div>
+      <div class="item-preview">Hola, te mando el presupuesto revisado con los cambios que comentamos. Hay modificaciones en las partidas 3 y 7…</div>
+      <div class="item-footer">
+        <div class="tag proj-green"><span class="tag-dot"></span>Cliente García</div>
+        <div class="new-badge">Nuevo</div>
+        <div class="tag agent">OpenClaw</div>
+      </div>
+    </div>
+
+    <!-- ITEM 3: Link -->
+    <div class="item-card">
+      <div class="item-card-top">
+        <div class="item-type-icon">🔗</div>
+        <div class="item-title">Plataforma de Contratación del Estado — Pliego Barcelona 2024</div>
+        <span class="item-time">2h</span>
+      </div>
+      <div class="item-preview">contrataciondelestado.es · Expediente 2024-BCN-0234 · Fecha límite presentación: 28 marzo 2024</div>
+      <div class="item-footer">
+        <div class="tag proj-blue"><span class="tag-dot"></span>Pliegos Q1</div>
+      </div>
+    </div>
+
+    <!-- ITEM 4: Idea, raw -->
+    <div class="item-card">
+      <div class="item-card-top">
+        <div class="item-type-icon">💡</div>
+        <div class="item-title">Mirar si podemos usar AI para automatizar respuestas a pliegos</div>
+        <span class="item-time">Ayer</span>
+      </div>
+      <div class="item-preview">Con OpenClaw podríamos generar borradores automáticos de la memoria técnica basándonos en pliegos anteriores.</div>
+      <div class="item-footer">
+        <div class="tag proj-orange"><span class="tag-dot"></span>OpenClaw Dev</div>
+      </div>
+    </div>
+
+    <!-- ITEM 5: File -->
+    <div class="item-card high">
+      <div class="item-card-top">
+        <div class="item-type-icon">📎</div>
+        <div class="item-title">Presupuesto_Garcia_v3.xlsx</div>
+        <span class="item-time">Ayer</span>
+      </div>
+      <div class="item-preview">Excel · 248 KB · Enviado por J. García</div>
+      <div class="item-footer">
+        <div class="tag proj-green"><span class="tag-dot"></span>Cliente García</div>
+        <div class="tag" style="color: var(--accent-high); border-color: rgba(255,140,66,0.25); background: rgba(255,140,66,0.08)">Alto</div>
+      </div>
+    </div>
+
+    <!-- ITEM 6: Note -->
+    <div class="item-card">
+      <div class="item-card-top">
+        <div class="item-type-icon">📝</div>
+        <div class="item-title">Ideas para la propuesta técnica del pliego de Barcelona</div>
+        <span class="item-time">Lun</span>
+      </div>
+      <div class="item-preview">Enfocar la propuesta en metodología ágil, destacar experiencia en proyectos similares, incluir caso de éxito Madrid 2023…</div>
+      <div class="item-footer">
+        <div class="tag proj-blue"><span class="tag-dot"></span>Pliegos Q1</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item active">
+    <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    <span>Inbox</span>
+    <div class="nav-badge">7</div>
+  </div>
+  <div class="nav-item">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    <span>Board</span>
+  </div>
+  <div class="nav-center-btn">
+    <div class="center-circle">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+  </div>
+  <div class="nav-item">
+    <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    <span>Matrix</span>
+  </div>
+  <div class="nav-item">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <span>Buscar</span>
+  </div>
+</div>
+
+<script>
+// Capture box focus effect
+const captureBox = document.querySelector('.capture-box');
+const captureInput = document.querySelector('.capture-input');
+captureInput.addEventListener('focus', () => captureBox.classList.add('focused'));
+captureInput.addEventListener('blur', () => captureBox.classList.remove('focused'));
+
+// Nav item active state
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+
+// Filter pills
+document.querySelectorAll('.pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+  });
+});
+
+// Context toggle
+document.querySelectorAll('.ctx-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.ctx-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+// Suggestion buttons
+document.querySelectorAll('.sug-btn.accept').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const sug = btn.closest('.agent-suggestion');
+    sug.style.transition = 'all 0.3s';
+    sug.style.opacity = '0';
+    sug.style.maxHeight = '0';
+    sug.style.padding = '0';
+    setTimeout(() => sug.remove(), 300);
+  });
+});
+</script>
+</body>
+</html>

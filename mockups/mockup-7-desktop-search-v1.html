@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Búsqueda Global</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep:       #09090e;
+    --bg-surface:    #0f0f16;
+    --bg-elevated:   #161620;
+    --bg-card:       #1c1c28;
+    --bg-card-hover: #22222e;
+    --border:        rgba(255,255,255,0.06);
+    --border-hover:  rgba(255,255,255,0.12);
+    --text-primary:  #eeeef5;
+    --text-secondary:#7878a0;
+    --text-muted:    #44445a;
+    --accent-agent:  #00d4c8;
+    --accent-urgent: #ff4757;
+    --accent-high:   #ff8c42;
+    --accent-medium: #4a9eff;
+    --proj-blue:     #3b7dd8;
+    --proj-green:    #2ebd7c;
+    --proj-orange:   #f5820d;
+    --proj-purple:   #9b59b6;
+    --font-display:  'Syne', sans-serif;
+    --font-body:     'DM Sans', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 13px;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* ── BACKDROP (blurred desktop behind modal) ── */
+  .desktop-bg {
+    position: absolute;
+    inset: 0;
+    background: var(--bg-deep);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    filter: blur(0px);
+  }
+
+  /* Topbar behind */
+  .bg-topbar {
+    height: 52px;
+    background: rgba(9,9,14,0.95);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 12px;
+  }
+  .bg-logo { font-family: var(--font-display); font-weight: 800; font-size: 17px; letter-spacing: -0.04em; color: var(--text-secondary); }
+  .bg-logo span { color: rgba(0,212,200,0.4); }
+  .bg-content { flex: 1; display: flex; }
+  .bg-sidebar { width: 220px; border-right: 1px solid var(--border); background: var(--bg-surface); }
+  .bg-main { flex: 1; background: var(--bg-deep); }
+
+  /* ── MODAL OVERLAY ── */
+  .modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 80px;
+    z-index: 200;
+  }
+
+  /* ── SEARCH MODAL ── */
+  .search-modal {
+    width: 680px;
+    max-width: calc(100vw - 32px);
+    background: var(--bg-card);
+    border: 1px solid var(--border-hover);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+    animation: modal-in 0.18s ease-out;
+  }
+  @keyframes modal-in { from { opacity: 0; transform: scale(0.97) translateY(-8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+  /* ── SEARCH INPUT ROW ── */
+  .search-input-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .search-icon { flex-shrink: 0; }
+  .search-icon svg { width: 18px; height: 18px; stroke: var(--text-secondary); fill: none; stroke-width: 2; }
+  .search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+    caret-color: var(--accent-agent);
+  }
+  .search-input::placeholder { color: var(--text-muted); font-weight: 400; }
+  .search-kbd { display: flex; gap: 3px; align-items: center; }
+  .kbd { background: var(--bg-elevated); border: 1px solid var(--border-hover); border-radius: 5px; padding: 2px 6px; font-size: 11px; color: var(--text-muted); font-family: var(--font-display); font-weight: 600; }
+  .search-clear {
+    width: 24px; height: 24px;
+    background: var(--bg-elevated);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  /* ── FILTER ROW ── */
+  .filter-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+  }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-label { font-size: 11px; color: var(--text-muted); font-family: var(--font-display); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; }
+  .f-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 9px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: var(--font-body);
+    transition: all 0.12s;
+  }
+  .f-chip .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .f-chip.active { background: var(--bg-card); border-color: var(--border-hover); color: var(--text-primary); }
+  .f-chip.type-task.active { background: rgba(74,158,255,0.06); border-color: rgba(74,158,255,0.2); color: #6baae0; }
+  .f-chip.type-email.active { background: rgba(255,140,66,0.06); border-color: rgba(255,140,66,0.18); color: #ffb074; }
+  .f-chip.type-file.active { background: rgba(155,89,182,0.06); border-color: rgba(155,89,182,0.18); color: #b07cc6; }
+
+  /* ── RESULTS ── */
+  .results-body {
+    max-height: 440px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg-elevated) transparent;
+  }
+
+  .results-section { padding: 10px 0; }
+  .results-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 18px 8px;
+  }
+  .rsh-label {
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .rsh-label::after { content: ''; flex: 0 0 40px; height: 1px; background: var(--border); }
+  .rsh-count { font-size: 11px; color: var(--text-muted); font-family: var(--font-display); font-weight: 600; }
+
+  .result-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: background 0.1s;
+    position: relative;
+  }
+  .result-item:hover, .result-item.selected { background: var(--bg-elevated); }
+  .result-item.selected::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--accent-agent);
+  }
+
+  .result-icon {
+    width: 30px; height: 30px;
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    margin-top: 1px;
+  }
+  .result-body { flex: 1; min-width: 0; }
+  .result-title {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 3px;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .result-title mark {
+    background: rgba(0,212,200,0.18);
+    color: var(--accent-agent);
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+  .result-preview {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .result-preview mark {
+    background: rgba(0,212,200,0.1);
+    color: rgba(0,212,200,0.7);
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+  .result-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .rmeta-tag {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1.5px 5px;
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-weight: 500;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .rmeta-tag .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .rmeta-tag.blue { background: rgba(59,125,216,0.08); border-color: rgba(59,125,216,0.18); color: #6baae0; }
+  .rmeta-tag.blue .dot { background: var(--proj-blue); }
+  .rmeta-tag.green { background: rgba(46,189,124,0.08); border-color: rgba(46,189,124,0.18); color: #5dd49a; }
+  .rmeta-tag.green .dot { background: var(--proj-green); }
+  .rmeta-tag.orange { background: rgba(245,130,13,0.08); border-color: rgba(245,130,13,0.18); color: #f5a54c; }
+  .rmeta-tag.urgent { background: rgba(255,71,87,0.08); border-color: rgba(255,71,87,0.18); color: #ff7080; }
+  .rmeta-tag.agent { background: rgba(0,212,200,0.06); border-color: rgba(0,212,200,0.18); color: var(--accent-agent); font-size: 10px; }
+  .result-time { margin-left: auto; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+
+  .result-arrow {
+    color: var(--text-muted);
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 6px;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  .result-item:hover .result-arrow, .result-item.selected .result-arrow { opacity: 1; }
+
+  /* ── DIVIDER ── */
+  .results-divider { height: 1px; background: var(--border); margin: 4px 18px; }
+
+  /* ── EMPTY ACTIONS ── */
+  .quick-actions-section {
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
+  }
+  .qa-title {
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .qa-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .qa-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: all 0.12s;
+  }
+  .qa-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
+  .qa-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* ── FOOTER ── */
+  .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 18px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-elevated);
+  }
+  .footer-hints { display: flex; gap: 12px; }
+  .hint { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
+  .hint-kbd { background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 10px; font-family: var(--font-display); font-weight: 600; }
+  .results-count { font-size: 11px; color: var(--text-muted); font-family: var(--font-display); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- BACKGROUND DESKTOP -->
+<div class="desktop-bg">
+  <div class="bg-topbar">
+    <div class="bg-logo">Task<span>Flow</span></div>
+  </div>
+  <div class="bg-content">
+    <div class="bg-sidebar"></div>
+    <div class="bg-main"></div>
+  </div>
+</div>
+
+<!-- MODAL OVERLAY -->
+<div class="modal-overlay" id="overlay">
+  <div class="search-modal">
+
+    <!-- SEARCH INPUT -->
+    <div class="search-input-row">
+      <div class="search-icon">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </div>
+      <input type="text" class="search-input" value="pliego" autofocus placeholder="Buscar en TaskFlow…" />
+      <div class="search-clear">×</div>
+      <div class="search-kbd"><span class="kbd">Esc</span></div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filter-row">
+      <div class="filter-label">Filtrar:</div>
+      <div class="f-chip active">Todos</div>
+      <div class="f-chip type-task">☑️ Tareas</div>
+      <div class="f-chip">📝 Notas</div>
+      <div class="f-chip">🔗 Links</div>
+      <div class="f-chip">📎 Archivos</div>
+      <div class="f-chip type-email">✉️ Emails</div>
+      <div class="f-chip">💡 Ideas</div>
+      <div class="f-chip">
+        <span class="dot" style="background: var(--proj-blue)"></span>
+        Pliegos Q1
+      </div>
+      <div class="f-chip">Urgente</div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="results-body">
+
+      <!-- TASKS -->
+      <div class="results-section">
+        <div class="results-section-header">
+          <div class="rsh-label">Tareas</div>
+          <div class="rsh-count">3 resultados</div>
+        </div>
+
+        <div class="result-item selected">
+          <div class="result-icon">☑️</div>
+          <div class="result-body">
+            <div class="result-title">Preparar documentación <mark>pliego</mark> Ayuntamiento Madrid</div>
+            <div class="result-preview">Documentación técnica y económica para la licitación del Ayuntamiento de Madrid. Incluir memoria...</div>
+            <div class="result-meta">
+              <div class="rmeta-tag blue"><span class="dot"></span>Pliegos Q1</div>
+              <div class="rmeta-tag urgent">Urgente</div>
+              <div class="rmeta-tag agent">✦ OpenClaw</div>
+              <div class="result-time">Hoy · 9:18</div>
+            </div>
+          </div>
+          <div class="result-arrow">›</div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-icon">☑️</div>
+          <div class="result-body">
+            <div class="result-title">Ideas para propuesta técnica <mark>pliego</mark> de Barcelona</div>
+            <div class="result-preview">Enfocar en metodología ágil, destacar experiencia en proyectos similares...</div>
+            <div class="result-meta">
+              <div class="rmeta-tag blue"><span class="dot"></span>Pliegos Q1</div>
+              <div class="result-time">Lun · 14:30</div>
+            </div>
+          </div>
+          <div class="result-arrow">›</div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-icon">☑️</div>
+          <div class="result-body">
+            <div class="result-title">Revisar <mark>pliego</mark> Barcelona en plataforma contratación</div>
+            <div class="result-preview">Expediente 2024-BCN-0234 · Fecha límite presentación: 28 marzo 2024</div>
+            <div class="result-meta">
+              <div class="rmeta-tag blue"><span class="dot"></span>Pliegos Q1</div>
+              <div class="result-time">Vie · 11:00</div>
+            </div>
+          </div>
+          <div class="result-arrow">›</div>
+        </div>
+      </div>
+
+      <div class="results-divider"></div>
+
+      <!-- NOTES -->
+      <div class="results-section">
+        <div class="results-section-header">
+          <div class="rsh-label">Notas</div>
+          <div class="rsh-count">1 resultado</div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-icon">📝</div>
+          <div class="result-body">
+            <div class="result-title">Ideas para la propuesta técnica del <mark>pliego</mark> de Barcelona</div>
+            <div class="result-preview">Metodología ágil, caso de éxito Madrid 2023, equipo especializado en <mark>pliego</mark>s públicos...</div>
+            <div class="result-meta">
+              <div class="rmeta-tag blue"><span class="dot"></span>Pliegos Q1</div>
+              <div class="result-time">Dom · 20:15</div>
+            </div>
+          </div>
+          <div class="result-arrow">›</div>
+        </div>
+      </div>
+
+      <div class="results-divider"></div>
+
+      <!-- LINKS -->
+      <div class="results-section">
+        <div class="results-section-header">
+          <div class="rsh-label">Links</div>
+          <div class="rsh-count">1 resultado</div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-icon">🔗</div>
+          <div class="result-body">
+            <div class="result-title">Plataforma Contratación Estado — <mark>Pliego</mark> Barcelona 2024</div>
+            <div class="result-preview">contrataciondelestado.es · Expediente 2024-BCN-0234</div>
+            <div class="result-meta">
+              <div class="rmeta-tag blue"><span class="dot"></span>Pliegos Q1</div>
+              <div class="result-time">Vie · 9:00</div>
+            </div>
+          </div>
+          <div class="result-arrow">›</div>
+        </div>
+      </div>
+
+      <div class="results-divider"></div>
+
+      <!-- FILES -->
+      <div class="results-section">
+        <div class="results-section-header">
+          <div class="rsh-label">Archivos</div>
+          <div class="rsh-count">2 resultados</div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-icon">📄</div>
+          <div class="result-body">
+            <div class="result-title">Memoria_<mark>pliego</mark>_Madrid_v2.pdf</div>
+            <div class="result-preview">PDF · 1.2 MB · Adjunto a "Preparar documentación pliego Madrid"</div>
+            <div class="result-meta">
+              <div class="rmeta-tag blue"><span class="dot"></span>Pliegos Q1</div>
+              <div class="result-time">Ayer · 16:30</div>
+            </div>
+          </div>
+          <div class="result-arrow">›</div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-icon">📊</div>
+          <div class="result-body">
+            <div class="result-title">Presupuesto_<mark>pliego</mark>_BCN.xlsx</div>
+            <div class="result-preview">Excel · 380 KB · Borrador del presupuesto para Barcelona</div>
+            <div class="result-meta">
+              <div class="rmeta-tag blue"><span class="dot"></span>Pliegos Q1</div>
+              <div class="result-time">Jue · 10:00</div>
+            </div>
+          </div>
+          <div class="result-arrow">›</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- QUICK ACTIONS -->
+    <div class="quick-actions-section">
+      <div class="qa-title">Acciones rápidas</div>
+      <div class="qa-row">
+        <div class="qa-btn">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Crear tarea "pliego"
+        </div>
+        <div class="qa-btn">
+          <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Crear nota "pliego"
+        </div>
+        <div class="qa-btn">
+          <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          Filtrar todo por "pliego"
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="modal-footer">
+      <div class="footer-hints">
+        <div class="hint"><span class="hint-kbd">↑↓</span> Navegar</div>
+        <div class="hint"><span class="hint-kbd">↵</span> Abrir</div>
+        <div class="hint"><span class="hint-kbd">Esc</span> Cerrar</div>
+        <div class="hint"><span class="hint-kbd">⌘↵</span> Abrir en panel</div>
+      </div>
+      <div class="results-count">7 resultados para "pliego"</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Close on overlay click
+document.getElementById('overlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) {
+    e.currentTarget.style.opacity = '0';
+    e.currentTarget.style.transition = 'opacity 0.15s';
+  }
+});
+
+// Filter chips
+document.querySelectorAll('.f-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.f-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+  });
+});
+
+// Result keyboard navigation
+let selected = 0;
+const results = document.querySelectorAll('.result-item');
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    results[selected]?.classList.remove('selected');
+    selected = Math.min(selected + 1, results.length - 1);
+    results[selected]?.classList.add('selected');
+    results[selected]?.scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    results[selected]?.classList.remove('selected');
+    selected = Math.max(selected - 1, 0);
+    results[selected]?.classList.add('selected');
+    results[selected]?.scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Escape') {
+    document.getElementById('overlay').style.opacity = '0';
+    document.getElementById('overlay').style.transition = 'opacity 0.15s';
+  }
+});
+
+// Click to select
+results.forEach((result, i) => {
+  result.addEventListener('click', () => {
+    results[selected]?.classList.remove('selected');
+    selected = i;
+    result.classList.add('selected');
+  });
+});
+
+// Live search simulation
+const input = document.querySelector('.search-input');
+input.addEventListener('input', () => {
+  const val = input.value;
+  document.querySelectorAll('mark').forEach(mark => {
+    if (val) { mark.textContent = val; } else { mark.textContent = 'pliego'; }
+  });
+  document.querySelector('.results-count').textContent = `7 resultados para "${val || 'pliego'}"`;
+});
+</script>
+</body>
+</html>

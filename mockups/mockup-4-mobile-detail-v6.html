@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow v6 — Detalle de Tarea</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root {
+  --bg: #13141f; --surface: #1a1b2e; --elevated: #1f2035; --card: #242540; --sidebar-ai: #111220;
+  --border: rgba(255,255,255,0.07); --border-hover: rgba(255,255,255,0.13);
+  --text: #f0f1ff; --text-sub: rgba(240,241,255,0.6); --text-muted: rgba(240,241,255,0.35);
+  --accent: #2fd4aa; --accent-dim: rgba(47,212,170,0.1);
+  --accent-blue: #60a5fa; --accent-purple: #a78bfa; --accent-orange: #fb923c;
+  --accent-pink: #f472b6; --accent-green: #4ade80;
+  --urgent: #f87171; --high: #fb923c; --medium: #60a5fa;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4); --shadow-md: 0 4px 20px rgba(0,0,0,0.5); --shadow-lg: 0 12px 40px rgba(0,0,0,0.6);
+}
+html,body{font-family:'Outfit',sans-serif;color:var(--text);}
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 60% 50% at 30% 0%, rgba(167,139,250,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 60% at 80% 100%, rgba(47,212,170,0.05) 0%, transparent 55%),
+    radial-gradient(circle, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: auto, auto, 24px 24px;
+}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px;}
+
+.page{max-width:480px;margin:0 auto;min-height:100vh;background:var(--surface);display:flex;flex-direction:column;position:relative;}
+
+/* ── TOP NAV ── */
+.top-nav{
+  position:sticky;top:0;z-index:30;
+  background:var(--elevated);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:12px 16px;gap:8px;
+}
+.back-btn{font-size:13px;font-weight:600;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px;}
+.nav-title{flex:1;text-align:center;font-size:15px;font-weight:600;color:var(--text);}
+.nav-icon-btn{width:32px;height:32px;border-radius:8px;background:transparent;border:1px solid var(--border);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.nav-icon-btn:hover{background:rgba(255,255,255,0.05);color:var(--text-sub);}
+
+/* ── TASK HERO ── */
+.task-hero{
+  background:var(--elevated);border-bottom:1px solid var(--border);
+  padding:18px 16px 0;
+  animation:fade-up 0.35s ease;
+}
+.meta-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.badge{font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px;}
+.badge-urgent{background:rgba(248,113,113,0.12);color:var(--urgent);}
+.badge-high{background:rgba(251,146,60,0.12);color:var(--high);}
+.badge-project{background:rgba(96,165,250,0.12);color:var(--accent-blue);}
+.task-title{font-size:18px;font-weight:700;line-height:1.35;color:var(--text);margin-bottom:10px;}
+.task-sub{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--text-muted);margin-bottom:14px;flex-wrap:wrap;}
+.task-sub .due{color:var(--urgent);}
+
+.status-row{display:flex;gap:6px;padding-bottom:14px;overflow-x:auto;}
+.status-pill{font-size:12px;font-weight:500;padding:6px 14px;border-radius:20px;cursor:pointer;white-space:nowrap;border:1px solid var(--border);color:var(--text-muted);background:transparent;transition:all 0.15s;}
+.status-pill:hover{border-color:var(--border-hover);color:var(--text-sub);}
+.status-pill.active{background:var(--accent);color:#13141f;border-color:transparent;font-weight:600;}
+
+/* ── TABS ── */
+.tabs-bar{
+  position:sticky;top:57px;z-index:20;
+  background:var(--elevated);border-bottom:1px solid var(--border);
+  display:flex;overflow-x:auto;
+}
+.tab{font-size:13px;font-weight:500;padding:12px 16px;cursor:pointer;color:var(--text-muted);white-space:nowrap;border-bottom:2px solid transparent;transition:all 0.15s;}
+.tab:hover{color:var(--text-sub);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* ── CONTENT ── */
+.tab-content{display:none;padding:16px;animation:fade-up 0.25s ease;}
+.tab-content.active{display:block;}
+
+.section-label{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;margin-top:18px;}
+.section-label:first-child{margin-top:0;}
+.desc-text{font-size:14px;line-height:1.65;color:var(--text-sub);}
+
+/* AI cards */
+.ai-card{
+  background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.15);
+  border-left:3px solid var(--accent-purple);border-radius:10px;padding:12px 14px;
+  margin-bottom:8px;
+}
+.ai-card-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.ai-avatar-sm{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ai-avatar-teal{background:rgba(47,212,170,0.12);border:1px solid rgba(47,212,170,0.22);color:var(--accent);}
+.ai-avatar-purple{background:rgba(167,139,250,0.12);border:1px solid rgba(167,139,250,0.22);color:var(--accent-purple);}
+.ai-card-title{font-size:12px;font-weight:600;color:var(--text);}
+.ai-badge{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(167,139,250,0.15);color:var(--accent-purple);border:1px solid rgba(167,139,250,0.2);}
+.ai-badge-red{background:rgba(248,113,113,0.12);color:var(--urgent);border-color:rgba(248,113,113,0.2);}
+.ai-text{font-size:12.5px;line-height:1.5;color:var(--text-sub);}
+
+/* Alert card */
+.alert-card{
+  background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.15);
+  border-left:3px solid var(--urgent);border-radius:10px;padding:12px 14px;
+  margin-bottom:8px;
+}
+
+/* Activity */
+.activity-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
+.activity-item:last-child{border-bottom:none;}
+.act-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.act-teal{background:rgba(47,212,170,0.15);color:var(--accent);}
+.act-purple{background:rgba(167,139,250,0.15);color:var(--accent-purple);}
+.act-green{background:rgba(74,222,128,0.15);color:var(--accent-green);}
+.act-blue{background:rgba(96,165,250,0.15);color:var(--accent-blue);}
+.act-body{flex:1;}
+.act-text{font-size:12.5px;color:var(--text-sub);line-height:1.4;}
+.act-time{font-family:'DM Mono';font-size:10px;color:var(--text-muted);margin-top:2px;}
+
+/* Adjuntos */
+.files-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.file-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;transition:all 0.15s;}
+.file-card:hover{border-color:var(--border-hover);}
+.file-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:8px;}
+.file-name{font-size:11.5px;font-weight:500;color:var(--text);line-height:1.3;margin-bottom:3px;}
+.file-meta{font-family:'DM Mono';font-size:10px;color:var(--text-muted);}
+
+/* Relaciones */
+.rel-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;transition:all 0.15s;}
+.rel-item:hover{border-color:var(--border-hover);}
+.rel-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.rel-body{flex:1;}
+.rel-title{font-size:12.5px;font-weight:500;color:var(--text);}
+.rel-meta{font-size:11px;color:var(--text-muted);margin-top:1px;}
+.rel-type{font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,0.05);color:var(--text-muted);}
+
+/* Info */
+.info-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.info-row:last-child{border-bottom:none;}
+.info-key{font-size:12px;color:var(--text-muted);min-width:110px;flex-shrink:0;}
+.info-val{font-size:12.5px;color:var(--text-sub);font-family:'Outfit';}
+.info-val.mono{font-family:'DM Mono';font-size:11px;}
+
+/* ── BOTTOM BAR ── */
+.bottom-bar{
+  position:sticky;bottom:0;
+  background:var(--elevated);border-top:1px solid var(--border);
+  padding:12px 16px;display:flex;gap:8px;
+}
+.btn-teal-full{
+  flex:1;background:var(--accent);color:#13141f;border:none;border-radius:10px;
+  font-family:'Outfit';font-size:14px;font-weight:600;padding:12px;cursor:pointer;
+  box-shadow:0 0 20px rgba(47,212,170,0.25);transition:all 0.15s;
+}
+.btn-teal-full:hover{opacity:0.9;box-shadow:0 0 28px rgba(47,212,170,0.35);}
+.btn-ghost-sq{
+  width:44px;height:44px;background:transparent;border:1px solid var(--border);
+  border-radius:10px;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;
+}
+.btn-ghost-sq:hover{border-color:var(--border-hover);color:var(--text-sub);}
+
+@keyframes fade-up{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- TOP NAV -->
+  <nav class="top-nav">
+    <button class="back-btn">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>
+      Inbox
+    </button>
+    <span class="nav-title">Detalle</span>
+    <button class="nav-icon-btn" title="Compartir">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+    </button>
+    <button class="nav-icon-btn" title="Más opciones">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+    </button>
+  </nav>
+
+  <!-- TASK HERO -->
+  <div class="task-hero">
+    <div class="meta-row">
+      <span class="badge badge-urgent">Urgente</span>
+      <span class="badge badge-high">Alta</span>
+      <span class="badge badge-project">📋 Pliegos Q1</span>
+    </div>
+    <div class="task-title">Revisar y validar propuesta técnica para licitación municipal</div>
+    <div class="task-sub">
+      <span class="due">📅 Vence 5 mar</span>
+      <span>👤 PT</span>
+      <span>💬 3 comentarios</span>
+    </div>
+    <div class="status-row">
+      <span class="status-pill" onclick="setStatus(this)">Por hacer</span>
+      <span class="status-pill active" onclick="setStatus(this)">En progreso</span>
+      <span class="status-pill" onclick="setStatus(this)">Esperando</span>
+      <span class="status-pill" onclick="setStatus(this)">Hecho</span>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs-bar">
+    <span class="tab active" onclick="switchTab(this,'contenido')">Contenido</span>
+    <span class="tab" onclick="switchTab(this,'adjuntos')">Adjuntos</span>
+    <span class="tab" onclick="switchTab(this,'relaciones')">Relaciones</span>
+    <span class="tab" onclick="switchTab(this,'info')">Info</span>
+  </div>
+
+  <!-- TAB: CONTENIDO -->
+  <div id="tab-contenido" class="tab-content active">
+    <div class="section-label">Descripción</div>
+    <p class="desc-text">Revisión completa de la propuesta técnica presentada para la licitación del Ayuntamiento. Incluye validación de requisitos del apartado 3.2, verificación de certificaciones ISO requeridas y confirmación de referencias de proyectos anteriores. Plazo límite de entrega: 5 de marzo de 2026.</p>
+
+    <div class="section-label">Análisis OpenClaw</div>
+    <div class="ai-card">
+      <div class="ai-card-header">
+        <div class="ai-avatar-sm ai-avatar-purple">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        </div>
+        <span class="ai-card-title">OpenClaw · Análisis</span>
+        <span class="ai-badge">IA</span>
+      </div>
+      <p class="ai-text">He detectado que los requisitos del apartado 3.2 requieren certificación ISO 9001, que según mis registros fue renovada en diciembre. El certificado actualizado debe adjuntarse explícitamente en la sección de Documentación Técnica.</p>
+    </div>
+
+    <div class="alert-card">
+      <div class="ai-card-header">
+        <div class="ai-avatar-sm" style="background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.22);color:var(--urgent);">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01"/></svg>
+        </div>
+        <span class="ai-card-title" style="color:var(--urgent);">⚠️ Alerta</span>
+        <span class="ai-badge ai-badge-red">IA</span>
+      </div>
+      <p class="ai-text">El pliego exige al menos 3 referencias de proyectos similares en administración pública. Solo se han incluido 2 en la versión actual. Necesitas añadir una referencia adicional antes del envío.</p>
+    </div>
+
+    <div class="section-label">Actividad</div>
+
+    <div class="activity-item">
+      <div class="act-avatar act-teal">PT</div>
+      <div class="act-body">
+        <div class="act-text">Cambió estado a <strong>En progreso</strong></div>
+        <div class="act-time">Hoy · 09:14</div>
+      </div>
+    </div>
+    <div class="activity-item">
+      <div class="act-avatar act-purple">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+      </div>
+      <div class="act-body">
+        <div class="act-text">OpenClaw detectó 2 incidencias críticas en la propuesta</div>
+        <div class="act-time">Hoy · 08:55</div>
+      </div>
+    </div>
+    <div class="activity-item">
+      <div class="act-avatar act-green">JG</div>
+      <div class="act-body">
+        <div class="act-text">Juan García adjuntó <strong>Propuesta_v2_DRAFT.pdf</strong></div>
+        <div class="act-time">Ayer · 17:30</div>
+      </div>
+    </div>
+    <div class="activity-item">
+      <div class="act-avatar act-teal">PT</div>
+      <div class="act-body">
+        <div class="act-text">Creó la tarea desde Inbox</div>
+        <div class="act-time">28 feb · 11:20</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: ADJUNTOS -->
+  <div id="tab-adjuntos" class="tab-content">
+    <div class="section-label">Archivos adjuntos (3)</div>
+    <div class="files-grid">
+      <div class="file-card">
+        <div class="file-icon" style="background:rgba(248,113,113,0.12);">📄</div>
+        <div class="file-name">Propuesta_v2_DRAFT.pdf</div>
+        <div class="file-meta">1.8 MB · PDF</div>
+      </div>
+      <div class="file-card">
+        <div class="file-icon" style="background:rgba(96,165,250,0.12);">📊</div>
+        <div class="file-name">Presupuesto_v3.xlsx</div>
+        <div class="file-meta">245 KB · Excel</div>
+      </div>
+      <div class="file-card">
+        <div class="file-icon" style="background:rgba(74,222,128,0.12);">📋</div>
+        <div class="file-name">Certificado_ISO_9001.pdf</div>
+        <div class="file-meta">380 KB · PDF</div>
+      </div>
+      <div class="file-card" style="border:1.5px dashed var(--border-hover);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-muted);gap:6px;">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
+        <span style="font-size:11px;">Adjuntar</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: RELACIONES -->
+  <div id="tab-relaciones" class="tab-content">
+    <div class="section-label">Tareas relacionadas</div>
+    <div class="rel-item">
+      <div class="rel-icon" style="background:rgba(96,165,250,0.12);">📋</div>
+      <div class="rel-body">
+        <div class="rel-title">Ideas para propuesta técnica pliego Barcelona</div>
+        <div class="rel-meta">Pliegos Q1 · En progreso</div>
+      </div>
+      <span class="rel-type">Relacionada</span>
+    </div>
+    <div class="rel-item">
+      <div class="rel-icon" style="background:rgba(248,113,113,0.12);">⚡</div>
+      <div class="rel-body">
+        <div class="rel-title">Preparar documentación pliego Madrid</div>
+        <div class="rel-meta">Pliegos Q1 · Urgente</div>
+      </div>
+      <span class="rel-type">Bloquea</span>
+    </div>
+  </div>
+
+  <!-- TAB: INFO -->
+  <div id="tab-info" class="tab-content">
+    <div class="section-label">Metadatos</div>
+    <div class="info-row"><span class="info-key">ID</span><span class="info-val mono">TF-2026-0312</span></div>
+    <div class="info-row"><span class="info-key">Creada</span><span class="info-val">28 feb 2026 · 11:20</span></div>
+    <div class="info-row"><span class="info-key">Actualizada</span><span class="info-val">Hoy · 09:14</span></div>
+    <div class="info-row"><span class="info-key">Asignada a</span><span class="info-val">P. Tavares (PT)</span></div>
+    <div class="info-row"><span class="info-key">Proyecto</span><span class="info-val" style="color:var(--accent-blue);">Pliegos Q1</span></div>
+    <div class="info-row"><span class="info-key">Prioridad</span><span class="info-val" style="color:var(--urgent);">Urgente · Alta</span></div>
+    <div class="info-row"><span class="info-key">Vencimiento</span><span class="info-val" style="color:var(--urgent);">5 mar 2026</span></div>
+    <div class="info-row"><span class="info-key">Cuadrante</span><span class="info-val">Eisenhower Q1</span></div>
+    <div class="info-row"><span class="info-key">Etiquetas</span><span class="info-val">Licitación · ISO · Propuesta</span></div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottom-bar">
+    <button class="btn-teal-full">✓ Marcar como hecho</button>
+    <button class="btn-ghost-sq">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+    </button>
+  </div>
+
+</div>
+
+<script>
+function setStatus(el){
+  document.querySelectorAll('.status-pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+}
+function switchTab(el,id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+}
+</script>
+</body>
+</html>

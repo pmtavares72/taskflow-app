@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>TaskFlow — Captura de Archivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep:       #0a0a0c;
+    --bg-surface:    #111116;
+    --bg-elevated:   #18181f;
+    --bg-card:       #1e1e28;
+    --bg-input:      #22222e;
+    --border:        rgba(255,255,255,0.07);
+    --border-hover:  rgba(255,255,255,0.14);
+    --text-primary:  #f0f0f5;
+    --text-secondary:#8888a4;
+    --text-muted:    #4a4a62;
+    --accent-agent:  #00d4c8;
+    --accent-urgent: #ff4757;
+    --accent-high:   #ff8c42;
+    --proj-blue:     #3b7dd8;
+    --proj-green:    #2ebd7c;
+    --proj-orange:   #f5820d;
+    --proj-purple:   #9b59b6;
+    --font-display:  'Syne', sans-serif;
+    --font-body:     'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px 6px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-display);
+  }
+  .status-bar .time { font-size: 15px; font-weight: 700; }
+  .status-icons { display: flex; gap: 5px; align-items: center; }
+  .status-icons svg { width: 14px; height: 14px; fill: var(--text-primary); }
+
+  /* ── NAV ── */
+  .top-nav {
+    display: flex;
+    align-items: center;
+    padding: 6px 16px 14px;
+    gap: 10px;
+  }
+  .cancel-btn { font-size: 15px; color: var(--text-secondary); cursor: pointer; font-weight: 400; }
+  .nav-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; flex: 1; text-align: center; letter-spacing: -0.01em; }
+  .done-btn { font-size: 15px; color: var(--accent-agent); cursor: pointer; font-weight: 600; font-family: var(--font-display); }
+
+  /* ── STEP INDICATORS ── */
+  .steps-row {
+    display: flex;
+    align-items: center;
+    padding: 0 16px 20px;
+    gap: 0;
+  }
+  .step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+  }
+  .step::before {
+    content: '';
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    right: -50%;
+    height: 2px;
+    background: var(--border);
+  }
+  .step:last-child::before { display: none; }
+  .step.completed::before { background: rgba(0,212,200,0.3); }
+  .step.active::before { background: var(--border); }
+  .step-circle {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: var(--font-display);
+    position: relative;
+    z-index: 1;
+    border: 2px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    transition: all 0.2s;
+  }
+  .step.completed .step-circle { background: rgba(0,212,200,0.1); border-color: rgba(0,212,200,0.35); color: var(--accent-agent); }
+  .step.active .step-circle { background: var(--accent-agent); border-color: var(--accent-agent); color: #0a0a0c; box-shadow: 0 0 12px rgba(0,212,200,0.35); }
+  .step-label { font-size: 10px; color: var(--text-muted); font-family: var(--font-display); font-weight: 600; letter-spacing: 0.03em; }
+  .step.active .step-label { color: var(--accent-agent); }
+  .step.completed .step-label { color: rgba(0,212,200,0.6); }
+
+  /* ── SECTIONS ── */
+  .section { padding: 0 16px 20px; }
+
+  /* ── UPLOAD AREA ── */
+  .upload-area {
+    border: 2px dashed rgba(0,212,200,0.25);
+    border-radius: 16px;
+    padding: 30px 20px;
+    text-align: center;
+    background: rgba(0,212,200,0.03);
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+  }
+  .upload-area:hover { border-color: rgba(0,212,200,0.4); background: rgba(0,212,200,0.05); }
+  .upload-icon { font-size: 40px; margin-bottom: 10px; }
+  .upload-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 5px; }
+  .upload-subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.4; }
+  .upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-agent);
+    color: #0a0a0c;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+    box-shadow: 0 0 20px rgba(0,212,200,0.3);
+  }
+  .upload-btn svg { width: 16px; height: 16px; stroke: #0a0a0c; fill: none; stroke-width: 2.5; }
+
+  /* ── QUICK ACTION GRID ── */
+  .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .quick-action {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+  }
+  .quick-action:hover { border-color: var(--border-hover); background: var(--bg-card-hover, #22222e); }
+  .qa-icon { font-size: 24px; }
+  .qa-label { font-size: 12.5px; font-weight: 600; font-family: var(--font-display); color: var(--text-primary); letter-spacing: 0.02em; }
+  .qa-desc { font-size: 11px; color: var(--text-muted); line-height: 1.3; }
+
+  /* ── FILE PREVIEW (step 2) ── */
+  .file-preview {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .file-preview-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .file-big-icon {
+    width: 48px; height: 48px;
+    background: var(--bg-elevated);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .file-info .fname { font-size: 15px; font-weight: 600; font-family: var(--font-display); letter-spacing: -0.01em; }
+  .file-info .fmeta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .file-remove { margin-left: auto; color: var(--text-muted); font-size: 20px; cursor: pointer; padding: 4px; }
+
+  .upload-progress {
+    padding: 10px 14px 14px;
+  }
+  .progress-label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .progress-label span:first-child { font-size: 12px; color: var(--text-secondary); }
+  .progress-label span:last-child { font-size: 12px; color: var(--accent-agent); font-weight: 600; font-family: var(--font-display); }
+  .progress-track { height: 4px; background: var(--bg-elevated); border-radius: 2px; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, rgba(0,212,200,0.5), var(--accent-agent)); border-radius: 2px; transition: width 0.3s; animation: progress-anim 2s ease-in-out infinite; }
+  @keyframes progress-anim { 0%{width:60%} 50%{width:80%} 100%{width:60%} }
+
+  /* ── CLASSIFY FORM (step 3) ── */
+  .form-field {
+    margin-bottom: 12px;
+  }
+  .field-label { font-size: 11.5px; font-weight: 600; font-family: var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+  .field-input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border-hover);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s;
+    caret-color: var(--accent-agent);
+  }
+  .field-input:focus { border-color: rgba(0,212,200,0.35); box-shadow: 0 0 0 3px rgba(0,212,200,0.06); }
+  .field-input::placeholder { color: var(--text-muted); font-weight: 300; }
+
+  .selector-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .sel-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font-body);
+  }
+  .sel-btn .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .sel-btn.active { border-color: rgba(0,212,200,0.3); background: rgba(0,212,200,0.06); color: var(--text-primary); }
+  .sel-btn.active.blue { border-color: rgba(59,125,216,0.3); background: rgba(59,125,216,0.08); color: #6baae0; }
+  .sel-btn.active.green { border-color: rgba(46,189,124,0.3); background: rgba(46,189,124,0.08); color: #5dd49a; }
+  .sel-btn.active.orange { border-color: rgba(245,130,13,0.3); background: rgba(245,130,13,0.08); color: #f5a54c; }
+
+  /* ── AI SUGGESTION BOX ── */
+  .ai-suggestion-box {
+    background: linear-gradient(135deg, rgba(0,212,200,0.07) 0%, rgba(0,212,200,0.02) 100%);
+    border: 1px solid rgba(0,212,200,0.22);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+  .ai-sb-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .ai-pulse { width: 7px; height: 7px; background: var(--accent-agent); border-radius: 50%; animation: agent-pulse 2s ease-in-out infinite; box-shadow: 0 0 6px rgba(0,212,200,0.5); }
+  @keyframes agent-pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .ai-sb-title { font-size: 11.5px; font-weight: 700; font-family: var(--font-display); color: var(--accent-agent); letter-spacing: 0.04em; }
+  .ai-sb-body { font-size: 12.5px; color: rgba(0,212,200,0.65); line-height: 1.5; margin-bottom: 10px; }
+  .ai-sb-body strong { color: var(--accent-agent); }
+  .ai-sb-actions { display: flex; gap: 6px; }
+  .ai-sb-btn {
+    flex: 1;
+    text-align: center;
+    padding: 7px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-display);
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+  .ai-sb-btn.accept { background: rgba(0,212,200,0.12); border: 1px solid rgba(0,212,200,0.28); color: var(--accent-agent); }
+  .ai-sb-btn.modify { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); }
+
+  /* ── SUBMIT BUTTON ── */
+  .submit-section {
+    padding: 0 16px;
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+  .submit-btn {
+    width: 100%;
+    background: var(--accent-agent);
+    color: #0a0a0c;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: var(--font-display);
+    text-align: center;
+    cursor: pointer;
+    letter-spacing: 0.01em;
+    box-shadow: 0 0 24px rgba(0,212,200,0.3);
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .submit-btn svg { width: 18px; height: 18px; stroke: #0a0a0c; fill: none; stroke-width: 2.5; }
+  .submit-btn:active { transform: scale(0.98); }
+
+  /* ── DIVIDER ── */
+  .section-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0 16px 20px;
+  }
+</style>
+</head>
+<body>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <span class="time">9:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+    <svg viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2"/><path d="M20 11h2v2h-2"/><rect x="3.5" y="8.5" width="13" height="7" rx="1" fill="currentColor" opacity="0.7"/></svg>
+  </div>
+</div>
+
+<!-- TOP NAV -->
+<div class="top-nav">
+  <div class="cancel-btn">Cancelar</div>
+  <div class="nav-title">Capturar Archivo</div>
+  <div class="done-btn">Guardar</div>
+</div>
+
+<!-- STEPS -->
+<div class="steps-row">
+  <div class="step completed">
+    <div class="step-circle">✓</div>
+    <div class="step-label">Seleccionar</div>
+  </div>
+  <div class="step completed">
+    <div class="step-circle">✓</div>
+    <div class="step-label">Subir</div>
+  </div>
+  <div class="step active">
+    <div class="step-circle">3</div>
+    <div class="step-label">Clasificar</div>
+  </div>
+</div>
+
+<!-- FILE PREVIEW -->
+<div class="section">
+  <div class="file-preview">
+    <div class="file-preview-header">
+      <div class="file-big-icon">📊</div>
+      <div class="file-info">
+        <div class="fname">Presupuesto_Garcia_v3.xlsx</div>
+        <div class="fmeta">Microsoft Excel · 248 KB · Subido hace 30 seg</div>
+      </div>
+      <div class="file-remove">×</div>
+    </div>
+    <div class="upload-progress">
+      <div class="progress-label">
+        <span>Procesando archivo…</span>
+        <span>75%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI SUGGESTION -->
+<div class="section">
+  <div class="ai-suggestion-box">
+    <div class="ai-sb-header">
+      <div class="ai-pulse"></div>
+      <div class="ai-sb-title">✦ OpenClaw analiza el archivo</div>
+    </div>
+    <div class="ai-sb-body">
+      He detectado que es un <strong>Excel con presupuesto</strong>. Por el nombre y el contenido, lo relaciono con el proyecto <strong>Cliente García</strong>. Te sugiero clasificarlo como archivo adjunto de prioridad <strong>Alta</strong>.
+    </div>
+    <div class="ai-sb-actions">
+      <button class="ai-sb-btn accept">Aceptar sugerencia</button>
+      <button class="ai-sb-btn modify">Modificar</button>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- CLASSIFY FORM -->
+<div class="section">
+  <div class="form-field">
+    <div class="field-label">Título</div>
+    <input type="text" class="field-input" value="Presupuesto García v3 — Revisión final" />
+  </div>
+
+  <div class="form-field">
+    <div class="field-label">Proyecto</div>
+    <div class="selector-row">
+      <div class="sel-btn active green">
+        <span class="dot" style="background: var(--proj-green)"></span>
+        Cliente García
+      </div>
+      <div class="sel-btn">
+        <span class="dot" style="background: var(--proj-blue)"></span>
+        Pliegos Q1
+      </div>
+      <div class="sel-btn">
+        <span class="dot" style="background: var(--proj-orange)"></span>
+        OpenClaw Dev
+      </div>
+    </div>
+  </div>
+
+  <div class="form-field">
+    <div class="field-label">Prioridad</div>
+    <div class="selector-row">
+      <div class="sel-btn" style="border-color: rgba(255,71,87,0.2); background: rgba(255,71,87,0.04); color: #ff7080">🔴 Urgente</div>
+      <div class="sel-btn active" style="border-color: rgba(255,140,66,0.3); background: rgba(255,140,66,0.08); color: #ffb074">🟠 Alto</div>
+      <div class="sel-btn" style="color: var(--text-muted)">🔵 Medio</div>
+      <div class="sel-btn" style="color: var(--text-muted)">⚪ Bajo</div>
+    </div>
+  </div>
+
+  <div class="form-field">
+    <div class="field-label">Notas</div>
+    <textarea class="field-input" rows="2" style="resize: none;" placeholder="Añadir notas sobre este archivo…">Versión final del presupuesto con los cambios de las partidas 3 y 7 que pedía García.</textarea>
+  </div>
+
+  <div class="form-field">
+    <div class="field-label">Contexto</div>
+    <div class="selector-row">
+      <div class="sel-btn active blue">💼 Trabajo</div>
+      <div class="sel-btn">🏠 Personal</div>
+    </div>
+  </div>
+</div>
+
+<!-- SUBMIT -->
+<div class="submit-section">
+  <div class="submit-btn">
+    <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+    Guardar en TaskFlow
+  </div>
+</div>
+
+<script>
+// Toggle selector buttons
+document.querySelectorAll('.sel-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const row = btn.closest('.selector-row');
+    if (row) {
+      row.querySelectorAll('.sel-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+  });
+});
+
+// AI suggestion accept
+document.querySelector('.ai-sb-btn.accept').addEventListener('click', () => {
+  const box = document.querySelector('.ai-suggestion-box');
+  box.style.transition = 'all 0.3s';
+  box.style.opacity = '0';
+  box.style.maxHeight = '0';
+  box.style.padding = '0';
+  box.style.margin = '0';
+  box.style.overflow = 'hidden';
+  setTimeout(() => {
+    box.remove();
+    // Show confirmation
+    const section = document.querySelector('.section');
+    const notice = document.createElement('div');
+    notice.style.cssText = 'background: rgba(0,212,200,0.08); border: 1px solid rgba(0,212,200,0.2); border-radius: 8px; padding: 10px 14px; font-size: 12.5px; color: rgba(0,212,200,0.8); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;';
+    notice.innerHTML = '<span>✦</span> Sugerencia aplicada: proyecto Cliente García, prioridad Alta';
+    section.prepend(notice);
+  }, 300);
+});
+
+// Simulate progress animation
+let progress = 75;
+const fill = document.querySelector('.progress-fill');
+const pct = document.querySelector('.progress-label span:last-child');
+const interval = setInterval(() => {
+  progress = Math.min(progress + 2, 100);
+  fill.style.width = progress + '%';
+  fill.style.animation = 'none';
+  pct.textContent = progress + '%';
+  if (progress >= 100) {
+    clearInterval(interval);
+    pct.textContent = '✓ Listo';
+    fill.style.background = 'var(--proj-green)';
+    document.querySelector('.progress-label span:first-child').textContent = 'Archivo subido correctamente';
+  }
+}, 400);
+</script>
+</body>
+</html>

@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Detalle de Tarea</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #f0ede8;
+  --surface:     #faf8f5;
+  --elevated:    #ffffff;
+  --card:        #ffffff;
+  --border:      rgba(0,0,0,0.08);
+  --border-hover:rgba(0,0,0,0.16);
+  --text:        #1a1a2e;
+  --text-sub:    #6b6b8a;
+  --text-muted:  #a8a8c0;
+  --accent:      #00b8ad;
+  --accent-dark: #008f86;
+  --accent-dim:  rgba(0,184,173,0.1);
+  --accent-glow: rgba(0,184,173,0.2);
+  --urgent:      #e8304a;
+  --high:        #f07832;
+  --medium:      #3d8ef0;
+  --p-blue:      #3d7fd8;
+  --p-green:     #1faa6b;
+  --p-purple:    #7c52c8;
+  --shadow-sm:   0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:   0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+}
+
+html, body {
+  min-height: 100vh;
+  background-color: var(--bg);
+  background-image: radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--text);
+  display: flex;
+  justify-content: center;
+  padding: 0;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 2px; }
+
+/* Container */
+.app-container {
+  width: 100%;
+  max-width: 600px;
+  min-height: 100vh;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 0 60px rgba(0,0,0,0.08);
+}
+
+/* Top Nav */
+.top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.back-btn:hover { background: var(--accent-dim); }
+.back-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2.5; }
+
+.nav-title {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+}
+
+.nav-actions {
+  display: flex;
+  gap: 4px;
+}
+.nav-icon-btn {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-sub);
+  transition: all 0.15s;
+}
+.nav-icon-btn:hover { background: var(--bg); color: var(--text); }
+.nav-icon-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+/* Task Hero */
+.task-hero {
+  background: var(--card);
+  padding: 20px 16px 0;
+  border-bottom: 1px solid var(--border);
+  animation: fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.task-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.priority-urgent { background: rgba(232,48,74,0.1); color: var(--urgent); }
+.priority-high   { background: rgba(240,120,50,0.1); color: var(--high); }
+.priority-medium { background: rgba(61,142,240,0.1); color: var(--medium); }
+
+.priority-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.project-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(61,127,216,0.08);
+  color: var(--p-blue);
+}
+
+.task-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text);
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+}
+
+.task-subtitle-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.task-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+.task-meta-item svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+.task-meta-item strong { color: var(--text); }
+
+/* Status selector row */
+.status-row {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 16px;
+  overflow-x: auto;
+}
+.status-chip {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sub);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.status-chip:hover { border-color: var(--border-hover); }
+.status-chip.active {
+  background: var(--accent-dim);
+  border-color: rgba(0,184,173,0.3);
+  color: var(--accent-dark);
+}
+
+/* Tabs */
+.tabs-bar {
+  display: flex;
+  background: var(--card);
+  border-bottom: 2px solid var(--border);
+  sticky: top;
+  position: sticky;
+  top: 57px;
+  z-index: 40;
+}
+.tab-item {
+  flex: 1;
+  padding: 12px 8px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.tab-item:hover { color: var(--text-sub); }
+.tab-item.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Tab panels */
+.tab-panel { display: none; padding: 16px; animation: fade-up 0.3s ease both; }
+.tab-panel.active { display: block; }
+
+/* Content panel */
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  margin-top: 20px;
+}
+.section-label:first-child { margin-top: 0; }
+
+.description-text {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-sub);
+}
+
+/* Agent notes card */
+.agent-card {
+  background: linear-gradient(135deg, rgba(0,184,173,0.05), rgba(0,184,173,0.08));
+  border: 1px solid rgba(0,184,173,0.2);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 8px;
+}
+.agent-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.agent-avatar-sm {
+  width: 24px; height: 24px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: white;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.agent-name-sm {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-dark);
+}
+.agent-badge-sm {
+  margin-left: auto;
+  background: var(--accent-dim);
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.agent-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+/* Activity */
+.activity-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--p-blue), var(--p-purple));
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.activity-body { flex: 1; }
+.activity-text {
+  font-size: 13px;
+  color: var(--text-sub);
+  line-height: 1.5;
+}
+.activity-text strong { color: var(--text); font-weight: 600; }
+.activity-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Attachments panel */
+.file-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.file-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.file-card:hover { border-color: var(--border-hover); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.file-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+.file-icon-pdf  { background: rgba(232,48,74,0.1); }
+.file-icon-xls  { background: rgba(31,170,107,0.1); }
+.file-icon-img  { background: rgba(61,127,216,0.1); }
+.file-icon-doc  { background: rgba(61,142,240,0.1); }
+.file-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+  word-break: break-word;
+}
+.file-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.upload-zone {
+  border: 1.5px dashed var(--border-hover);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.upload-zone:hover { border-color: var(--accent); background: var(--accent-dim); }
+.upload-zone svg { width: 24px; height: 24px; stroke: var(--text-muted); fill: none; stroke-width: 1.5; margin-bottom: 8px; }
+.upload-zone p { font-size: 13px; color: var(--text-muted); }
+.upload-zone p strong { color: var(--accent); }
+
+/* Relations panel */
+.relation-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.relation-item:hover { border-color: var(--border-hover); box-shadow: var(--shadow-sm); }
+.relation-icon {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.relation-body { flex: 1; }
+.relation-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.relation-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.relation-type-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.badge-blocks { background: rgba(124,82,200,0.1); color: var(--p-purple); }
+.badge-blocked { background: rgba(232,48,74,0.1); color: var(--urgent); }
+.badge-related { background: rgba(61,127,216,0.1); color: var(--p-blue); }
+
+/* Info panel */
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.info-row:last-child { border-bottom: none; }
+.info-label {
+  width: 110px;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-top: 2px;
+}
+.info-value {
+  flex: 1;
+  font-size: 13.5px;
+  color: var(--text);
+}
+.info-value.muted { color: var(--text-sub); }
+
+.context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-sub);
+}
+
+/* Bottom action bar */
+.bottom-bar {
+  position: sticky;
+  bottom: 0;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  gap: 10px;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+}
+
+.btn-done {
+  flex: 1;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 13px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px var(--accent-glow);
+  transition: all 0.18s;
+}
+.btn-done:hover { background: var(--accent-dark); transform: translateY(-1px); }
+.btn-done svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2.5; }
+
+.btn-more {
+  width: 48px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.btn-more:hover { border-color: var(--border-hover); background: white; }
+.btn-more svg { width: 18px; height: 18px; stroke: var(--text-sub); fill: none; stroke-width: 2; }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .app-container { box-shadow: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  <!-- Top Nav -->
+  <nav class="top-nav">
+    <button class="back-btn">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      Inbox
+    </button>
+    <span class="nav-title">Detalle</span>
+    <div class="nav-actions">
+      <button class="nav-icon-btn" title="Compartir">
+        <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      </button>
+      <button class="nav-icon-btn" title="Más opciones">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Task Hero -->
+  <div class="task-hero">
+    <div class="task-meta-row">
+      <span class="priority-badge priority-urgent">Urgente</span>
+      <span class="priority-badge priority-high" style="background:rgba(240,120,50,0.1);color:var(--high)">Alta</span>
+      <span class="project-tag">📋 Pliegos Q1</span>
+    </div>
+
+    <h1 class="task-title">Revisar y validar propuesta técnica para licitación municipal</h1>
+
+    <div class="task-subtitle-row">
+      <span class="task-meta-item">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <strong>Vence 5 mar</strong>
+      </span>
+      <span class="task-meta-item">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
+        PT
+      </span>
+      <span class="task-meta-item">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        3 comentarios
+      </span>
+    </div>
+
+    <div class="status-row">
+      <button class="status-chip">Por hacer</button>
+      <button class="status-chip active">En progreso</button>
+      <button class="status-chip">Esperando</button>
+      <button class="status-chip">Hecho</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs-bar">
+    <div class="tab-item active" onclick="switchTab('contenido', this)">Contenido</div>
+    <div class="tab-item" onclick="switchTab('adjuntos', this)">Adjuntos</div>
+    <div class="tab-item" onclick="switchTab('relaciones', this)">Relaciones</div>
+    <div class="tab-item" onclick="switchTab('info', this)">Info</div>
+  </div>
+
+  <!-- Tab: Contenido -->
+  <div id="tab-contenido" class="tab-panel active">
+    <div class="section-label">Descripción</div>
+    <p class="description-text">
+      Revisar la propuesta técnica elaborada por el equipo de ingeniería para la licitación del Ayuntamiento de Madrid. Verificar cumplimiento de todos los requisitos del pliego de condiciones, especialmente los apartados 3.2 (capacidad técnica) y 4.1 (metodología de ejecución).
+      <br><br>
+      Asegurarse de que los plazos propuestos son coherentes con los recursos disponibles y que la documentación de acreditación está completa y vigente.
+    </p>
+
+    <div class="section-label" style="margin-top:20px">Notas de OpenClaw</div>
+    <div class="agent-card">
+      <div class="agent-card-header">
+        <div class="agent-avatar-sm">OC</div>
+        <span class="agent-name-sm">OpenClaw · Análisis</span>
+        <span class="agent-badge-sm">IA</span>
+      </div>
+      <p class="agent-text">
+        He detectado que los requisitos del apartado 3.2 requieren certificación ISO 9001. Según los documentos en Pliegos Q1, vuestra certificación vence el 15 de abril — bien dentro del plazo. El apartado 4.1 de metodología necesita incluir el cronograma Gantt actualizado (última versión: v3.2 en adjuntos).
+      </p>
+    </div>
+    <div class="agent-card" style="margin-top:8px">
+      <div class="agent-card-header">
+        <div class="agent-avatar-sm">OC</div>
+        <span class="agent-name-sm">OpenClaw · Riesgo</span>
+        <span class="agent-badge-sm" style="background:rgba(232,48,74,0.1);color:var(--urgent)">⚠️ Alerta</span>
+      </div>
+      <p class="agent-text">
+        El pliego exige al menos 3 referencias de proyectos similares en los últimos 5 años. Solo tenéis 2 documentadas. Recomiendo contactar a Cliente García para obtener la carta de recomendación antes del jueves.
+      </p>
+    </div>
+
+    <div class="section-label" style="margin-top:20px">Actividad</div>
+
+    <div class="activity-item">
+      <div class="activity-avatar">PT</div>
+      <div class="activity-body">
+        <div class="activity-text"><strong>P. Tavares</strong> añadió un comentario: "Esperando confirmación de Cliente García para la referencia."</div>
+        <div class="activity-time">Hace 2h</div>
+      </div>
+    </div>
+    <div class="activity-item">
+      <div class="activity-avatar" style="background:linear-gradient(135deg,var(--accent),var(--accent-dark))">OC</div>
+      <div class="activity-body">
+        <div class="activity-text"><strong>OpenClaw</strong> detectó posible riesgo en requisitos de acreditación.</div>
+        <div class="activity-time">Hace 3h</div>
+      </div>
+    </div>
+    <div class="activity-item">
+      <div class="activity-avatar" style="background:linear-gradient(135deg,var(--p-green),#16855a)">MR</div>
+      <div class="activity-body">
+        <div class="activity-text"><strong>M. Rodríguez</strong> cambió el estado de <em>Por hacer</em> a <em>En progreso</em>.</div>
+        <div class="activity-time">Ayer 16:30</div>
+      </div>
+    </div>
+    <div class="activity-item">
+      <div class="activity-avatar">PT</div>
+      <div class="activity-body">
+        <div class="activity-text"><strong>P. Tavares</strong> creó esta tarea y adjuntó 3 documentos.</div>
+        <div class="activity-time">28 feb · 09:15</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Adjuntos -->
+  <div id="tab-adjuntos" class="tab-panel">
+    <div class="section-label">Documentos (4)</div>
+    <div class="file-grid">
+      <div class="file-card">
+        <div class="file-icon file-icon-pdf">📄</div>
+        <div class="file-name">Pliego_Condiciones_MAD.pdf</div>
+        <div class="file-meta">2.4 MB · 28 feb</div>
+      </div>
+      <div class="file-card">
+        <div class="file-icon file-icon-xls">📊</div>
+        <div class="file-name">Presupuesto_v4.xlsx</div>
+        <div class="file-meta">890 KB · 1 mar</div>
+      </div>
+      <div class="file-card">
+        <div class="file-icon file-icon-img">🖼️</div>
+        <div class="file-name">Gantt_v3.2.png</div>
+        <div class="file-meta">1.1 MB · 2 mar</div>
+      </div>
+      <div class="file-card">
+        <div class="file-icon file-icon-doc">📝</div>
+        <div class="file-name">Propuesta_Tecnica_Draft.docx</div>
+        <div class="file-meta">320 KB · Hoy</div>
+      </div>
+    </div>
+
+    <div class="upload-zone">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <p>Arrastra o <strong>selecciona un archivo</strong></p>
+    </div>
+  </div>
+
+  <!-- Tab: Relaciones -->
+  <div id="tab-relaciones" class="tab-panel">
+    <div class="section-label">Bloquea (1)</div>
+    <div class="relation-item">
+      <div class="relation-icon" style="background:rgba(124,82,200,0.08)">🔒</div>
+      <div class="relation-body">
+        <div class="relation-title">Preparar presentación ejecutiva Q1</div>
+        <div class="relation-meta">Pliegos Q1 · Alta prioridad</div>
+      </div>
+      <span class="relation-type-badge badge-blocks">Bloquea</span>
+    </div>
+
+    <div class="section-label" style="margin-top:16px">Bloqueada por (1)</div>
+    <div class="relation-item">
+      <div class="relation-icon" style="background:rgba(232,48,74,0.08)">⛔</div>
+      <div class="relation-body">
+        <div class="relation-title">Carta de referencia Cliente García</div>
+        <div class="relation-meta">Cliente García · Urgente</div>
+      </div>
+      <span class="relation-type-badge badge-blocked">Bloqueo</span>
+    </div>
+
+    <div class="section-label" style="margin-top:16px">Relacionadas (2)</div>
+    <div class="relation-item">
+      <div class="relation-icon" style="background:rgba(61,127,216,0.08)">🔗</div>
+      <div class="relation-body">
+        <div class="relation-title">Actualizar certificación ISO 9001</div>
+        <div class="relation-meta">OpenClaw Dev · Media</div>
+      </div>
+      <span class="relation-type-badge badge-related">Relacionada</span>
+    </div>
+    <div class="relation-item">
+      <div class="relation-icon" style="background:rgba(61,127,216,0.08)">🔗</div>
+      <div class="relation-body">
+        <div class="relation-title">Revisión legal del contrato marco</div>
+        <div class="relation-meta">Pliegos Q1 · Media</div>
+      </div>
+      <span class="relation-type-badge badge-related">Relacionada</span>
+    </div>
+  </div>
+
+  <!-- Tab: Info -->
+  <div id="tab-info" class="tab-panel">
+    <div class="info-row">
+      <span class="info-label">Proyecto</span>
+      <span class="info-value">📋 Pliegos Q1</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Prioridad</span>
+      <span class="info-value"><span class="priority-badge priority-urgent" style="font-size:12px">Urgente</span></span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Estado</span>
+      <span class="info-value">🔄 En progreso</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Asignado a</span>
+      <span class="info-value">P. Tavares</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Vencimiento</span>
+      <span class="info-value" style="color:var(--urgent);font-weight:600">5 marzo 2026</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Creado</span>
+      <span class="info-value muted">28 febrero 2026 · 09:15</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Modificado</span>
+      <span class="info-value muted">Hoy · 11:43</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Contexto</span>
+      <span class="info-value">
+        <span class="context-chip">🏢 Trabajo</span>
+      </span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Energía</span>
+      <span class="info-value muted">Alta concentración</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Tiempo est.</span>
+      <span class="info-value muted">3–4 horas</span>
+    </div>
+    <div class="info-row" style="border-bottom:none">
+      <span class="info-label">ID</span>
+      <span class="info-value muted" style="font-family:monospace;font-size:11px">TF-2026-0142</span>
+    </div>
+  </div>
+
+  <!-- Bottom Action Bar -->
+  <div class="bottom-bar">
+    <button class="btn-done">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      Marcar como hecho
+    </button>
+    <button class="btn-more">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+function switchTab(name, el) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  el.classList.add('active');
+}
+
+// Status chip toggle
+document.querySelectorAll('.status-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.status-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+  });
+});
+
+// Done button
+document.querySelector('.btn-done').addEventListener('click', function() {
+  this.innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.5"><polyline points="20 6 9 17 4 12"/></svg> ¡Completada!';
+  this.style.background = '#1faa6b';
+  this.style.boxShadow = '0 4px 14px rgba(31,170,107,0.3)';
+});
+</script>
+</body>
+</html>

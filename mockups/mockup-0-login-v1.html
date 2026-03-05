@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Acceder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep:       #07070c;
+    --bg-surface:    #0d0d14;
+    --bg-elevated:   #151520;
+    --bg-card:       #1a1a26;
+    --bg-input:      #1e1e2c;
+    --border:        rgba(255,255,255,0.07);
+    --border-hover:  rgba(255,255,255,0.14);
+    --text-primary:  #ededf5;
+    --text-secondary:#7878a0;
+    --text-muted:    #44445a;
+    --accent-agent:  #00d4c8;
+    --accent-mid:    #4a9eff;
+    --font-display:  'Syne', sans-serif;
+    --font-body:     'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    overflow: hidden;
+  }
+
+  /* ── BACKGROUND ── */
+  .bg-layer {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    z-index: 0;
+  }
+
+  /* Large gradient mesh */
+  .bg-mesh {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 15% 50%, rgba(0,212,200,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 85% 20%, rgba(74,158,255,0.06) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 60% 85%, rgba(0,212,200,0.04) 0%, transparent 50%);
+  }
+
+  /* Subtle grid */
+  .bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 80%);
+  }
+
+  /* Glowing orbs */
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    animation: orb-float 8s ease-in-out infinite;
+  }
+  .orb-1 {
+    width: 400px; height: 400px;
+    background: rgba(0,212,200,0.06);
+    left: -100px; top: 50%;
+    transform: translateY(-50%);
+    animation-delay: 0s;
+  }
+  .orb-2 {
+    width: 300px; height: 300px;
+    background: rgba(74,158,255,0.05);
+    right: -80px; top: 20%;
+    animation-delay: -4s;
+  }
+  .orb-3 {
+    width: 200px; height: 200px;
+    background: rgba(0,212,200,0.04);
+    right: 20%; bottom: 10%;
+    animation-delay: -2s;
+  }
+  @keyframes orb-float {
+    0%, 100% { transform: translateY(0px) scale(1); }
+    50% { transform: translateY(-20px) scale(1.05); }
+  }
+
+  /* ── LAYOUT ── */
+  .page {
+    position: relative;
+    z-index: 1;
+    height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 480px;
+    overflow: hidden;
+  }
+
+  /* ── LEFT PANEL (branding) ── */
+  .left-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 64px;
+    position: relative;
+  }
+
+  .brand-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 64px;
+  }
+  .brand-mark {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, rgba(0,212,200,0.15), rgba(0,212,200,0.05));
+    border: 1px solid rgba(0,212,200,0.25);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .brand-name {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+  }
+  .brand-name span { color: var(--accent-agent); }
+
+  .hero-headline {
+    font-family: var(--font-display);
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.04em;
+    margin-bottom: 20px;
+  }
+  .hero-headline .gradient-text {
+    background: linear-gradient(135deg, var(--accent-agent), #4a9eff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-description {
+    font-size: 16px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 400px;
+    margin-bottom: 48px;
+    font-weight: 300;
+  }
+
+  /* ── FEATURE LIST ── */
+  .features { display: flex; flex-direction: column; gap: 16px; }
+  .feature {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .feature-icon {
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .feature-icon.teal { background: rgba(0,212,200,0.1); border: 1px solid rgba(0,212,200,0.2); }
+  .feature-icon.blue { background: rgba(74,158,255,0.1); border: 1px solid rgba(74,158,255,0.2); }
+  .feature-icon.orange { background: rgba(255,140,66,0.1); border: 1px solid rgba(255,140,66,0.2); }
+  .feature-text .ftitle { font-size: 14px; font-weight: 600; color: var(--text-primary); font-family: var(--font-display); margin-bottom: 3px; }
+  .feature-text .fdesc { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+
+  /* ── RIGHT PANEL (form) ── */
+  .right-panel {
+    background: var(--bg-surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 48px;
+    position: relative;
+  }
+
+  /* Subtle gradient on right panel */
+  .right-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0,212,200,0.02) 0%, transparent 40%);
+    pointer-events: none;
+  }
+
+  .form-header { margin-bottom: 36px; }
+  .form-title {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 6px;
+  }
+  .form-subtitle { font-size: 14px; color: var(--text-muted); font-weight: 300; }
+  .form-subtitle a { color: var(--accent-agent); cursor: pointer; font-weight: 500; text-decoration: none; }
+  .form-subtitle a:hover { text-decoration: underline; }
+
+  /* ── FORM ── */
+  .form { display: flex; flex-direction: column; gap: 16px; position: relative; z-index: 1; }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .field-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .field-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .field-icon {
+    position: absolute;
+    left: 12px;
+    color: var(--text-muted);
+  }
+  .field-icon svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .field-input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border-hover);
+    border-radius: 10px;
+    padding: 12px 14px 12px 40px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    caret-color: var(--accent-agent);
+  }
+  .field-input:focus {
+    border-color: rgba(0,212,200,0.35);
+    box-shadow: 0 0 0 3px rgba(0,212,200,0.07);
+  }
+  .field-input.filled { border-color: rgba(0,212,200,0.2); }
+  .field-input::placeholder { color: var(--text-muted); font-weight: 300; }
+
+  .password-toggle {
+    position: absolute;
+    right: 12px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: color 0.12s;
+  }
+  .password-toggle:hover { color: var(--text-secondary); }
+  .password-toggle svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  .form-options {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: -4px;
+  }
+  .remember-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .checkbox {
+    width: 16px; height: 16px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-hover);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .checkbox.checked {
+    background: rgba(0,212,200,0.15);
+    border-color: rgba(0,212,200,0.4);
+  }
+  .checkbox.checked::after {
+    content: '✓';
+    font-size: 10px;
+    color: var(--accent-agent);
+    font-weight: 700;
+  }
+  .forgot-link { font-size: 13px; color: var(--accent-agent); cursor: pointer; font-weight: 500; }
+
+  .submit-btn {
+    width: 100%;
+    background: var(--accent-agent);
+    color: #07070c;
+    border-radius: 10px;
+    padding: 13px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: var(--font-display);
+    text-align: center;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    box-shadow: 0 0 24px rgba(0,212,200,0.28), 0 4px 12px rgba(0,0,0,0.4);
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    margin-top: 4px;
+  }
+  .submit-btn:hover { box-shadow: 0 0 36px rgba(0,212,200,0.4), 0 4px 16px rgba(0,0,0,0.5); transform: translateY(-1px); }
+  .submit-btn svg { width: 16px; height: 16px; stroke: #07070c; fill: none; stroke-width: 2.5; }
+
+  /* ── DIVIDER ── */
+  .or-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+  }
+  .or-divider::before, .or-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── SSO BUTTON ── */
+  .sso-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-hover);
+    border-radius: 10px;
+    padding: 11px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font-body);
+  }
+  .sso-btn:hover { background: var(--bg-card); border-color: var(--border-hover); color: var(--text-primary); }
+  .sso-icon { font-size: 17px; }
+
+  /* ── AGENT TEASER ── */
+  .agent-teaser {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .agent-teaser-icon {
+    width: 32px; height: 32px;
+    background: rgba(0,212,200,0.08);
+    border: 1px solid rgba(0,212,200,0.2);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .agent-mini-dot {
+    position: absolute;
+    bottom: -2px; right: -2px;
+    width: 8px; height: 8px;
+    background: var(--accent-agent);
+    border-radius: 50%;
+    border: 1.5px solid var(--bg-surface);
+    animation: agent-pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 5px rgba(0,212,200,0.5);
+  }
+  @keyframes agent-pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .agent-teaser-text { font-size: 12px; color: var(--text-muted); line-height: 1.45; flex: 1; }
+  .agent-teaser-text strong { color: var(--accent-agent); font-weight: 500; }
+
+  /* ── FOOTER ── */
+  .form-footer {
+    position: absolute;
+    bottom: 28px;
+    left: 48px;
+    right: 48px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .form-footer a { color: var(--text-secondary); cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- BG LAYER -->
+<div class="bg-layer">
+  <div class="bg-mesh"></div>
+  <div class="bg-grid"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<!-- PAGE -->
+<div class="page">
+
+  <!-- LEFT: BRANDING -->
+  <div class="left-panel">
+    <div class="brand-logo">
+      <div class="brand-mark">⚡</div>
+      <div class="brand-name">Task<span>Flow</span></div>
+    </div>
+
+    <div class="hero-headline">
+      Organiza todo.<br>
+      <span class="gradient-text">OpenClaw</span><br>
+      lo entiende.
+    </div>
+
+    <div class="hero-description">
+      Tu sistema de productividad personal con un agente AI que organiza, relaciona y prioriza todo lo que captures — en tiempo real.
+    </div>
+
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon teal">✦</div>
+        <div class="feature-text">
+          <div class="ftitle">Agente OpenClaw integrado</div>
+          <div class="fdesc">Clasifica emails, prioriza tareas y detecta plazos automáticamente</div>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon blue">⚡</div>
+        <div class="feature-text">
+          <div class="ftitle">Captura sin fricción</div>
+          <div class="fdesc">Texto, URLs, archivos e ideas en menos de 3 segundos</div>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon orange">🎯</div>
+        <div class="feature-text">
+          <div class="ftitle">Kanban + Eisenhower</div>
+          <div class="fdesc">Gestión visual y estratégica de tus prioridades reales</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: FORM -->
+  <div class="right-panel">
+
+    <div class="form-header">
+      <div class="form-title">Bienvenido de nuevo</div>
+      <div class="form-subtitle">¿Primera vez? <a>Crea tu cuenta gratis</a></div>
+    </div>
+
+    <div class="form">
+      <div class="form-field">
+        <div class="field-label">Email</div>
+        <div class="field-wrap">
+          <div class="field-icon">
+            <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <input type="email" class="field-input filled" value="ptavares@openclaw.io" placeholder="tu@email.com" />
+        </div>
+      </div>
+
+      <div class="form-field">
+        <div class="field-label">Contraseña</div>
+        <div class="field-wrap">
+          <div class="field-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <input type="password" class="field-input" value="••••••••••" placeholder="Tu contraseña" />
+          <div class="password-toggle">
+            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-options">
+        <label class="remember-label">
+          <div class="checkbox checked" id="rememberCheck"></div>
+          Recordarme
+        </label>
+        <div class="forgot-link">¿Olvidaste la contraseña?</div>
+      </div>
+
+      <button class="submit-btn">
+        <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Acceder a TaskFlow
+      </button>
+
+      <div class="or-divider">O</div>
+
+      <div class="sso-btn">
+        <div class="sso-icon">🔐</div>
+        Acceder con SSO corporativo
+      </div>
+    </div>
+
+    <div class="agent-teaser">
+      <div class="agent-teaser-icon">
+        🤖
+        <div class="agent-mini-dot"></div>
+      </div>
+      <div class="agent-teaser-text">
+        <strong>OpenClaw está listo.</strong> Al acceder, tu agente retomará el análisis y clasificará los 3 emails que llegaron mientras estabas fuera.
+      </div>
+    </div>
+
+    <div class="form-footer">
+      Al acceder aceptas los <a>Términos de uso</a> y la <a>Política de privacidad</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Checkbox toggle
+document.getElementById('rememberCheck').addEventListener('click', function() {
+  this.classList.toggle('checked');
+});
+
+// Submit button loading state
+document.querySelector('.submit-btn').addEventListener('click', function() {
+  this.innerHTML = '<svg viewBox="0 0 24 24" style="animation: spin 0.8s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56" stroke="currentColor" fill="none" stroke-width="2.5" stroke-linecap="round"/></svg> Verificando...';
+  this.style.opacity = '0.8';
+  const style = document.createElement('style');
+  style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+  document.head.append(style);
+  setTimeout(() => {
+    this.innerHTML = '✓ Accediendo…';
+    this.style.opacity = '1';
+  }, 1500);
+});
+
+// Input focus effects
+document.querySelectorAll('.field-input').forEach(input => {
+  input.addEventListener('input', () => {
+    if (input.value) { input.classList.add('filled'); }
+    else { input.classList.remove('filled'); }
+  });
+});
+</script>
+</body>
+</html>

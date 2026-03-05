@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Acceder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:           #080e0d;
+  --surface:      #0c1310;
+  --elevated:     #111a17;
+  --card-solid:   #131e1b;
+  --border:       rgba(255,255,255,0.07);
+  --border-hover: rgba(255,255,255,0.13);
+  --text:         #f2faf8;
+  --text-sub:     rgba(242,250,248,0.55);
+  --text-muted:   rgba(242,250,248,0.3);
+  --accent:       #2ed4a8;
+  --accent-bright:#3effc8;
+  --accent-dark:  #1fa882;
+  --accent-dim:   rgba(46,212,168,0.1);
+  --accent-glow:  rgba(46,212,168,0.2);
+  --accent-glow2: rgba(46,212,168,0.08);
+  --shadow-lg:    0 16px 56px rgba(0,0,0,0.7), 0 4px 16px rgba(0,0,0,0.4);
+  --glow-accent:  0 0 20px rgba(46,212,168,0.15), 0 0 40px rgba(46,212,168,0.08);
+}
+
+html, body {
+  min-height: 100vh;
+  background-color: var(--bg);
+  background-image:
+    /* Mesh: soft teal bloom top-left */
+    radial-gradient(ellipse 55% 55% at 15% 20%, rgba(46,212,168,0.06) 0%, transparent 60%),
+    /* Mesh: deep green sweep center-right */
+    radial-gradient(ellipse 70% 80% at 80% 55%, rgba(20,160,110,0.08) 0%, transparent 60%),
+    /* Mesh: blue-green accent bottom-left corner */
+    radial-gradient(ellipse 45% 40% at 5% 95%, rgba(10,90,70,0.07) 0%, transparent 55%),
+    /* Diagonal hairlines — very subtle */
+    repeating-linear-gradient(
+      135deg,
+      transparent,
+      transparent 40px,
+      rgba(255,255,255,0.013) 40px,
+      rgba(255,255,255,0.013) 41px
+    ),
+    /* Fine dot grid */
+    radial-gradient(circle, rgba(255,255,255,0.018) 1px, transparent 1px);
+  background-size: auto, auto, auto, auto, 28px 28px;
+  font-family: 'Inter', sans-serif;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Ambient orbs */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+.orb-teal {
+  width: 800px; height: 800px;
+  bottom: -280px; right: -200px;
+  background: radial-gradient(circle, rgba(46,212,168,0.07) 0%, transparent 60%);
+  filter: blur(80px);
+  animation: drift-slow 16s ease-in-out infinite;
+}
+.orb-blue {
+  width: 600px; height: 600px;
+  top: -160px; left: -160px;
+  background: radial-gradient(circle, rgba(20,60,160,0.09) 0%, transparent 65%);
+  filter: blur(100px);
+  animation: drift-slow 22s ease-in-out infinite reverse;
+}
+/* Third accent orb — warm green mid-left */
+.orb-green {
+  width: 400px; height: 400px;
+  top: 40%; left: -120px;
+  background: radial-gradient(circle, rgba(10,140,90,0.06) 0%, transparent 65%);
+  filter: blur(70px);
+  animation: drift-slow 26s ease-in-out infinite 4s;
+}
+/* Halo behind card */
+.card-halo {
+  position: fixed;
+  width: 500px; height: 500px;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(46,212,168,0.04) 0%, transparent 60%);
+  filter: blur(40px);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes drift-slow {
+  0%, 100% { transform: translate(0,0); }
+  33%  { transform: translate(15px, -20px); }
+  66%  { transform: translate(-10px, 10px); }
+}
+
+/* Card */
+.login-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 400px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-top: 1px solid rgba(46,212,168,0.35);
+  border-radius: 20px;
+  padding: 40px 36px 32px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-lg), 0 0 60px rgba(46,212,168,0.04);
+  animation: card-rise 0.6s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes card-rise {
+  from { opacity: 0; transform: translateY(28px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Logo */
+.logo-area {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.logo-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px; height: 44px;
+  background: rgba(46,212,168,0.1);
+  border: 1px solid rgba(46,212,168,0.2);
+  border-radius: 12px;
+  margin-bottom: 14px;
+  box-shadow: 0 0 16px rgba(46,212,168,0.12);
+}
+.logo-mark svg { width: 20px; height: 20px; stroke: var(--accent); fill: none; stroke-width: 2; }
+
+.logo-text {
+  display: block;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 32px;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.logo-text em { color: var(--accent); font-style: normal; font-weight: 600; }
+
+.tagline {
+  font-size: 12.5px;
+  font-weight: 300;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+}
+
+/* Separator */
+.sep {
+  height: 1px;
+  background: var(--border);
+  margin: 24px 0;
+}
+
+/* Form */
+.form-group { margin-bottom: 14px; }
+.form-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 7px;
+}
+
+.input-wrap { position: relative; }
+.form-input {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.form-input:focus {
+  border-color: var(--accent);
+  background: rgba(46,212,168,0.04);
+  box-shadow: 0 0 0 3px rgba(46,212,168,0.1), 0 0 16px rgba(46,212,168,0.08);
+}
+.form-input::placeholder { color: rgba(242,250,248,0.2); }
+
+.pw-toggle {
+  position: absolute;
+  right: 11px; top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  padding: 4px;
+  transition: color 0.15s;
+}
+.pw-toggle:hover { color: var(--text-sub); }
+.pw-toggle svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+.remember-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  cursor: pointer;
+}
+.remember-row input[type="checkbox"] {
+  width: 14px; height: 14px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.remember-row span {
+  font-size: 12.5px;
+  font-weight: 300;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+/* Primary button */
+.btn-primary {
+  width: 100%;
+  background: var(--accent);
+  color: #080e0d;
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 0 20px rgba(46,212,168,0.3), 0 4px 12px rgba(0,0,0,0.3);
+  letter-spacing: 0.01em;
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 50%);
+  pointer-events: none;
+}
+.btn-primary:hover {
+  background: var(--accent-bright);
+  box-shadow: 0 0 28px rgba(46,212,168,0.45), 0 4px 16px rgba(0,0,0,0.3);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); }
+
+.btn-primary .spinner {
+  display: none;
+  width: 17px; height: 17px;
+  border: 2px solid rgba(8,14,13,0.25);
+  border-top-color: #080e0d;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+}
+.btn-primary.loading .btn-text { display: none; }
+.btn-primary.loading .spinner { display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Divider text */
+.divider-text {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.divider-text::before, .divider-text::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* SSO button */
+.btn-sso {
+  width: 100%;
+  background: rgba(255,255,255,0.03);
+  color: var(--text-sub);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-sso:hover {
+  border-color: var(--border-hover);
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+}
+.btn-sso svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+.card-footer {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 11.5px;
+  font-weight: 300;
+  color: var(--text-muted);
+}
+.card-footer a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.card-footer a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="orb orb-teal"></div>
+<div class="orb orb-blue"></div>
+<div class="orb orb-green"></div>
+<div class="card-halo"></div>
+
+<div class="login-card">
+  <div class="logo-area">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    </div>
+    <span class="logo-text">Task<em>Flow</em></span>
+    <p class="tagline">Tu espacio de trabajo inteligente</p>
+  </div>
+
+  <div class="sep"></div>
+
+  <form onsubmit="handleLogin(event)">
+    <div class="form-group">
+      <label class="form-label">Correo electrónico</label>
+      <input type="email" class="form-input" value="ptavares@openclaw.io" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Contraseña</label>
+      <div class="input-wrap">
+        <input type="password" class="form-input" id="pwInput" value="••••••••••••" style="padding-right:40px;" />
+        <button type="button" class="pw-toggle" onclick="togglePw()">
+          <svg id="eyeIcon" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <label class="remember-row">
+      <input type="checkbox" checked />
+      <span>Recordar sesión</span>
+    </label>
+
+    <button type="submit" class="btn-primary" id="loginBtn">
+      <span class="btn-text">Entrar en TaskFlow</span>
+      <div class="spinner"></div>
+    </button>
+  </form>
+
+  <div class="divider-text">o continúa con</div>
+
+  <button class="btn-sso">
+    <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    Acceso corporativo (SSO)
+  </button>
+
+  <div class="card-footer">
+    <a href="#">¿Problemas para acceder? Contacta soporte</a>
+  </div>
+</div>
+
+<script>
+function togglePw() {
+  const i = document.getElementById('pwInput');
+  const ic = document.getElementById('eyeIcon');
+  if (i.type === 'password') {
+    i.type = 'text'; i.value = 'micontraseña123';
+    ic.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+  } else {
+    i.type = 'password'; i.value = '••••••••••••';
+    ic.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  }
+}
+function handleLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('loginBtn');
+  btn.classList.add('loading');
+  setTimeout(() => {
+    btn.classList.remove('loading');
+    btn.innerHTML = '<span class="btn-text">✓ Sesión iniciada</span>';
+    btn.style.background = 'var(--accent)';
+  }, 1800);
+}
+</script>
+</body>
+</html>

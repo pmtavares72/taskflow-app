@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Inbox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:           #13141f;
+  --surface:      #1a1b2e;
+  --elevated:     #1f2035;
+  --card:         #242540;
+  --sidebar-ai:   #111220;
+  --border:       rgba(255,255,255,0.07);
+  --border-hover: rgba(255,255,255,0.14);
+  --text:         #f0f1ff;
+  --text-sub:     rgba(240,241,255,0.6);
+  --text-muted:   rgba(240,241,255,0.35);
+  --accent:       #2fd4aa;
+  --accent-blue:  #60a5fa;
+  --accent-purple:#a78bfa;
+  --accent-orange:#fb923c;
+  --accent-pink:  #f472b6;
+  --accent-green: #4ade80;
+  --urgent:       #f87171;
+  --high:         #fb923c;
+  --medium:       #60a5fa;
+  --shadow-sm:    0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md:    0 4px 20px rgba(0,0,0,0.5);
+}
+
+html, body {
+  min-height: 100vh;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 60% 50% at 30% 0%, rgba(167,139,250,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 60% at 80% 100%, rgba(47,212,170,0.05) 0%, transparent 55%),
+    radial-gradient(circle, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: auto, auto, 24px 24px;
+  font-family: 'Outfit', sans-serif;
+  color: var(--text);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* Mobile shell */
+.mobile-shell {
+  width: 100%;
+  max-width: 480px;
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Top bar */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.logo-text {
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+.logo-text em { color: var(--accent); font-style: normal; }
+
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+}
+
+.notif-btn {
+  width: 32px; height: 32px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+}
+.notif-btn svg { width: 16px; height: 16px; stroke: var(--text-muted); fill: none; stroke-width: 2; }
+.notif-dot {
+  position: absolute;
+  top: 5px; right: 5px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent-orange);
+  border: 1.5px solid var(--surface);
+}
+
+/* Capture bar */
+.capture-wrap {
+  padding: 14px 16px 10px;
+  background: var(--surface);
+}
+.capture-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border-radius: 24px;
+  padding: 10px 16px;
+  box-shadow: var(--shadow-sm);
+}
+.capture-bar svg { width: 16px; height: 16px; stroke: var(--text-muted); fill: none; stroke-width: 2; flex-shrink: 0; }
+.capture-bar input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text);
+}
+.capture-bar input::placeholder { color: var(--text-muted); }
+.capture-mic {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.capture-mic svg { width: 13px; height: 13px; stroke: #13141f; fill: none; stroke-width: 2.5; }
+
+/* Context pills */
+.context-pills {
+  padding: 10px 16px;
+  background: var(--surface);
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border);
+}
+.context-pills::-webkit-scrollbar { display: none; }
+.pill {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #13141f;
+  box-shadow: 0 0 12px rgba(47,212,170,0.25);
+}
+.pill.ai {
+  background: rgba(167,139,250,0.1);
+  border-color: rgba(167,139,250,0.2);
+  color: var(--accent-purple);
+}
+
+/* Scroll content */
+.scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 14px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* AI Agent strip */
+.agent-strip {
+  background: var(--sidebar-ai);
+  border: 1px solid var(--border);
+  border-left: 3px solid;
+  border-image: linear-gradient(180deg, var(--accent-purple), var(--accent)) 1;
+  border-radius: 0 10px 10px 0;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: fade-up 0.4s ease both;
+}
+.agent-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1.5px solid rgba(47,212,170,0.35);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(47,212,170,0.12);
+}
+.agent-content { flex: 1; min-width: 0; }
+.agent-name {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--accent-purple);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.agent-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+.agent-text {
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--text-sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Filter row */
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 2px;
+}
+.filter-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-right: 2px;
+}
+.fchip {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  transition: all 0.15s;
+}
+.fchip.active { color: var(--accent); background: rgba(47,212,170,0.08); }
+.fchip:hover { color: var(--text-sub); }
+
+/* Inbox items */
+.inbox-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 13px 14px;
+  display: flex;
+  gap: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+  animation: fade-up 0.4s ease both;
+  position: relative;
+  overflow: hidden;
+}
+.inbox-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+}
+.inbox-item.urgent::before { background: var(--urgent); }
+.inbox-item.high::before { background: var(--high); }
+.inbox-item.medium::before { background: var(--medium); }
+.inbox-item:hover {
+  border-color: var(--border-hover);
+  transform: translateX(2px);
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.item-check {
+  width: 18px; height: 18px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border-hover);
+  flex-shrink: 0;
+  margin-top: 1px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.item-check:hover { border-color: var(--accent); background: rgba(47,212,170,0.08); }
+
+.item-body { flex: 1; min-width: 0; }
+.item-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+.item-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.item-project {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid;
+}
+.item-project.blue {
+  color: var(--accent-blue);
+  background: rgba(96,165,250,0.08);
+  border-color: rgba(96,165,250,0.15);
+}
+.item-project.green {
+  color: var(--accent);
+  background: rgba(47,212,170,0.08);
+  border-color: rgba(47,212,170,0.15);
+}
+.item-project.purple {
+  color: var(--accent-purple);
+  background: rgba(167,139,250,0.08);
+  border-color: rgba(167,139,250,0.15);
+}
+.item-date {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.item-date.overdue { color: var(--urgent); font-weight: 500; }
+
+.priority-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.pbadge {
+  width: 20px; height: 20px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+.pbadge.urgent { background: rgba(248,113,113,0.15); color: var(--urgent); }
+.pbadge.high { background: rgba(251,146,60,0.15); color: var(--high); }
+.pbadge.medium { background: rgba(96,165,250,0.15); color: var(--medium); }
+
+/* Suggestion card */
+.suggestion-card {
+  background: var(--card);
+  border: 1px solid rgba(167,139,250,0.2);
+  border-radius: 12px;
+  overflow: hidden;
+  animation: fade-up 0.4s ease both;
+}
+.suggestion-header {
+  background: linear-gradient(135deg, rgba(167,139,250,0.08), transparent);
+  padding: 12px 14px 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border-bottom: 1px solid rgba(167,139,250,0.1);
+}
+.sug-icon {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1.5px solid rgba(167,139,250,0.35);
+  color: var(--accent-purple);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  box-shadow: 0 0 10px rgba(167,139,250,0.3);
+}
+.sug-meta { flex: 1; }
+.sug-name {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--accent-purple);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.sug-text {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-sub);
+  line-height: 1.5;
+}
+.sug-actions {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+}
+.sug-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: none;
+}
+.sug-btn.accept {
+  background: var(--accent);
+  color: #13141f;
+  box-shadow: 0 0 10px rgba(47,212,170,0.2);
+}
+.sug-btn.accept:hover {
+  background: #3de0b5;
+  box-shadow: 0 0 16px rgba(47,212,170,0.35);
+}
+.sug-btn.dismiss {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.sug-btn.dismiss:hover { border-color: var(--border-hover); color: var(--text-sub); }
+
+/* Section header */
+.section-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 2px;
+}
+.section-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.section-count {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px 8px;
+}
+
+/* Bottom nav */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 10px 0 16px;
+  display: flex;
+  justify-content: space-around;
+  z-index: 10;
+  backdrop-filter: blur(12px);
+}
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 10px;
+  transition: all 0.15s;
+  position: relative;
+}
+.nav-item.active {
+  background: rgba(47,212,170,0.1);
+}
+.nav-item svg { width: 20px; height: 20px; stroke-width: 2; stroke: var(--text-muted); fill: none; }
+.nav-item.active svg { stroke: var(--accent); filter: drop-shadow(0 0 6px rgba(47,212,170,0.4)); }
+.nav-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.nav-item.active .nav-label { color: var(--accent); }
+.nav-badge {
+  position: absolute;
+  top: 0; right: 6px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent-orange);
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--surface);
+}
+
+/* Stagger delays */
+.inbox-item:nth-child(1) { animation-delay: 0.05s; }
+.inbox-item:nth-child(2) { animation-delay: 0.1s; }
+.inbox-item:nth-child(3) { animation-delay: 0.15s; }
+.inbox-item:nth-child(4) { animation-delay: 0.2s; }
+.inbox-item:nth-child(5) { animation-delay: 0.25s; }
+</style>
+</head>
+<body>
+
+<div class="mobile-shell">
+  <!-- Top bar -->
+  <header class="top-bar">
+    <span class="logo-text">Task<em>Flow</em></span>
+    <div class="top-right">
+      <div class="notif-btn">
+        <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <div class="notif-dot"></div>
+      </div>
+      <div class="avatar-btn">PT</div>
+    </div>
+  </header>
+
+  <!-- Capture -->
+  <div class="capture-wrap">
+    <div class="capture-bar">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Capturar tarea rápida..." />
+      <div class="capture-mic">
+        <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Context pills -->
+  <div class="context-pills">
+    <div class="pill active">Todos</div>
+    <div class="pill">Hoy</div>
+    <div class="pill">Esta semana</div>
+    <div class="pill">Urgente</div>
+    <div class="pill ai">AI</div>
+    <div class="pill">Proyectos</div>
+  </div>
+
+  <!-- Scroll content -->
+  <div class="scroll-content">
+
+    <!-- Agent strip -->
+    <div class="agent-strip">
+      <div class="agent-avatar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
+      <div class="agent-content">
+        <div class="agent-name">
+          OpenClaw
+          <div class="agent-dot"></div>
+        </div>
+        <div class="agent-text">Procesando tu inbox... 3 sugerencias listas</div>
+      </div>
+    </div>
+
+    <!-- Suggestion card -->
+    <div class="suggestion-card">
+      <div class="suggestion-header">
+        <div class="sug-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
+        <div class="sug-meta">
+          <div class="sug-name">OpenClaw · Sugerencia</div>
+          <div class="sug-text">La propuesta técnica lleva 2 días bloqueada. Puedo redactar un borrador de seguimiento para Cliente García.</div>
+        </div>
+      </div>
+      <div class="sug-actions">
+        <button class="sug-btn accept">Aceptar</button>
+        <button class="sug-btn dismiss">Ignorar</button>
+      </div>
+    </div>
+
+    <!-- Filter row -->
+    <div class="filter-row">
+      <span class="filter-label">Filtrar</span>
+      <button class="fchip active">Todo</button>
+      <button class="fchip">Urgente</button>
+      <button class="fchip">Alta</button>
+      <button class="fchip">Media</button>
+    </div>
+
+    <!-- Section -->
+    <div class="section-hdr">
+      <span class="section-title">Hoy & Vencidas</span>
+      <span class="section-count">4</span>
+    </div>
+
+    <div class="inbox-item urgent">
+      <div class="item-check"></div>
+      <div class="item-body">
+        <div class="item-title">Carta de referencia a Cliente García</div>
+        <div class="item-meta">
+          <span class="item-project blue">📋 Pliegos Q1</span>
+          <span class="item-date overdue">Vencida · Hoy</span>
+        </div>
+      </div>
+      <div class="priority-badge"><span class="pbadge urgent">!!</span></div>
+    </div>
+
+    <div class="inbox-item urgent">
+      <div class="item-check"></div>
+      <div class="item-body">
+        <div class="item-title">Revisar propuesta técnica licitación municipal</div>
+        <div class="item-meta">
+          <span class="item-project blue">📋 Pliegos Q1</span>
+          <span class="item-date overdue">Vencida · 5 mar</span>
+        </div>
+      </div>
+      <div class="priority-badge"><span class="pbadge urgent">!!</span></div>
+    </div>
+
+    <div class="inbox-item high">
+      <div class="item-check"></div>
+      <div class="item-body">
+        <div class="item-title">Preparar agenda reunión Cliente García</div>
+        <div class="item-meta">
+          <span class="item-project green">👤 García</span>
+          <span class="item-date">Mañana</span>
+        </div>
+      </div>
+      <div class="priority-badge"><span class="pbadge high">!</span></div>
+    </div>
+
+    <div class="inbox-item high">
+      <div class="item-check"></div>
+      <div class="item-body">
+        <div class="item-title">Firma contrato marco — pendiente Legal</div>
+        <div class="item-meta">
+          <span class="item-project green">👤 García</span>
+          <span class="item-date">12 mar</span>
+        </div>
+      </div>
+      <div class="priority-badge"><span class="pbadge high">!</span></div>
+    </div>
+
+    <!-- Section -->
+    <div class="section-hdr">
+      <span class="section-title">Esta semana</span>
+      <span class="section-count">3</span>
+    </div>
+
+    <div class="inbox-item medium">
+      <div class="item-check"></div>
+      <div class="item-body">
+        <div class="item-title">Configurar webhook OAuth API v2</div>
+        <div class="item-meta">
+          <span class="item-project purple">🤖 OC Dev</span>
+          <span class="item-date">8 mar</span>
+        </div>
+      </div>
+      <div class="priority-badge"><span class="pbadge medium">·</span></div>
+    </div>
+
+    <div class="inbox-item medium">
+      <div class="item-check"></div>
+      <div class="item-body">
+        <div class="item-title">Revisión código PR #47 — esperando revisor</div>
+        <div class="item-meta">
+          <span class="item-project purple">🤖 OC Dev</span>
+          <span class="item-date">9 mar</span>
+        </div>
+      </div>
+      <div class="priority-badge"><span class="pbadge medium">·</span></div>
+    </div>
+
+    <div class="inbox-item medium">
+      <div class="item-check"></div>
+      <div class="item-body">
+        <div class="item-title">Actualizar README documentación SDK</div>
+        <div class="item-meta">
+          <span class="item-project purple">🤖 OC Dev</span>
+          <span class="item-date">7 mar</span>
+        </div>
+      </div>
+      <div class="priority-badge"><span class="pbadge medium">·</span></div>
+    </div>
+
+  </div>
+
+  <!-- Bottom nav -->
+  <nav class="bottom-nav">
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span class="nav-label">Inicio</span>
+    </div>
+    <div class="nav-item active">
+      <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      <span class="nav-label">Inbox</span>
+      <div class="nav-badge">7</div>
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span class="nav-label">Kanban</span>
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span class="nav-label">Agenda</span>
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="nav-label">Perfil</span>
+    </div>
+  </nav>
+</div>
+
+</body>
+</html>

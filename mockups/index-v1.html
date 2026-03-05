@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #09090e;
+    --surface: #111116;
+    --card: #1a1a26;
+    --border: rgba(255,255,255,0.07);
+    --text: #eeeef5;
+    --muted: #44445a;
+    --accent: #00d4c8;
+    --font-d: 'Syne', sans-serif;
+    --font-b: 'DM Sans', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-b); min-height: 100vh; }
+
+  .header {
+    padding: 40px 48px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(9,9,14,0.95);
+    position: sticky; top: 0; z-index: 10;
+    backdrop-filter: blur(12px);
+  }
+  .logo { font-family: var(--font-d); font-weight: 800; font-size: 22px; letter-spacing: -0.04em; }
+  .logo span { color: var(--accent); }
+  .header-subtitle { font-size: 14px; color: var(--muted); padding-left: 16px; border-left: 1px solid var(--border); }
+  .badge {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,212,200,0.08);
+    border: 1px solid rgba(0,212,200,0.2);
+    border-radius: 7px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: var(--accent);
+    font-family: var(--font-d);
+    font-weight: 600;
+  }
+  .badge-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 2s ease-in-out infinite; box-shadow: 0 0 5px rgba(0,212,200,0.5); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    padding: 40px 48px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .mockup-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.18s;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  .mockup-card:hover { border-color: rgba(0,212,200,0.25); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,212,200,0.08); }
+
+  .card-preview {
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-preview::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .card-body { padding: 16px 18px; }
+  .card-number {
+    font-family: var(--font-d);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .card-title { font-family: var(--font-d); font-size: 15px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 5px; }
+  .card-desc { font-size: 12.5px; color: rgba(255,255,255,0.4); line-height: 1.4; }
+  .card-tags { display: flex; gap: 5px; margin-top: 10px; flex-wrap: wrap; }
+  .tag {
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-weight: 500;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .tag.mobile { background: rgba(74,158,255,0.07); border-color: rgba(74,158,255,0.18); color: #6baae0; }
+  .tag.desktop { background: rgba(46,189,124,0.07); border-color: rgba(46,189,124,0.18); color: #5dd49a; }
+  .tag.agent { background: rgba(0,212,200,0.07); border-color: rgba(0,212,200,0.18); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Task<span>Flow</span></div>
+  <div class="header-subtitle">8 mockups · Especificación MVP</div>
+  <div class="badge"><div class="badge-dot"></div>frontend-design skill</div>
+</div>
+
+<div class="grid">
+
+  <a class="mockup-card" href="mockup-0-login.html" target="_blank">
+    <div class="card-preview" style="background: linear-gradient(135deg, #07070c 0%, #0d1525 50%, #07070c 100%);">
+      <span>🔐</span>
+    </div>
+    <div class="card-body">
+      <div class="card-number">Mockup 0</div>
+      <div class="card-title">Login / Acceso</div>
+      <div class="card-desc">Pantalla de bienvenida con branding, form de acceso y teaser del agente OpenClaw.</div>
+      <div class="card-tags"><span class="tag desktop">Desktop</span><span class="tag agent">OpenClaw</span></div>
+    </div>
+  </a>
+
+  <a class="mockup-card" href="mockup-1-mobile-inbox.html" target="_blank">
+    <div class="card-preview" style="background: linear-gradient(135deg, #0a0a0c 0%, #0f1a1a 50%, #0a0a0c 100%);">
+      <span>📥</span>
+    </div>
+    <div class="card-body">
+      <div class="card-number">Mockup 1</div>
+      <div class="card-title">Mobile — Inbox & Captura</div>
+      <div class="card-desc">Pantalla principal de captura rápida con lista de items, sugerencias del agente y bottom nav.</div>
+      <div class="card-tags"><span class="tag mobile">Mobile</span><span class="tag agent">OpenClaw</span></div>
+    </div>
+  </a>
+
+  <a class="mockup-card" href="mockup-2-desktop-kanban.html" target="_blank">
+    <div class="card-preview" style="background: linear-gradient(135deg, #09090e 0%, #101828 50%, #09090e 100%);">
+      <span>🗂️</span>
+    </div>
+    <div class="card-body">
+      <div class="card-number">Mockup 2</div>
+      <div class="card-title">Desktop — Kanban Dashboard</div>
+      <div class="card-desc">Layout completo con sidebar, tablero Kanban de 4 columnas y panel de detalle lateral.</div>
+      <div class="card-tags"><span class="tag desktop">Desktop</span><span class="tag agent">OpenClaw</span></div>
+    </div>
+  </a>
+
+  <a class="mockup-card" href="mockup-3-desktop-eisenhower.html" target="_blank">
+    <div class="card-preview" style="background: linear-gradient(135deg, #09090e 0%, #100808 50%, #09090e 100%);">
+      <span>🎯</span>
+    </div>
+    <div class="card-body">
+      <div class="card-number">Mockup 3</div>
+      <div class="card-title">Desktop — Matriz Eisenhower</div>
+      <div class="card-desc">Vista 2x2 con drag & drop entre cuadrantes y sugerencias del agente flotantes.</div>
+      <div class="card-tags"><span class="tag desktop">Desktop</span><span class="tag agent">OpenClaw</span></div>
+    </div>
+  </a>
+
+  <a class="mockup-card" href="mockup-4-mobile-detail.html" target="_blank">
+    <div class="card-preview" style="background: linear-gradient(135deg, #0a0a0c 0%, #0a1020 50%, #0a0a0c 100%);">
+      <span>📄</span>
+    </div>
+    <div class="card-body">
+      <div class="card-number">Mockup 4</div>
+      <div class="card-title">Mobile — Detalle de Item</div>
+      <div class="card-desc">Vista detallada con tabs: contenido, adjuntos, relaciones e info. Log de actividad.</div>
+      <div class="card-tags"><span class="tag mobile">Mobile</span><span class="tag agent">OpenClaw</span></div>
+    </div>
+  </a>
+
+  <a class="mockup-card" href="mockup-5-desktop-agent.html" target="_blank">
+    <div class="card-preview" style="background: linear-gradient(135deg, #09090e 0%, #04160f 50%, #09090e 100%);">
+      <span>🤖</span>
+    </div>
+    <div class="card-body">
+      <div class="card-number">Mockup 5</div>
+      <div class="card-title">Desktop — Panel OpenClaw</div>
+      <div class="card-desc">Feed de actividad del agente, acciones pendientes de aprobación y configuración de autonomía.</div>
+      <div class="card-tags"><span class="tag desktop">Desktop</span><span class="tag agent">OpenClaw</span></div>
+    </div>
+  </a>
+
+  <a class="mockup-card" href="mockup-6-mobile-capture.html" target="_blank">
+    <div class="card-preview" style="background: linear-gradient(135deg, #0a0a0c 0%, #0d1614 50%, #0a0a0c 100%);">
+      <span>📎</span>
+    </div>
+    <div class="card-body">
+      <div class="card-number">Mockup 6</div>
+      <div class="card-title">Mobile — Captura de Archivo</div>
+      <div class="card-desc">Flujo step-by-step de subida y clasificación de archivo con análisis del agente en tiempo real.</div>
+      <div class="card-tags"><span class="tag mobile">Mobile</span><span class="tag agent">OpenClaw</span></div>
+    </div>
+  </a>
+
+  <a class="mockup-card" href="mockup-7-desktop-search.html" target="_blank">
+    <div class="card-preview" style="background: linear-gradient(135deg, #09090e 0%, #0a1020 50%, #09090e 100%);">
+      <span>🔍</span>
+    </div>
+    <div class="card-body">
+      <div class="card-number">Mockup 7</div>
+      <div class="card-title">Desktop — Búsqueda Global</div>
+      <div class="card-desc">Modal de búsqueda con resultados agrupados por tipo, filtros y navegación por teclado.</div>
+      <div class="card-tags"><span class="tag desktop">Desktop</span></div>
+    </div>
+  </a>
+
+</div>
+
+</body>
+</html>
