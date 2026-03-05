@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  password      String
+  agentAutonomy Int       @default(50)
+  createdAt     DateTime  @default(now())
+  items         Item[]
+  projects      Project[]
+  apiKeys       ApiKey[]
+}
+
+model Project {
+  id          String         @id @default(cuid())
+  nombre      String
+  descripcion String?
+  color       String         @default("#60a5fa")
+  contexto    Contexto       @default(TRABAJO)
+  estado      ProyectoEstado @default(ACTIVO)
+  userId      String
+  user        User           @relation(fields: [userId], references: [id])
+  items       Item[]
+  createdAt   DateTime       @default(now())
+}
+
+model Item {
+  id                   String      @id @default(cuid())
+  tipo                 TipoItem    @default(IDEA)
+  titulo               String
+  contenido            String?
+  estado               EstadoItem  @default(INBOX)
+  prioridad            Prioridad   @default(NONE)
+  eisenhowerUrgente    Boolean     @default(false)
+  eisenhowerImportante Boolean     @default(false)
+  contexto             Contexto    @default(TRABAJO)
+  etiquetas            String[]
+  fechaLimite          DateTime?
+  fechaRecordatorio    DateTime?
+  notasAgente          String?
+  modificadoPor        String      @default("usuario")
+  userId               String
+  user                 User        @relation(fields: [userId], references: [id])
+  proyectoId           String?
+  proyecto             Project?    @relation(fields: [proyectoId], references: [id])
+  adjuntos             Adjunto[]
+  relaciones           Relacion[]  @relation("ItemOrigen")
+  relacionesDe         Relacion[]  @relation("ItemDestino")
+  actividad            Actividad[]
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+}
+
+model Adjunto {
+  id        String   @id @default(cuid())
+  nombre    String
+  url       String
+  tipo      String
+  tamanio   Int
+  itemId    String
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Relacion {
+  id        String       @id @default(cuid())
+  tipo      TipoRelacion
+  origenId  String
+  origen    Item         @relation("ItemOrigen", fields: [origenId], references: [id], onDelete: Cascade)
+  destinoId String
+  destino   Item         @relation("ItemDestino", fields: [destinoId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+}
+
+model Actividad {
+  id          String   @id @default(cuid())
+  descripcion String
+  autor       String
+  itemId      String
+  item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+model AgenteFeed {
+  id          String   @id @default(cuid())
+  tipo        String
+  titulo      String
+  descripcion String
+  payload     Json
+  estado      String   @default("pendiente")
+  prioridad   String?
+  itemId      String?
+  createdAt   DateTime @default(now())
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String
+  key         String    @unique
+  keyPrefix   String
+  permissions String[]  @default(["read", "write", "agent"])
+  lastUsedAt  DateTime?
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+enum TipoItem {
+  TASK
+  NOTE
+  LINK
+  FILE
+  EMAIL
+  IDEA
+}
+
+enum EstadoItem {
+  INBOX
+  TODO
+  IN_PROGRESS
+  WAITING
+  DONE
+  ARCHIVED
+}
+
+enum Prioridad {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum Contexto {
+  TRABAJO
+  PERSONAL
+  AMBOS
+}
+
+enum ProyectoEstado {
+  ACTIVO
+  PAUSADO
+  COMPLETADO
+  ARCHIVADO
+}
+
+enum TipoRelacion {
+  BLOQUEA
+  BLOQUEADO_POR
+  RELACIONADO_CON
+  HIJO_DE
+  PADRE_DE
+  REFERENCIA
+}
