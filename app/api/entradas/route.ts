@@ -12,6 +12,28 @@ const CreateEntradaSchema = z.object({
   itemId: z.string().optional(),
 })
 
+export async function GET(req: NextRequest) {
+  const auth = await authenticateRequest(req)
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { searchParams } = new URL(req.url)
+  const tipo = searchParams.get('tipo')
+
+  const where: Record<string, unknown> = { userId: auth.userId }
+  if (tipo) where.tipo = tipo
+
+  const entradas = await db.entradaContexto.findMany({
+    where,
+    include: {
+      seguimiento: { select: { id: true, titulo: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 100,
+  })
+
+  return NextResponse.json(entradas)
+}
+
 export async function POST(req: NextRequest) {
   const auth = await authenticateRequest(req)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
