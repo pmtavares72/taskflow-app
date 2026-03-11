@@ -7,12 +7,13 @@ const db = new PrismaClient({ adapter })
 
 async function main() {
   // Usuario principal
-  const password = await bcrypt.hash('taskflow123', 12)
+  const password = await bcrypt.hash('4280Tinp_', 12)
   const user = await db.user.upsert({
-    where: { email: 'ptavares@openclaw.io' },
-    update: {},
+    where: { email: 'admin@hyper-nexus.com' },
+    update: { inboundEmail: 'admin@hyper-nexus.com' },
     create: {
-      email: 'ptavares@openclaw.io',
+      email: 'admin@hyper-nexus.com',
+      inboundEmail: 'admin@hyper-nexus.com',
       name: 'P. Tavares',
       password,
       agentAutonomy: 65,
@@ -305,7 +306,7 @@ async function main() {
     ],
   })
 
-  console.log('✅ Seed completado — usuario: ptavares@openclaw.io / contraseña: taskflow123')
+  console.log('✅ Seed completado — usuario: admin@hyper-nexus.com')
 }
 
 main()

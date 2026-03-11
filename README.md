@@ -1,36 +1,316 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TaskFlow
 
-## Getting Started
+Sistema de productividad personal con agente IA (Nexus) integrado. Gestiona tareas, seguimientos de temas, emails reenviados, recordatorios, y construye una memoria profesional acumulativa.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** (App Router) + TypeScript
+- **Prisma 7** + PostgreSQL
+- **Vercel AI SDK** + xAI (Grok 4.1 Fast)
+- **NextAuth v5** (JWT, credentials)
+- **SMTP server** para recibir emails reenviados
+- **OpenClaw** como plataforma del agente Nexus
+
+---
+
+## Setup rápido
+
+### 1. Requisitos
+
+- Node.js 20+
+- PostgreSQL 16+
+- npm
+
+### 2. Instalar dependencias
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Configurar variables de entorno
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Crear `.env.local`:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# Base de datos
+DATABASE_URL=postgresql://user:pass@localhost:5432/taskflow
 
-## Learn More
+# Puerto
+PORT=3000
 
-To learn more about Next.js, take a look at the following resources:
+# Auth
+NEXTAUTH_SECRET=genera-un-secret-seguro
+NEXTAUTH_URL=http://localhost:3000
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# LLM (xAI Grok)
+XAI_API_KEY=xai-xxxxx
+LLM_MODEL=grok-4-1-fast
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Agente — dejar vacío para mock mode (usa LLM directamente)
+# OPENCLAW_URL=http://127.0.0.1:18789
+# OPENCLAW_HOOK_TOKEN=xxx
 
-## Deploy on Vercel
+# Webhook entrante del agente
+TASKFLOW_AGENT_KEY=genera-un-token-seguro
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# URL de la app (para el SMTP server)
+APP_URL=http://localhost:3000
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Inbound email
+TASKFLOW_INBOUND_KEY=genera-un-token-seguro
+SMTP_PORT=2525
+SMTP_DOMAIN=hyper-nexus.com
+TASKFLOW_URL=http://127.0.0.1:3000
+```
+
+### 4. Crear base de datos y schema
+
+```bash
+# Crear la DB (si no existe)
+createdb taskflow
+
+# Push schema a la DB
+npx prisma db push
+
+# Generar Prisma Client
+npx prisma generate
+
+# Fix symlink (requerido por Prisma 7)
+ln -sfn node_modules/.prisma node_modules/@prisma/client/.prisma
+
+# Seed con datos de ejemplo
+npx tsx --env-file=.env.local prisma/seed.ts
+```
+
+**Usuario por defecto:** `ptavares@openclaw.io` / `taskflow123`
+**Email inbound:** `admin@hyper-nexus.com`
+
+### 5. Arrancar
+
+```bash
+# App web
+npm run dev          # desarrollo (Turbopack)
+npm run build && npm start  # producción
+
+# SMTP server (en otro terminal o con PM2)
+npm run smtp
+```
+
+---
+
+## Producción (VPS / OpenClaw container)
+
+### Build y arranque
+
+```bash
+npm install
+npx prisma db push
+npx prisma generate
+ln -sfn node_modules/.prisma node_modules/@prisma/client/.prisma
+npx tsx --env-file=.env.local prisma/seed.ts  # solo la primera vez
+npm run build
+```
+
+### PM2
+
+```bash
+# App web
+pm2 start npm --name taskflow -- start
+
+# SMTP server
+pm2 start server/smtp-inbound.ts --interpreter="npx tsx" --name smtp
+
+pm2 save
+```
+
+### Cron jobs
+
+Los endpoints de cron necesitan ser llamados periódicamente:
+
+```bash
+# Comprobar recordatorios (cada 15 minutos)
+*/15 * * * * curl -s http://127.0.0.1:3000/api/cron/reminders
+
+# Comprobar seguimientos estancados (cada día a las 8:00)
+0 8 * * * curl -s http://127.0.0.1:3000/api/cron/seguimientos
+```
+
+### Nginx (puerto 25 → 2525 para SMTP)
+
+```nginx
+# En /etc/nginx/nginx.conf, sección stream:
+stream {
+    server {
+        listen 25;
+        proxy_pass 127.0.0.1:2525;
+    }
+}
+```
+
+### DNS para hyper-nexus.com
+
+```
+MX   10   hyper-nexus.com.      → IP del VPS
+A         hyper-nexus.com.      → IP del VPS
+```
+
+---
+
+## Arquitectura
+
+### Flujo de datos
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│                        ENTRADAS                                │
+│                                                                │
+│  Email → SMTP :2525 → /api/inbound-email ─┐                  │
+│  Web UI → /api/entradas ──────────────────┤                   │
+│  OpenClaw/Telegram → /api/entradas ───────┘                   │
+│                                             │                  │
+│                                     ┌───────▼────────┐        │
+│                                     │  Nexus procesa  │        │
+│                                     │  (Grok 4.1 Fast)│        │
+│                                     └───────┬────────┘        │
+│                                             │                  │
+│  ┌──────────────────────────────────────────┼──────────┐      │
+│  │              ACCIONES AUTOMÁTICAS         │          │      │
+│  │                                           │          │      │
+│  │  ┌─ Seguimiento (crea/vincula al tópico)  │          │      │
+│  │  ├─ Items (tareas extraídas)              │          │      │
+│  │  ├─ Recordatorios (fechas clave)          │          │      │
+│  │  ├─ Memoria Profesional (hechos)          │          │      │
+│  │  └─ Feed del Agente (resumen)             │          │      │
+│  └───────────────────────────────────────────────────────┘      │
+└───────────────────────────────────────────────────────────────┘
+```
+
+### Cómo Nexus gestiona tópicos
+
+Cuando llega una entrada (email, nota, mensaje de Telegram via OpenClaw):
+
+1. El LLM analiza el contenido y extrae: resumen, acciones, fechas, temas
+2. Busca seguimientos activos que compartan temas → vincula al existente
+3. Si no hay match → crea seguimiento nuevo automáticamente
+4. Crea Items (tareas) para cada acción extraída
+5. Crea Recordatorios para fechas clave
+6. Extrae hechos a la Memoria Profesional
+7. La próxima vez que llegue algo del mismo tema, Nexus ya tiene contexto
+
+### Memoria Profesional
+
+Nexus aprende de cada entrada procesada y acumula conocimiento en 7 categorías:
+
+| Categoría | Qué guarda |
+|-----------|-----------|
+| PERSONA | Contactos, roles, relaciones, emails |
+| PROYECTO | Iniciativas, estados, stakeholders, deadlines |
+| PROCESO | Cómo se hacen las cosas en la empresa |
+| PREFERENCIA | Preferencias del usuario (horarios, estilos) |
+| ORGANIZACION | Estructura org, equipos, jerarquía |
+| HECHO | Decisiones tomadas, acuerdos, contexto general |
+| TEMA | Conocimiento técnico y de negocio recurrente |
+
+La memoria se inyecta en todos los prompts del LLM, así que cuanto más se usa, más inteligente se vuelve.
+
+---
+
+## Integración con OpenClaw
+
+Nexus (corriendo en OpenClaw) se comunica con TaskFlow via REST API.
+
+### Archivo SKILL.md
+
+El archivo `docs/NEXUS-SKILL.md` contiene la documentación completa de todos los endpoints que Nexus puede usar. Copiarlo a la configuración de skills de OpenClaw:
+
+```bash
+cp docs/NEXUS-SKILL.md ~/.openclaw/skills/taskflow/SKILL.md
+```
+
+### Variables en openclaw.json
+
+```json
+{
+  "skills": {
+    "entries": {
+      "taskflow": {
+        "env": {
+          "TASKFLOW_URL": "http://127.0.0.1:3000",
+          "TASKFLOW_API_KEY": "el-api-key-generado",
+          "TASKFLOW_AGENT_KEY": "el-mismo-que-en-env-local"
+        }
+      }
+    }
+  }
+}
+```
+
+### Canales de comunicación
+
+| Canal | Dirección | Cómo |
+|-------|-----------|------|
+| TaskFlow → Nexus | TaskFlow despierta a Nexus | `POST OPENCLAW_URL/hooks/agent` |
+| Nexus → TaskFlow | Nexus envía resultados | `POST /api/agent/webhook` con Bearer |
+| Nexus opera | Nexus lee/escribe datos | `GET/POST/PATCH /api/*` con API key |
+
+### Flujo Telegram → OpenClaw → TaskFlow
+
+```
+Pedro escribe en Telegram
+    → OpenClaw recibe el mensaje
+    → Nexus consulta /api/seguimientos (¿tema existente?)
+    → Nexus consulta /api/memoria?q=... (¿qué sé de esto?)
+    → Nexus crea entrada via POST /api/entradas
+    → TaskFlow procesa automáticamente (tareas, recordatorios, memoria)
+    → Nexus responde a Pedro por Telegram con contexto
+```
+
+### Mock mode
+
+Si `OPENCLAW_URL` no está configurado, TaskFlow usa el LLM directamente para generar las respuestas de Nexus. La UI y el comportamiento son idénticos. Para activar producción, solo añadir `OPENCLAW_URL` y `OPENCLAW_HOOK_TOKEN`.
+
+---
+
+## API Endpoints
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET/POST` | `/api/items` | Listar/Crear items |
+| `GET/PATCH/DELETE` | `/api/items/[id]` | Detalle/Actualizar/Eliminar item |
+| `GET/POST` | `/api/seguimientos` | Listar/Crear seguimientos (tópicos) |
+| `GET/PATCH/DELETE` | `/api/seguimientos/[id]` | Detalle seguimiento |
+| `GET/POST` | `/api/seguimientos/[id]/entradas` | Entradas de contexto |
+| `POST/DELETE` | `/api/seguimientos/[id]/items` | Vincular/desvincular items |
+| `POST` | `/api/entradas` | Crear entrada suelta (auto-vincula) |
+| `GET/POST` | `/api/recordatorios` | Recordatorios (NLP) |
+| `PATCH/DELETE` | `/api/recordatorios/[id]` | Gestionar recordatorio |
+| `GET/DELETE` | `/api/memoria` | Memoria profesional |
+| `GET/POST` | `/api/projects` | Proyectos |
+| `GET` | `/api/search?q=` | Búsqueda global |
+| `POST` | `/api/inbound-email` | Email entrante (desde SMTP) |
+| `GET` | `/api/agent/feed` | Feed del agente |
+| `POST` | `/api/agent/webhook` | Webhook entrante de Nexus |
+| `GET` | `/api/cron/reminders` | Check recordatorios (cada 15min) |
+| `GET` | `/api/cron/seguimientos` | Check seguimientos estancados (diario) |
+
+### Autenticación
+
+| Tipo | Cómo | Para qué |
+|------|------|----------|
+| NextAuth session | Cookie JWT | Browser (UI web) |
+| API key | `Authorization: Bearer <key>` | Nexus (OpenClaw) |
+| Agent key | `Authorization: Bearer $TASKFLOW_AGENT_KEY` | Webhook del agente |
+| Inbound key | `Authorization: Bearer $TASKFLOW_INBOUND_KEY` | SMTP server |
+| Sin auth | Directo | Cron (solo localhost) |
+
+---
+
+## Direcciones de email
+
+| Dirección | Comportamiento |
+|-----------|---------------|
+| `admin@hyper-nexus.com` | Inbox del usuario (configurable en DB) |
+| `<seguimiento-id>@hyper-nexus.com` | Vincula al seguimiento directamente |
+| `[TF-<id>]` en el asunto | Vincula al seguimiento por subject |
+
+Reenviar cualquier email a `admin@hyper-nexus.com` y Nexus lo procesa automáticamente: extrae acciones, crea tareas, vincula al tópico correcto, programa recordatorios, y aprende de la información.

@@ -14,8 +14,10 @@ export default auth((req) => {
   const isAuthRoute = req.nextUrl.pathname.startsWith('/login')
   const isApiAuth = req.nextUrl.pathname.startsWith('/api/auth')
   const isApiAgent = req.nextUrl.pathname.startsWith('/api/agent/webhook')
+  const isApiInbound = req.nextUrl.pathname.startsWith('/api/inbound-email')
+  const isApiCron = req.nextUrl.pathname.startsWith('/api/cron')
 
-  if (isApiAuth || isApiAgent) return NextResponse.next()
+  if (isApiAuth || isApiAgent || isApiInbound || isApiCron) return NextResponse.next()
   if (isAuthRoute) {
     if (isLoggedIn) return NextResponse.redirect(new URL('/inbox', req.nextUrl))
     return NextResponse.next()

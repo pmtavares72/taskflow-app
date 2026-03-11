@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "smtp": "npx tsx server/smtp-inbound.ts"
   },
   "dependencies": {
     "@ai-sdk/xai": "^3.0.64",
@@ -18,6 +19,7 @@
     "@types/pg": "^8.18.0",
     "ai": "^6.0.111",
     "bcryptjs": "^3.0.3",
+    "mailparser": "^3.9.4",
     "multer": "^2.1.0",
     "next": "16.1.6",
     "next-auth": "^5.0.0-beta.30",
@@ -25,13 +27,16 @@
     "prisma": "^7.4.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "smtp-server": "^3.18.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/mailparser": "^3.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/smtp-server": "^3.5.12",
     "dotenv": "^17.3.1",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",

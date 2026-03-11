@@ -7,15 +7,20 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
+  id            String           @id @default(cuid())
+  email         String           @unique
+  inboundEmail  String?          @unique  // dirección para recibir emails, ej: ptavares@hyper-nexus.com
   name          String
   password      String
-  agentAutonomy Int       @default(50)
-  createdAt     DateTime  @default(now())
+  agentAutonomy Int              @default(50)
+  createdAt     DateTime         @default(now())
   items         Item[]
   projects      Project[]
   apiKeys       ApiKey[]
+  seguimientos  Seguimiento[]
+  entradas      EntradaContexto[]
+  recordatorios Recordatorio[]
+  memorias      MemoriaProfesional[]
 }
 
 model Project {
@@ -27,8 +32,9 @@ model Project {
   estado      ProyectoEstado @default(ACTIVO)
   userId      String
   user        User           @relation(fields: [userId], references: [id])
-  items       Item[]
-  createdAt   DateTime       @default(now())
+  items          Item[]
+  seguimientos   Seguimiento[]
+  createdAt      DateTime       @default(now())
 }
 
 model Item {
@@ -51,11 +57,14 @@ model Item {
   proyectoId           String?
   proyecto             Project?    @relation(fields: [proyectoId], references: [id])
   adjuntos             Adjunto[]
-  relaciones           Relacion[]  @relation("ItemOrigen")
-  relacionesDe         Relacion[]  @relation("ItemDestino")
+  relaciones           Relacion[]        @relation("ItemOrigen")
+  relacionesDe         Relacion[]        @relation("ItemDestino")
   actividad            Actividad[]
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @updatedAt
+  seguimientoItems     SeguimientoItem[]
+  entradas             EntradaContexto[]
+  recordatorios        Recordatorio[]
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
 }
 
 model Adjunto {
@@ -89,15 +98,17 @@ model Actividad {
 }
 
 model AgenteFeed {
-  id          String   @id @default(cuid())
-  tipo        String
-  titulo      String
-  descripcion String
-  payload     Json
-  estado      String   @default("pendiente")
-  prioridad   String?
-  itemId      String?
-  createdAt   DateTime @default(now())
+  id              String       @id @default(cuid())
+  tipo            String
+  titulo          String
+  descripcion     String
+  payload         Json
+  estado          String       @default("pendiente")
+  prioridad       String?
+  itemId          String?
+  seguimientoId   String?
+  seguimiento     Seguimiento? @relation(fields: [seguimientoId], references: [id], onDelete: SetNull)
+  createdAt       DateTime     @default(now())
 }
 
 model ApiKey {
@@ -159,4 +170,125 @@ enum TipoRelacion {
   HIJO_DE
   PADRE_DE
   REFERENCIA
+}
+
+// ─── Seguimientos (Active Tracking / Threads) ───
+
+model Seguimiento {
+  id              String              @id @default(cuid())
+  titulo          String
+  descripcion     String?
+  estado          EstadoSeguimiento   @default(ACTIVO)
+  contexto        Contexto            @default(TRABAJO)
+  prioridad       Prioridad           @default(MEDIUM)
+  ultimaActividad DateTime            @default(now())
+  proximaRevision DateTime?
+  userId          String
+  user            User                @relation(fields: [userId], references: [id])
+  proyectoId      String?
+  proyecto        Project?            @relation(fields: [proyectoId], references: [id])
+  items           SeguimientoItem[]
+  entradas        EntradaContexto[]
+  recordatorios   Recordatorio[]
+  feedEntries     AgenteFeed[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+}
+
+model SeguimientoItem {
+  id            String      @id @default(cuid())
+  seguimientoId String
+  seguimiento   Seguimiento @relation(fields: [seguimientoId], references: [id], onDelete: Cascade)
+  itemId        String
+  item          Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@unique([seguimientoId, itemId])
+}
+
+model EntradaContexto {
+  id            String        @id @default(cuid())
+  tipo          TipoEntrada
+  titulo        String
+  contenido     String
+  resumen       String?
+  metadatos     Json?
+  seguimientoId String?
+  seguimiento   Seguimiento?  @relation(fields: [seguimientoId], references: [id], onDelete: SetNull)
+  itemId        String?
+  item          Item?         @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  createdAt     DateTime      @default(now())
+}
+
+model Recordatorio {
+  id              String            @id @default(cuid())
+  mensaje         String
+  regla           String
+  proximoDisparo  DateTime
+  activo          Boolean           @default(true)
+  tipoRecurrencia TipoRecurrencia   @default(UNA_VEZ)
+  seguimientoId   String?
+  seguimiento     Seguimiento?      @relation(fields: [seguimientoId], references: [id], onDelete: Cascade)
+  itemId          String?
+  item            Item?             @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User              @relation(fields: [userId], references: [id])
+  createdAt       DateTime          @default(now())
+}
+
+enum EstadoSeguimiento {
+  ACTIVO
+  EN_ESPERA
+  NECESITA_ATENCION
+  COMPLETADO
+  ARCHIVADO
+}
+
+enum TipoEntrada {
+  EMAIL
+  NOTAS_REUNION
+  CONVERSACION
+  DOCUMENTO
+  NOTA_LIBRE
+}
+
+enum TipoRecurrencia {
+  UNA_VEZ
+  DIARIO
+  CADA_N_DIAS
+  SEMANAL
+  PERSONALIZADO
+}
+
+// ─── Memoria Profesional (Nexus aprende sobre el usuario) ───
+
+model MemoriaProfesional {
+  id          String          @id @default(cuid())
+  categoria   CategoriaMemoria
+  clave       String          // tema/persona/proyecto/hecho identificador
+  contenido   String          // el hecho o conocimiento
+  confianza   Int             @default(50) // 0-100, sube con cada confirmación
+  fuentes     String[]        // IDs de entradas que contribuyeron a este hecho
+  ultimaVez   DateTime        @default(now()) // última vez que se confirmó/mencionó
+  activo      Boolean         @default(true)
+  userId      String
+  user        User            @relation(fields: [userId], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([userId, categoria, clave])
+  @@index([userId, activo])
+  @@index([userId, categoria])
+}
+
+enum CategoriaMemoria {
+  PERSONA        // contactos: nombre, rol, relación, email
+  PROYECTO       // proyectos/iniciativas: estado, stakeholders, deadlines
+  PROCESO        // procesos recurrentes: cómo se hacen las cosas
+  PREFERENCIA    // preferencias del usuario: horarios, estilos, prioridades
+  ORGANIZACION   // estructura org: equipos, jerarquía, responsabilidades
+  HECHO          // hechos sueltos: decisiones tomadas, acuerdos, contexto general
+  TEMA           // temas técnicos/de negocio recurrentes
 }
