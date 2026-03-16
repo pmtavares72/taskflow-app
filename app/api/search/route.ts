@@ -7,9 +7,9 @@ export async function GET(req: NextRequest) {
   if (!authResult) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const q = req.nextUrl.searchParams.get('q')?.trim()
-  if (!q || q.length < 2) return NextResponse.json({ items: [], projects: [] })
+  if (!q || q.length < 2) return NextResponse.json({ items: [], projects: [], seguimientos: [], contactos: [] })
 
-  const [items, projects] = await Promise.all([
+  const [items, projects, seguimientos, contactos] = await Promise.all([
     db.item.findMany({
       where: {
         userId: authResult.userId,
@@ -35,7 +35,39 @@ export async function GET(req: NextRequest) {
       select: { id: true, nombre: true, color: true, estado: true },
       take: 5,
     }),
+    db.seguimiento.findMany({
+      where: {
+        userId: authResult.userId,
+        estado: { not: 'ARCHIVADO' },
+        OR: [
+          { titulo: { contains: q, mode: 'insensitive' } },
+          { descripcion: { contains: q, mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        id: true, titulo: true, estado: true, prioridad: true,
+        _count: { select: { items: true, entradas: true } },
+      },
+      take: 5,
+      orderBy: { ultimaActividad: 'desc' },
+    }),
+    db.contacto.findMany({
+      where: {
+        userId: authResult.userId,
+        OR: [
+          { nombre: { contains: q, mode: 'insensitive' } },
+          { email: { contains: q, mode: 'insensitive' } },
+          { empresa: { contains: q, mode: 'insensitive' } },
+          { cargo: { contains: q, mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        id: true, nombre: true, email: true, empresa: true, cargo: true,
+      },
+      take: 5,
+      orderBy: { confianza: 'desc' },
+    }),
   ])
 
-  return NextResponse.json({ items, projects })
+  return NextResponse.json({ items, projects, seguimientos, contactos })
 }

@@ -213,8 +213,10 @@ model EntradaContexto {
   tipo          TipoEntrada
   titulo        String
   contenido     String
+  htmlContent   String?       // contenido HTML original del email
   resumen       String?
   metadatos     Json?
+  emailHash     String?       // hash para deduplicación de emails (from+subject+body)
   seguimientoId String?
   seguimiento   Seguimiento?  @relation(fields: [seguimientoId], references: [id], onDelete: SetNull)
   itemId        String?
@@ -222,6 +224,8 @@ model EntradaContexto {
   userId        String
   user          User          @relation(fields: [userId], references: [id])
   createdAt     DateTime      @default(now())
+
+  @@index([userId, emailHash])
 }
 
 model Recordatorio {
@@ -273,17 +277,32 @@ model Contacto {
   telefono      String?
   empresa       String?
   cargo         String?             // rol/posición en la empresa
-  notas         String?             // info adicional extraída
+  notas         String?             // info adicional extraída (legacy, usar notasContacto)
   confianza     Int                 @default(50)  // 0-100, sube con cada mención
   fuentes       String[]            // IDs de entradas que mencionan este contacto
   userId        String
   user          User                @relation(fields: [userId], references: [id])
   seguimientos  ContactoSeguimiento[]
+  notasContacto NotaContacto[]
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
 
   @@unique([userId, nombre, empresa])
   @@index([userId])
+}
+
+// Notas progresivas sobre un contacto — acumuladas por Nexus o el usuario
+model NotaContacto {
+  id          String   @id @default(cuid())
+  contenido   String             // texto de la nota
+  autor       String   @default("agente")  // "agente" o "usuario"
+  entradaId   String?            // entrada de contexto que originó esta nota (si fue el agente)
+  contactoId  String
+  contacto    Contacto @relation(fields: [contactoId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([contactoId])
 }
 
 model ContactoSeguimiento {
@@ -327,4 +346,7 @@ enum CategoriaMemoria {
   ORGANIZACION   // estructura org: equipos, jerarquía, responsabilidades
   HECHO          // hechos sueltos: decisiones tomadas, acuerdos, contexto general
   TEMA           // temas técnicos/de negocio recurrentes
+  FAMILIA        // personas del entorno personal: hijos, pareja, familia, amigos — nombres, edades, colegio, etc.
+  HOGAR          // gestiones del hogar: colegio, médicos, actividades extraescolares, proveedores casa
+  VIDA_PERSONAL  // hechos/contexto personal: rutinas, salud, hobbies, preferencias, eventos sociales
 }

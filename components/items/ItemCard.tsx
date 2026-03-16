@@ -48,10 +48,11 @@ interface Props {
   item: ItemWithRelations
   index?: number
   onClick?: () => void
+  onDelete?: () => void
   isDragging?: boolean
 }
 
-export function ItemCard({ item, index = 0, onClick, isDragging }: Props) {
+export function ItemCard({ item, index = 0, onClick, onDelete, isDragging }: Props) {
   const date = formatCardDate(item.fechaLimite)
   const barColor = priorityBarColor(item.prioridad)
   const prio = priorityLabel(item.prioridad)
@@ -82,6 +83,8 @@ export function ItemCard({ item, index = 0, onClick, isDragging }: Props) {
           el.style.borderColor = 'var(--border-hover)'
           el.style.transform = 'translateY(-1px)'
           el.style.boxShadow = '0 4px 16px rgba(0,0,0,0.4)'
+          const del = el.querySelector('.item-card-delete') as HTMLElement
+          if (del) del.style.opacity = '0.5'
         }
       }}
       onMouseLeave={e => {
@@ -90,6 +93,8 @@ export function ItemCard({ item, index = 0, onClick, isDragging }: Props) {
           el.style.borderColor = 'var(--border)'
           el.style.transform = 'translateY(0)'
           el.style.boxShadow = 'none'
+          const del = el.querySelector('.item-card-delete') as HTMLElement
+          if (del) del.style.opacity = '0'
         }
       }}
     >
@@ -168,6 +173,25 @@ export function ItemCard({ item, index = 0, onClick, isDragging }: Props) {
         {/* Nexus note indicator */}
         {item.notasAgente && (
           <span style={{ fontSize: 9.5, color: 'var(--accent-purple)', flexShrink: 0 }} title="Nota de Nexus">✦</span>
+        )}
+
+        {/* Delete */}
+        {onDelete && (
+          <div
+            onClick={e => { e.stopPropagation(); onDelete() }}
+            title="Eliminar"
+            style={{
+              width: 18, height: 18, borderRadius: 4, cursor: 'pointer', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              opacity: 0, transition: 'opacity 0.15s',
+            }}
+            className="item-card-delete"
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--urgent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+          </div>
         )}
       </div>
     </div>

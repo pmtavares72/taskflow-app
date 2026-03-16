@@ -19,10 +19,34 @@ interface SearchProject {
   estado: string
 }
 
+interface SearchSeguimiento {
+  id: string
+  titulo: string
+  estado: string
+  prioridad: string
+  _count: { items: number; entradas: number }
+}
+
+interface SearchContacto {
+  id: string
+  nombre: string
+  email: string | null
+  empresa: string | null
+  cargo: string | null
+}
+
 interface SearchResults {
   items: SearchItem[]
   projects: SearchProject[]
+  seguimientos: SearchSeguimiento[]
+  contactos: SearchContacto[]
 }
+
+type ResultEntry =
+  | { type: 'item'; id: string; label: string; sublabel?: string; icon: string; color?: string }
+  | { type: 'project'; id: string; label: string; sublabel?: string; icon: string; color?: string }
+  | { type: 'seguimiento'; id: string; label: string; sublabel?: string; icon: string; color?: string }
+  | { type: 'contacto'; id: string; label: string; sublabel?: string; icon: string; color?: string }
 
 function tipoIcon(tipo: string) {
   const icons: Record<string, string> = {
@@ -39,22 +63,55 @@ function priorityDot(p: string) {
   return colors[p] ?? 'var(--border)'
 }
 
+function estadoSeguimientoColor(estado: string) {
+  const colors: Record<string, string> = {
+    ACTIVO: 'var(--accent)', EN_ESPERA: 'var(--accent-orange)',
+    NECESITA_ATENCION: 'var(--urgent)', COMPLETADO: 'var(--text-muted)',
+  }
+  return colors[estado] ?? 'var(--text-muted)'
+}
+
 export function SearchOverlay() {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<SearchResults>({ items: [], projects: [] })
+  const [results, setResults] = useState<SearchResults>({ items: [], projects: [], seguimientos: [], contactos: [] })
   const [loading, setLoading] = useState(false)
   const [selectedIdx, setSelectedIdx] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
-  const allResults = [
-    ...results.items.map(i => ({ type: 'item' as const, ...i })),
-    ...results.projects.map(p => ({ type: 'project' as const, id: p.id, titulo: p.nombre, color: p.color })),
+  // Flatten all results into a single navigable list
+  const allResults: ResultEntry[] = [
+    ...results.items.map(i => ({
+      type: 'item' as const, id: i.id,
+      label: i.titulo,
+      sublabel: i.proyecto?.nombre,
+      icon: tipoIcon(i.tipo),
+      color: priorityDot(i.prioridad),
+    })),
+    ...results.seguimientos.map(s => ({
+      type: 'seguimiento' as const, id: s.id,
+      label: s.titulo,
+      sublabel: `${s._count.items} tareas · ${s._count.entradas} entradas`,
+      icon: '📌',
+      color: estadoSeguimientoColor(s.estado),
+    })),
+    ...results.contactos.map(c => ({
+      type: 'contacto' as const, id: c.id,
+      label: c.nombre,
+      sublabel: [c.cargo, c.empresa].filter(Boolean).join(' · ') || c.email || undefined,
+      icon: '👤',
+    })),
+    ...results.projects.map(p => ({
+      type: 'project' as const, id: p.id,
+      label: p.nombre,
+      icon: '●',
+      color: p.color,
+    })),
   ]
 
   const search = useCallback(async (q: string) => {
-    if (q.length < 2) { setResults({ items: [], projects: [] }); return }
+    if (q.length < 2) { setResults({ items: [], projects: [], seguimientos: [], contactos: [] }); return }
     setLoading(true)
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`)
@@ -84,16 +141,20 @@ export function SearchOverlay() {
   useEffect(() => {
     if (open) {
       setQuery('')
-      setResults({ items: [], projects: [] })
+      setResults({ items: [], projects: [], seguimientos: [], contactos: [] })
       setSelectedIdx(0)
       setTimeout(() => inputRef.current?.focus(), 50)
     }
   }, [open])
 
-  function navigate(result: typeof allResults[0]) {
+  function navigate(result: ResultEntry) {
     setOpen(false)
-    if (result.type === 'item') router.push(`/items/${result.id}`)
-    else router.push(`/kanban?proyecto=${result.id}`)
+    switch (result.type) {
+      case 'item': router.push(`/items/${result.id}`); break
+      case 'project': router.push(`/kanban?proyecto=${result.id}`); break
+      case 'seguimiento': router.push(`/seguimientos/${result.id}`); break
+      case 'contacto': router.push(`/contactos?q=${encodeURIComponent(result.label)}`); break
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -103,6 +164,26 @@ export function SearchOverlay() {
   }
 
   if (!open) return null
+
+  // Build sections with their offsets for rendering
+  const sections: { title: string; entries: ResultEntry[]; startIdx: number }[] = []
+  let offset = 0
+  if (results.items.length > 0) {
+    sections.push({ title: 'Tareas y notas', entries: allResults.slice(offset, offset + results.items.length), startIdx: offset })
+    offset += results.items.length
+  }
+  if (results.seguimientos.length > 0) {
+    sections.push({ title: 'Seguimientos', entries: allResults.slice(offset, offset + results.seguimientos.length), startIdx: offset })
+    offset += results.seguimientos.length
+  }
+  if (results.contactos.length > 0) {
+    sections.push({ title: 'Contactos', entries: allResults.slice(offset, offset + results.contactos.length), startIdx: offset })
+    offset += results.contactos.length
+  }
+  if (results.projects.length > 0) {
+    sections.push({ title: 'Proyectos', entries: allResults.slice(offset, offset + results.projects.length), startIdx: offset })
+    offset += results.projects.length
+  }
 
   return (
     <div
@@ -134,7 +215,7 @@ export function SearchOverlay() {
             value={query}
             onChange={e => { setQuery(e.target.value); setSelectedIdx(0) }}
             onKeyDown={handleKeyDown}
-            placeholder="Buscar tareas, notas, proyectos..."
+            placeholder="Buscar tareas, seguimientos, contactos, proyectos..."
             style={{
               flex: 1, background: 'none', border: 'none', outline: 'none',
               fontFamily: "'Outfit', sans-serif", fontSize: 15, color: 'var(--text)',
@@ -152,7 +233,7 @@ export function SearchOverlay() {
         </div>
 
         {/* Results */}
-        <div style={{ maxHeight: 380, overflowY: 'auto' }}>
+        <div style={{ maxHeight: 420, overflowY: 'auto' }}>
           {query.length < 2 ? (
             <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
               Escribe para buscar...
@@ -162,75 +243,73 @@ export function SearchOverlay() {
               Sin resultados para &ldquo;{query}&rdquo;
             </div>
           ) : (
-            <>
-              {results.items.length > 0 && (
-                <div>
-                  <div style={{ padding: '8px 16px 4px', fontSize: 10.5, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Items
-                  </div>
-                  {results.items.map((item, i) => (
+            sections.map(section => (
+              <div key={section.title}>
+                <div style={{
+                  padding: '8px 16px 4px', fontSize: 10.5, fontWeight: 600,
+                  color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em',
+                }}>
+                  {section.title}
+                </div>
+                {section.entries.map((entry, i) => {
+                  const globalIdx = section.startIdx + i
+                  return (
                     <button
-                      key={item.id}
-                      onClick={() => navigate({ type: 'item', ...item })}
-                      onMouseEnter={() => setSelectedIdx(i)}
+                      key={`${entry.type}-${entry.id}`}
+                      onClick={() => navigate(entry)}
+                      onMouseEnter={() => setSelectedIdx(globalIdx)}
                       style={{
                         width: '100%', display: 'flex', alignItems: 'center', gap: 10,
                         padding: '9px 16px', border: 'none', cursor: 'pointer', textAlign: 'left',
-                        background: selectedIdx === i ? 'rgba(167,139,250,0.08)' : 'transparent',
-                        borderLeft: selectedIdx === i ? '2px solid var(--accent-purple)' : '2px solid transparent',
+                        background: selectedIdx === globalIdx ? 'rgba(167,139,250,0.08)' : 'transparent',
+                        borderLeft: selectedIdx === globalIdx ? '2px solid var(--accent-purple)' : '2px solid transparent',
                         transition: 'all 0.1s',
                       }}
                     >
-                      <span style={{ fontSize: 13, flexShrink: 0 }}>{tipoIcon(item.tipo)}</span>
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: priorityDot(item.prioridad), flexShrink: 0 }} />
-                      <span style={{ flex: 1, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'Outfit', sans-serif" }}>
-                        {item.titulo}
-                      </span>
-                      {item.proyecto && (
-                        <span style={{
-                          fontSize: 10.5, padding: '2px 8px', borderRadius: 10, flexShrink: 0,
-                          background: `${item.proyecto.color}18`, color: item.proyecto.color,
-                          fontFamily: "'Outfit', sans-serif",
-                        }}>
-                          {item.proyecto.nombre}
-                        </span>
+                      {entry.type === 'item' ? (
+                        <>
+                          <span style={{ fontSize: 13, flexShrink: 0 }}>{entry.icon}</span>
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
+                        </>
+                      ) : entry.type === 'project' ? (
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
+                      ) : entry.type === 'seguimiento' ? (
+                        <span style={{ fontSize: 13, flexShrink: 0, filter: 'grayscale(0.3)' }}>{entry.icon}</span>
+                      ) : (
+                        <span style={{ fontSize: 13, flexShrink: 0 }}>{entry.icon}</span>
                       )}
-                    </button>
-                  ))}
-                </div>
-              )}
 
-              {results.projects.length > 0 && (
-                <div>
-                  <div style={{ padding: '8px 16px 4px', fontSize: 10.5, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Proyectos
-                  </div>
-                  {results.projects.map((proj, i) => {
-                    const idx = results.items.length + i
-                    return (
-                      <button
-                        key={proj.id}
-                        onClick={() => navigate({ type: 'project', id: proj.id, titulo: proj.nombre, color: proj.color })}
-                        onMouseEnter={() => setSelectedIdx(idx)}
-                        style={{
-                          width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '9px 16px', border: 'none', cursor: 'pointer', textAlign: 'left',
-                          background: selectedIdx === idx ? 'rgba(167,139,250,0.08)' : 'transparent',
-                          borderLeft: selectedIdx === idx ? '2px solid var(--accent-purple)' : '2px solid transparent',
-                          transition: 'all 0.1s',
-                        }}
-                      >
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: proj.color, flexShrink: 0 }} />
-                        <span style={{ flex: 1, fontSize: 13, color: 'var(--text)', fontFamily: "'Outfit', sans-serif" }}>
-                          {proj.nombre}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{
+                          fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap', display: 'block', fontFamily: "'Outfit', sans-serif",
+                        }}>
+                          {entry.label}
                         </span>
-                        <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>Proyecto</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </>
+                        {entry.sublabel && (
+                          <span style={{
+                            fontSize: 10.5, color: 'var(--text-muted)', overflow: 'hidden',
+                            textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block',
+                          }}>
+                            {entry.sublabel}
+                          </span>
+                        )}
+                      </div>
+
+                      <span style={{
+                        fontSize: 10, color: 'var(--text-muted)', flexShrink: 0,
+                        padding: '2px 8px', borderRadius: 10, background: 'rgba(255,255,255,0.04)',
+                        fontFamily: "'DM Mono', monospace",
+                      }}>
+                        {entry.type === 'item' ? 'Item' :
+                         entry.type === 'seguimiento' ? 'Proceso' :
+                         entry.type === 'contacto' ? 'Contacto' : 'Proyecto'}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            ))
           )}
         </div>
 

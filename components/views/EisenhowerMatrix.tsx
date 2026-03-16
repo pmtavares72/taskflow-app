@@ -75,6 +75,13 @@ export function EisenhowerMatrix({ items: initialItems }: Props) {
     router.refresh()
   }
 
+  async function deleteItem(itemId: string) {
+    if (!confirm('¿Eliminar este item?')) return
+    setItems(prev => prev.filter(i => i.id !== itemId))
+    await fetch(`/api/items/${itemId}`, { method: 'DELETE' })
+    router.refresh()
+  }
+
   // Items not yet classified go to the backlog tray
   const unclassifiedItems = items.filter(item => !item.eisenhowerUrgente && !item.eisenhowerImportante)
   // Items classified into quadrants
@@ -174,6 +181,7 @@ export function EisenhowerMatrix({ items: initialItems }: Props) {
                 onDragStart={() => setDragging(item.id)}
                 onDragEnd={() => setDragging(null)}
                 onArchive={() => archive(item.id)}
+                onDelete={() => deleteItem(item.id)}
               />
             ))}
           </div>
@@ -245,6 +253,7 @@ export function EisenhowerMatrix({ items: initialItems }: Props) {
                     onDragStart={() => setDragging(item.id)}
                     onDragEnd={() => setDragging(null)}
                     onArchive={() => archive(item.id)}
+                    onDelete={() => deleteItem(item.id)}
                   />
                 ))}
 
@@ -266,12 +275,13 @@ export function EisenhowerMatrix({ items: initialItems }: Props) {
   )
 }
 
-function QuadrantCard({ item, isDragging, onDragStart, onDragEnd, onArchive }: {
+function QuadrantCard({ item, isDragging, onDragStart, onDragEnd, onArchive, onDelete }: {
   item: ItemWithRelations
   isDragging: boolean
   onDragStart: () => void
   onDragEnd: () => void
   onArchive: () => void
+  onDelete: () => void
 }) {
   const [hovered, setHovered] = useState(false)
   const date = formatDate(item.fechaLimite)
@@ -315,32 +325,51 @@ function QuadrantCard({ item, isDragging, onDragStart, onDragEnd, onArchive }: {
         )}
       </div>
       {hovered && (
-        <button
-          onClick={e => { e.stopPropagation(); onArchive() }}
-          title="Archivar"
-          style={{
-            position: 'absolute', top: 6, right: 6,
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: 'var(--text-muted)', fontSize: 13, lineHeight: 1,
-            padding: '2px 4px', borderRadius: 4,
-            transition: 'color 0.12s',
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--urgent)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)' }}
-        >
-          ×
-        </button>
+        <div style={{ position: 'absolute', top: 5, right: 5, display: 'flex', gap: 2 }}>
+          <button
+            onClick={e => { e.stopPropagation(); onDelete() }}
+            title="Eliminar"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--text-muted)', lineHeight: 1,
+              padding: '2px 4px', borderRadius: 4,
+              transition: 'color 0.12s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--urgent)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)' }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); onArchive() }}
+            title="Archivar"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--text-muted)', fontSize: 13, lineHeight: 1,
+              padding: '2px 4px', borderRadius: 4,
+              transition: 'color 0.12s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--urgent)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)' }}
+          >
+            ×
+          </button>
+        </div>
       )}
     </div>
   )
 }
 
-function TrayCard({ item, isDragging, onDragStart, onDragEnd, onArchive }: {
+function TrayCard({ item, isDragging, onDragStart, onDragEnd, onArchive, onDelete }: {
   item: ItemWithRelations
   isDragging: boolean
   onDragStart: () => void
   onDragEnd: () => void
   onArchive: () => void
+  onDelete: () => void
 }) {
   const [hovered, setHovered] = useState(false)
   const proj = item.proyecto
@@ -369,21 +398,39 @@ function TrayCard({ item, isDragging, onDragStart, onDragEnd, onArchive }: {
         </div>
       )}
       {hovered && (
-        <button
-          onClick={e => { e.stopPropagation(); onArchive() }}
-          title="Archivar"
-          style={{
-            position: 'absolute', top: 5, right: 5,
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: 'var(--text-muted)', fontSize: 13, lineHeight: 1,
-            padding: '2px 4px', borderRadius: 4,
-            transition: 'color 0.12s',
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--urgent)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)' }}
-        >
-          ×
-        </button>
+        <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 2 }}>
+          <button
+            onClick={e => { e.stopPropagation(); onDelete() }}
+            title="Eliminar"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--text-muted)', lineHeight: 1,
+              padding: '2px 4px', borderRadius: 4,
+              transition: 'color 0.12s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--urgent)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)' }}
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); onArchive() }}
+            title="Archivar"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--text-muted)', fontSize: 13, lineHeight: 1,
+              padding: '2px 4px', borderRadius: 4,
+              transition: 'color 0.12s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--urgent)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)' }}
+          >
+            ×
+          </button>
+        </div>
       )}
     </div>
   )

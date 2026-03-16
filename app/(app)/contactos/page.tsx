@@ -3,10 +3,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
+type NotaData = {
+  id: string; contenido: string; autor: string; entradaId: string | null
+  createdAt: string; updatedAt: string
+}
+
 type ContactoData = {
   id: string; nombre: string; email: string | null; telefono: string | null
   empresa: string | null; cargo: string | null; confianza: number
   notas: string | null; createdAt: string; updatedAt: string
+  notasContacto: NotaData[]
   seguimientos: {
     id: string; rol: string | null
     seguimiento: { id: string; titulo: string; estado: string }
@@ -44,6 +50,11 @@ export default function ContactosPage() {
     const timeout = setTimeout(fetchData, search ? 300 : 0)
     return () => clearTimeout(timeout)
   }, [fetchData, search])
+
+  // Callback para actualizar notas de un contacto en el estado local
+  const updateContactNotas = useCallback((contactoId: string, notas: NotaData[]) => {
+    setContactos(prev => prev.map(c => c.id === contactoId ? { ...c, notasContacto: notas } : c))
+  }, [])
 
   // Group by empresa for empresa view
   const grouped = orderBy === 'empresa'
@@ -167,6 +178,9 @@ export default function ContactosPage() {
                 <ContactoCard key={c.id} data={c} index={i} expanded={expandedId === c.id}
                   onToggle={() => setExpandedId(expandedId === c.id ? null : c.id)}
                   onNavigate={(segId) => router.push(`/seguimientos/${segId}`)}
+                  onNotasChange={(notas) => updateContactNotas(c.id, notas)}
+                  onUpdate={(updated) => setContactos(prev => prev.map(x => x.id === c.id ? { ...x, ...updated } : x))}
+                  onDelete={() => { setContactos(prev => prev.filter(x => x.id !== c.id)); if (expandedId === c.id) setExpandedId(null) }}
                 />
               ))}
             </div>
@@ -179,6 +193,9 @@ export default function ContactosPage() {
             <ContactoCard key={c.id} data={c} index={i} expanded={expandedId === c.id}
               onToggle={() => setExpandedId(expandedId === c.id ? null : c.id)}
               onNavigate={(segId) => router.push(`/seguimientos/${segId}`)}
+              onNotasChange={(notas) => updateContactNotas(c.id, notas)}
+              onUpdate={(updated) => setContactos(prev => prev.map(x => x.id === c.id ? { ...x, ...updated } : x))}
+              onDelete={() => { setContactos(prev => prev.filter(x => x.id !== c.id)); if (expandedId === c.id) setExpandedId(null) }}
             />
           ))}
         </div>
@@ -187,13 +204,96 @@ export default function ContactosPage() {
   )
 }
 
-function ContactoCard({ data: c, index, expanded, onToggle, onNavigate }: {
+function ContactoCard({ data: c, index, expanded, onToggle, onNavigate, onNotasChange, onUpdate, onDelete }: {
   data: ContactoData; index: number; expanded: boolean
   onToggle: () => void; onNavigate: (segId: string) => void
+  onNotasChange: (notas: NotaData[]) => void
+  onUpdate: (updated: Partial<ContactoData>) => void
+  onDelete: () => void
 }) {
+  const [newNota, setNewNota] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editText, setEditText] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [editingContact, setEditingContact] = useState(false)
+  const [editFields, setEditFields] = useState({ nombre: '', email: '', telefono: '', empresa: '', cargo: '' })
+
   const estadoColors: Record<string, string> = {
     ACTIVO: 'var(--accent)', EN_ESPERA: 'var(--accent-blue)',
     NECESITA_ATENCION: 'var(--accent-orange)', COMPLETADO: 'var(--text-muted)',
+  }
+
+  async function addNota() {
+    if (!newNota.trim() || saving) return
+    setSaving(true)
+    const res = await fetch(`/api/contactos/${c.id}/notas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contenido: newNota.trim() }),
+    })
+    if (res.ok) {
+      const nota = await res.json()
+      onNotasChange([nota, ...c.notasContacto])
+      setNewNota('')
+    }
+    setSaving(false)
+  }
+
+  async function updateNota(notaId: string) {
+    if (!editText.trim() || saving) return
+    setSaving(true)
+    const res = await fetch(`/api/contactos/${c.id}/notas`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notaId, contenido: editText.trim() }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      onNotasChange(c.notasContacto.map(n => n.id === notaId ? updated : n))
+      setEditingId(null)
+    }
+    setSaving(false)
+  }
+
+  async function deleteNota(notaId: string) {
+    if (!confirm('¿Eliminar esta nota?')) return
+    const res = await fetch(`/api/contactos/${c.id}/notas?notaId=${notaId}`, { method: 'DELETE' })
+    if (res.ok) {
+      onNotasChange(c.notasContacto.filter(n => n.id !== notaId))
+    }
+  }
+
+  function startEditContact() {
+    setEditFields({
+      nombre: c.nombre, email: c.email ?? '', telefono: c.telefono ?? '',
+      empresa: c.empresa ?? '', cargo: c.cargo ?? '',
+    })
+    setEditingContact(true)
+  }
+
+  async function saveContact() {
+    setSaving(true)
+    const body: Record<string, string> = {}
+    if (editFields.nombre !== c.nombre) body.nombre = editFields.nombre
+    if (editFields.email !== (c.email ?? '')) body.email = editFields.email
+    if (editFields.telefono !== (c.telefono ?? '')) body.telefono = editFields.telefono
+    if (editFields.empresa !== (c.empresa ?? '')) body.empresa = editFields.empresa
+    if (editFields.cargo !== (c.cargo ?? '')) body.cargo = editFields.cargo
+    if (Object.keys(body).length > 0) {
+      const res = await fetch(`/api/contactos/${c.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (res.ok) onUpdate(await res.json())
+    }
+    setEditingContact(false)
+    setSaving(false)
+  }
+
+  async function handleDeleteContact() {
+    if (!confirm(`¿Eliminar el contacto "${c.nombre}"? Se borrarán todas sus notas y vinculaciones.`)) return
+    await fetch(`/api/contactos/${c.id}`, { method: 'DELETE' })
+    onDelete()
   }
 
   return (
@@ -231,6 +331,15 @@ function ContactoCard({ data: c, index, expanded, onToggle, onNavigate }: {
                 {c.seguimientos.length} proceso{c.seguimientos.length !== 1 ? 's' : ''}
               </span>
             )}
+            {c.notasContacto.length > 0 && (
+              <span style={{
+                fontSize: 9.5, padding: '1px 6px', borderRadius: 10,
+                background: 'rgba(47,212,170,0.08)', color: 'var(--accent)',
+                border: '1px solid rgba(47,212,170,0.15)',
+              }}>
+                {c.notasContacto.length} nota{c.notasContacto.length !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {[c.cargo, c.empresa].filter(Boolean).join(' · ') || c.email || 'Sin datos adicionales'}
@@ -260,44 +369,210 @@ function ContactoCard({ data: c, index, expanded, onToggle, onNavigate }: {
           padding: '0 14px 14px', borderTop: '1px solid var(--border)',
           display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 12,
         }}>
-          {/* Contact details */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            {c.email && (
-              <div style={{ fontSize: 12, color: 'var(--text-sub)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>✉</span>
-                <span style={{ fontFamily: "'DM Mono', monospace" }}>{c.email}</span>
+          {/* Contact details / Edit mode */}
+          {editingContact ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {(['nombre', 'email', 'telefono', 'empresa', 'cargo'] as const).map(field => (
+                <div key={field} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <label style={{ fontSize: 11, color: 'var(--text-muted)', width: 60, textTransform: 'capitalize', flexShrink: 0 }}>{field}</label>
+                  <input
+                    value={editFields[field]}
+                    onChange={e => setEditFields(f => ({ ...f, [field]: e.target.value }))}
+                    style={{
+                      flex: 1, padding: '5px 8px', borderRadius: 6,
+                      border: '1px solid var(--border)', background: 'var(--surface)',
+                      fontSize: 12, color: 'var(--text)', fontFamily: "'Outfit', sans-serif",
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              ))}
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 4 }}>
+                <button onClick={() => setEditingContact(false)} style={{
+                  padding: '5px 12px', borderRadius: 6, border: '1px solid var(--border)',
+                  background: 'none', color: 'var(--text-muted)', fontSize: 11, cursor: 'pointer',
+                  fontFamily: "'Outfit', sans-serif",
+                }}>Cancelar</button>
+                <button onClick={saveContact} disabled={saving} style={{
+                  padding: '5px 12px', borderRadius: 6, border: 'none',
+                  background: 'var(--accent)', color: '#13141f', fontSize: 11, fontWeight: 600,
+                  cursor: 'pointer', fontFamily: "'Outfit', sans-serif", opacity: saving ? 0.5 : 1,
+                }}>Guardar</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+              {c.email && (
+                <div style={{ fontSize: 12, color: 'var(--text-sub)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>✉</span>
+                  <span style={{ fontFamily: "'DM Mono', monospace" }}>{c.email}</span>
+                </div>
+              )}
+              {c.telefono && (
+                <div style={{ fontSize: 12, color: 'var(--text-sub)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>📞</span>
+                  <span style={{ fontFamily: "'DM Mono', monospace" }}>{c.telefono}</span>
+                </div>
+              )}
+              {c.empresa && (
+                <div style={{ fontSize: 12, color: 'var(--text-sub)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>🏢</span>
+                  <span>{c.empresa}</span>
+                </div>
+              )}
+              {c.cargo && (
+                <div style={{ fontSize: 12, color: 'var(--text-sub)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>💼</span>
+                  <span>{c.cargo}</span>
+                </div>
+              )}
+              <div style={{ flex: 1 }} />
+              <button onClick={startEditContact} style={{
+                fontSize: 10, color: 'var(--accent-blue)', background: 'none', border: 'none',
+                cursor: 'pointer', padding: 0, textDecoration: 'underline', textUnderlineOffset: 2,
+              }}>editar</button>
+              <button onClick={handleDeleteContact} style={{
+                fontSize: 10, color: 'var(--urgent)', background: 'none', border: 'none',
+                cursor: 'pointer', padding: 0, textDecoration: 'underline', textUnderlineOffset: 2,
+              }}>eliminar</button>
+            </div>
+          )}
+
+          {/* Notas / Intel timeline */}
+          <div>
+            <div style={{
+              fontSize: 10, fontWeight: 600, color: 'var(--text-muted)',
+              textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <span>Intel sobre {c.nombre.split(' ')[0]}</span>
+              <span style={{ fontSize: 10, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
+                {c.notasContacto.length} nota{c.notasContacto.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+
+            {/* Add new note */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+              <input
+                value={newNota}
+                onChange={e => setNewNota(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addNota() }}
+                placeholder={`Añadir nota sobre ${c.nombre.split(' ')[0]}...`}
+                style={{
+                  flex: 1, padding: '7px 10px', borderRadius: 8,
+                  border: '1px solid var(--border)', background: 'var(--surface)',
+                  fontSize: 12, color: 'var(--text)', fontFamily: "'Outfit', sans-serif",
+                  outline: 'none',
+                }}
+              />
+              <button
+                onClick={addNota}
+                disabled={!newNota.trim() || saving}
+                style={{
+                  padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  background: newNota.trim() ? 'var(--accent)' : 'var(--card)',
+                  color: newNota.trim() ? '#13141f' : 'var(--text-muted)',
+                  fontSize: 11, fontWeight: 600, fontFamily: "'Outfit', sans-serif",
+                  transition: 'all 0.15s', opacity: saving ? 0.5 : 1,
+                }}
+              >
+                Añadir
+              </button>
+            </div>
+
+            {/* Notes list */}
+            {c.notasContacto.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {c.notasContacto.map(nota => (
+                  <div key={nota.id} style={{
+                    padding: '8px 10px', borderRadius: 8,
+                    background: nota.autor === 'agente' ? 'rgba(47,212,170,0.04)' : 'rgba(165,180,252,0.04)',
+                    borderLeft: `2px solid ${nota.autor === 'agente' ? 'var(--accent)' : 'var(--accent-purple)'}`,
+                  }}>
+                    {editingId === nota.id ? (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <input
+                          value={editText}
+                          onChange={e => setEditText(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') updateNota(nota.id); if (e.key === 'Escape') setEditingId(null) }}
+                          autoFocus
+                          style={{
+                            flex: 1, padding: '4px 8px', borderRadius: 6,
+                            border: '1px solid var(--accent)', background: 'var(--surface)',
+                            fontSize: 12, color: 'var(--text)', fontFamily: "'Outfit', sans-serif",
+                            outline: 'none',
+                          }}
+                        />
+                        <button onClick={() => updateNota(nota.id)} style={{
+                          padding: '4px 10px', borderRadius: 6, border: 'none',
+                          background: 'var(--accent)', color: '#13141f',
+                          fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                        }}>OK</button>
+                        <button onClick={() => setEditingId(null)} style={{
+                          padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)',
+                          background: 'none', color: 'var(--text-muted)',
+                          fontSize: 10, cursor: 'pointer',
+                        }}>Esc</button>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>
+                          {nota.contenido}
+                        </div>
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: 8, marginTop: 4,
+                        }}>
+                          <span style={{
+                            fontSize: 9.5, color: 'var(--text-muted)',
+                            fontFamily: "'DM Mono', monospace",
+                          }}>
+                            {nota.autor === 'agente' ? 'Nexus' : 'Tú'} · {new Date(nota.createdAt).toLocaleDateString('es', { day: 'numeric', month: 'short' })}
+                          </span>
+                          <button
+                            onClick={() => { setEditingId(nota.id); setEditText(nota.contenido) }}
+                            style={{
+                              fontSize: 9.5, color: 'var(--text-muted)', background: 'none',
+                              border: 'none', cursor: 'pointer', padding: 0,
+                              textDecoration: 'underline', textUnderlineOffset: 2,
+                            }}
+                          >
+                            editar
+                          </button>
+                          <button
+                            onClick={() => deleteNota(nota.id)}
+                            style={{
+                              fontSize: 9.5, color: 'var(--urgent)', background: 'none',
+                              border: 'none', cursor: 'pointer', padding: 0,
+                              textDecoration: 'underline', textUnderlineOffset: 2,
+                            }}
+                          >
+                            borrar
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
-            {c.telefono && (
-              <div style={{ fontSize: 12, color: 'var(--text-sub)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>📞</span>
-                <span style={{ fontFamily: "'DM Mono', monospace" }}>{c.telefono}</span>
+
+            {c.notasContacto.length === 0 && !c.notas && (
+              <div style={{ fontSize: 11.5, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                Nexus irá añadiendo información sobre esta persona a medida que procese emails y entradas.
               </div>
             )}
-            {c.empresa && (
-              <div style={{ fontSize: 12, color: 'var(--text-sub)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>🏢</span>
-                <span>{c.empresa}</span>
-              </div>
-            )}
-            {c.cargo && (
-              <div style={{ fontSize: 12, color: 'var(--text-sub)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>💼</span>
-                <span>{c.cargo}</span>
+
+            {/* Legacy notas field */}
+            {c.notas && c.notasContacto.length === 0 && (
+              <div style={{
+                fontSize: 12, color: 'var(--text-sub)', lineHeight: 1.5,
+                padding: '6px 10px', borderRadius: 6,
+                background: 'rgba(47,212,170,0.04)', borderLeft: '2px solid var(--accent)',
+              }}>
+                {c.notas}
               </div>
             )}
           </div>
-
-          {/* Notas */}
-          {c.notas && (
-            <div style={{
-              fontSize: 12, color: 'var(--text-sub)', lineHeight: 1.5,
-              padding: '6px 10px', borderRadius: 6,
-              background: 'rgba(47,212,170,0.04)', borderLeft: '2px solid var(--accent)',
-            }}>
-              {c.notas}
-            </div>
-          )}
 
           {/* Linked seguimientos */}
           {c.seguimientos.length > 0 && (

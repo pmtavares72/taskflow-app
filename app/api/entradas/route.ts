@@ -24,7 +24,9 @@ export async function GET(req: NextRequest) {
 
   const entradas = await db.entradaContexto.findMany({
     where,
-    include: {
+    select: {
+      id: true, tipo: true, titulo: true, contenido: true, htmlContent: true,
+      resumen: true, metadatos: true, createdAt: true,
       seguimiento: { select: { id: true, titulo: true } },
     },
     orderBy: { createdAt: 'desc' },

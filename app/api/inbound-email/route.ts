@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { createHash } from 'crypto'
 import { db } from '@/lib/db'
 import { onEntradaCreated } from '@/lib/agent-events'
 
@@ -58,6 +59,24 @@ export async function POST(req: NextRequest) {
   }
   if (!user) return NextResponse.json({ error: 'No user found' }, { status: 500 })
 
+  // Deduplicación: hash de from + subject + body (primeros 500 chars para normalizar)
+  const emailHash = createHash('sha256')
+    .update(`${email.from}|${email.subject}|${email.body.slice(0, 500).trim()}`)
+    .digest('hex')
+
+  const existingEntry = await db.entradaContexto.findFirst({
+    where: { userId: user.id, emailHash },
+  })
+  if (existingEntry) {
+    return NextResponse.json({
+      id: existingEntry.id,
+      itemId: existingEntry.itemId,
+      seguimientoId: existingEntry.seguimientoId,
+      duplicate: true,
+      message: 'Email ya procesado anteriormente',
+    }, { status: 200 })
+  }
+
   // Auto-detect seguimiento from subject: [TF-xxx] or [SEG-xxx]
   let seguimientoId = email.seguimientoId ?? null
   if (!seguimientoId) {
@@ -114,6 +133,8 @@ export async function POST(req: NextRequest) {
       tipo: 'EMAIL',
       titulo: email.subject,
       contenido,
+      htmlContent: email.html || null,
+      emailHash,
       seguimientoId,
       itemId: item.id,
       userId: user.id,

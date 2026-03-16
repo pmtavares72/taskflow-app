@@ -149,6 +149,11 @@ export function KanbanView({ initialItems }: Props) {
                               index={index}
                               isDragging={snapshot.isDragging}
                               onClick={() => !snapshot.isDragging && setSelectedItem(item)}
+                              onDelete={() => {
+                                if (confirm('¿Eliminar este item?')) {
+                                  fetch(`/api/items/${item.id}`, { method: 'DELETE' }).then(() => router.refresh())
+                                }
+                              }}
                             />
                           </PortalAwareItem>
                         )}

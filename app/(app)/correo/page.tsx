@@ -8,6 +8,7 @@ type EntradaData = {
   tipo: string
   titulo: string
   contenido: string
+  htmlContent: string | null
   resumen: string | null
   metadatos: {
     accionesExtraidas?: { titulo: string; prioridad: string }[]
@@ -340,15 +341,35 @@ export default function CorreoPage() {
                       <summary style={{ fontSize: 11, color: 'var(--text-muted)', cursor: 'pointer', marginBottom: 6 }}>
                         Ver contenido completo
                       </summary>
-                      <pre style={{
-                        fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5,
-                        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                        background: 'var(--card)', padding: 12, borderRadius: 8,
-                        maxHeight: 300, overflowY: 'auto',
-                        fontFamily: "'DM Mono', monospace",
-                      }}>
-                        {entrada.contenido}
-                      </pre>
+                      {entrada.htmlContent ? (
+                        <iframe
+                          srcDoc={entrada.htmlContent}
+                          sandbox=""
+                          style={{
+                            width: '100%', minHeight: 300, maxHeight: 600,
+                            border: '1px solid var(--border)', borderRadius: 8,
+                            background: '#fff',
+                          }}
+                          onLoad={e => {
+                            // Auto-resize iframe al contenido
+                            const frame = e.currentTarget
+                            try {
+                              const h = frame.contentDocument?.body?.scrollHeight
+                              if (h) frame.style.height = `${Math.min(h + 20, 600)}px`
+                            } catch { /* sandbox restriction */ }
+                          }}
+                        />
+                      ) : (
+                        <pre style={{
+                          fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5,
+                          whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                          background: 'var(--card)', padding: 12, borderRadius: 8,
+                          maxHeight: 300, overflowY: 'auto',
+                          fontFamily: "'DM Mono', monospace",
+                        }}>
+                          {entrada.contenido}
+                        </pre>
+                      )}
                     </details>
 
                     {/* Borrar */}

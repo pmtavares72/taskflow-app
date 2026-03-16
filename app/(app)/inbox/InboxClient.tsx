@@ -41,7 +41,6 @@ function formatDate(date: Date | string | null) {
 }
 
 function projectChipColor(color: string) {
-  // Map project color to chip style
   if (color === '#60a5fa') return { color: 'var(--accent-blue)', bg: 'rgba(96,165,250,0.08)', border: 'rgba(96,165,250,0.15)' }
   if (color === '#4ade80') return { color: 'var(--accent-green)', bg: 'rgba(74,222,128,0.08)', border: 'rgba(74,222,128,0.15)' }
   if (color === '#a78bfa') return { color: 'var(--accent-purple)', bg: 'rgba(167,139,250,0.08)', border: 'rgba(167,139,250,0.15)' }
@@ -58,6 +57,8 @@ export function InboxClient({ items, agenteFeed }: Props) {
   const [filter, setFilter] = useState<FilterChip>('Todo')
   const [dismissed, setDismissed] = useState(false)
   const [selectedItem, setSelectedItem] = useState<ItemWithRelations | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [acting, setActing] = useState(false)
   const router = useRouter()
 
   // Filter items
@@ -79,21 +80,55 @@ export function InboxClient({ items, agenteFeed }: Props) {
   })
   const rest = filtered.filter(i => !urgent.includes(i))
 
-  async function markDone(id: string) {
-    await fetch(`/api/items/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ estado: 'DONE' }),
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
     })
+  }
+
+  function selectAll() {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filtered.map(i => i.id)))
+    }
+  }
+
+  async function bulkAction(estado: string) {
+    if (selectedIds.size === 0 || acting) return
+    setActing(true)
+    const promises = Array.from(selectedIds).map(id =>
+      fetch(`/api/items/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado }),
+      })
+    )
+    await Promise.all(promises)
+    setSelectedIds(new Set())
+    setActing(false)
     router.refresh()
   }
 
-  async function moveToKanban(id: string) {
-    await fetch(`/api/items/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ estado: 'TODO' }),
-    })
+  async function bulkDelete() {
+    if (selectedIds.size === 0 || acting) return
+    if (!confirm(`¿Eliminar ${selectedIds.size} item${selectedIds.size > 1 ? 's' : ''}?`)) return
+    setActing(true)
+    const promises = Array.from(selectedIds).map(id =>
+      fetch(`/api/items/${id}`, { method: 'DELETE' })
+    )
+    await Promise.all(promises)
+    setSelectedIds(new Set())
+    setActing(false)
+    router.refresh()
+  }
+
+  async function singleDelete(id: string) {
+    if (!confirm('¿Eliminar este item?')) return
+    await fetch(`/api/items/${id}`, { method: 'DELETE' })
     router.refresh()
   }
 
@@ -102,6 +137,8 @@ export function InboxClient({ items, agenteFeed }: Props) {
     setDismissed(true)
     router.refresh()
   }
+
+  const hasSelection = selectedIds.size > 0
 
   return (
     <>
@@ -225,8 +262,29 @@ export function InboxClient({ items, agenteFeed }: Props) {
           </div>
         )}
 
-        {/* Filter row */}
+        {/* Filter row + select all */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 2px' }}>
+          {filtered.length > 0 && (
+            <div
+              onClick={selectAll}
+              style={{
+                width: 16, height: 16, borderRadius: 4, cursor: 'pointer',
+                border: `1.5px solid ${selectedIds.size === filtered.length && filtered.length > 0 ? 'var(--accent)' : 'var(--border-hover)'}`,
+                background: selectedIds.size === filtered.length && filtered.length > 0 ? 'var(--accent)' : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.15s', marginRight: 4, flexShrink: 0,
+              }}
+            >
+              {selectedIds.size === filtered.length && filtered.length > 0 && (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#13141f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+              {selectedIds.size > 0 && selectedIds.size < filtered.length && (
+                <div style={{ width: 8, height: 2, background: 'var(--accent)', borderRadius: 1 }} />
+              )}
+            </div>
+          )}
           <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginRight: 2 }}>
             Filtrar
           </span>
@@ -247,6 +305,53 @@ export function InboxClient({ items, agenteFeed }: Props) {
           ))}
         </div>
 
+        {/* Bulk action bar */}
+        {hasSelection && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px',
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 10, animation: 'fade-up 0.2s ease both',
+          }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginRight: 4, fontFamily: "'Outfit', sans-serif" }}>
+              {selectedIds.size} seleccionado{selectedIds.size > 1 ? 's' : ''}
+            </span>
+            <div style={{ flex: 1 }} />
+            {([
+              { label: 'Por hacer', estado: 'TODO', bg: 'rgba(165,180,252,0.1)', border: 'rgba(165,180,252,0.2)', color: '#a5b4fc' },
+              { label: 'En progreso', estado: 'IN_PROGRESS', bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.2)', color: 'var(--accent-blue)' },
+              { label: 'Esperando', estado: 'WAITING', bg: 'rgba(251,146,60,0.1)', border: 'rgba(251,146,60,0.2)', color: 'var(--accent-orange)' },
+              { label: 'Hecho', estado: 'DONE', bg: 'rgba(47,212,170,0.1)', border: 'rgba(47,212,170,0.2)', color: 'var(--accent)' },
+              { label: 'Archivar', estado: 'ARCHIVED', bg: 'rgba(255,255,255,0.04)', border: 'var(--border)', color: 'var(--text-muted)' },
+            ] as const).map(action => (
+              <button
+                key={action.estado}
+                onClick={() => bulkAction(action.estado)}
+                disabled={acting}
+                style={{
+                  padding: '5px 10px', borderRadius: 6, fontSize: 10.5, fontWeight: 600,
+                  background: action.bg, border: `1px solid ${action.border}`,
+                  color: action.color, cursor: 'pointer', transition: 'all 0.15s',
+                  fontFamily: "'Outfit', sans-serif", opacity: acting ? 0.5 : 1,
+                }}
+              >
+                {action.label}
+              </button>
+            ))}
+            <button
+              onClick={bulkDelete}
+              disabled={acting}
+              style={{
+                padding: '5px 10px', borderRadius: 6, fontSize: 10.5, fontWeight: 600,
+                background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)',
+                color: 'var(--urgent)', cursor: 'pointer', transition: 'all 0.15s',
+                fontFamily: "'Outfit', sans-serif", opacity: acting ? 0.5 : 1,
+              }}
+            >
+              Eliminar
+            </button>
+          </div>
+        )}
+
         {/* Section: urgent/overdue */}
         {urgent.length > 0 && (
           <>
@@ -259,7 +364,12 @@ export function InboxClient({ items, agenteFeed }: Props) {
               </span>
             </div>
             {urgent.map((item, i) => (
-              <InboxItem key={item.id} item={item} index={i} onMarkDone={markDone} onMoveToKanban={moveToKanban} onOpen={setSelectedItem} />
+              <InboxItem key={item.id} item={item} index={i}
+                selected={selectedIds.has(item.id)}
+                onToggleSelect={toggleSelect}
+                onOpen={setSelectedItem}
+                onDelete={singleDelete}
+              />
             ))}
           </>
         )}
@@ -276,7 +386,12 @@ export function InboxClient({ items, agenteFeed }: Props) {
               </span>
             </div>
             {rest.map((item, i) => (
-              <InboxItem key={item.id} item={item} index={i + urgent.length} onMarkDone={markDone} onMoveToKanban={moveToKanban} onOpen={setSelectedItem} />
+              <InboxItem key={item.id} item={item} index={i + urgent.length}
+                selected={selectedIds.has(item.id)}
+                onToggleSelect={toggleSelect}
+                onOpen={setSelectedItem}
+                onDelete={singleDelete}
+              />
             ))}
           </>
         )}
@@ -304,15 +419,17 @@ export function InboxClient({ items, agenteFeed }: Props) {
 function InboxItem({
   item,
   index,
-  onMarkDone,
-  onMoveToKanban,
+  selected,
+  onToggleSelect,
   onOpen,
+  onDelete,
 }: {
   item: ItemWithRelations
   index: number
-  onMarkDone: (id: string) => void
-  onMoveToKanban: (id: string) => void
+  selected: boolean
+  onToggleSelect: (id: string) => void
   onOpen: (item: ItemWithRelations) => void
+  onDelete: (id: string) => void
 }) {
   const date = formatDate(item.fechaLimite)
   const badge = priorityBadge(item.prioridad)
@@ -323,15 +440,16 @@ function InboxItem({
 
   return (
     <div style={{
-      background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12,
-      padding: '13px 14px', display: 'flex', gap: 10, cursor: 'pointer',
-      transition: 'border-color 0.15s, transform 0.15s',
+      background: selected ? 'rgba(167,139,250,0.06)' : 'var(--card)',
+      border: `1px solid ${selected ? 'rgba(167,139,250,0.25)' : 'var(--border)'}`,
+      borderRadius: 12, padding: '13px 14px', display: 'flex', gap: 10, cursor: 'pointer',
+      transition: 'border-color 0.15s, transform 0.15s, background 0.15s',
       animation: `fade-up 0.4s ease ${delay} both`,
       position: 'relative', overflow: 'hidden',
     }}
       onClick={() => onOpen(item)}
-      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-hover)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateX(2px)' }}
-      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateX(0)' }}
+      onMouseEnter={e => { if (!selected) { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-hover)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateX(2px)' } }}
+      onMouseLeave={e => { if (!selected) { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateX(0)' } }}
     >
       {/* Priority left bar */}
       {leftColor !== 'transparent' && (
@@ -340,15 +458,23 @@ function InboxItem({
 
       {/* Checkbox */}
       <div
-        onClick={e => { e.stopPropagation(); onMarkDone(item.id) }}
+        onClick={e => { e.stopPropagation(); onToggleSelect(item.id) }}
         style={{
-          width: 18, height: 18, borderRadius: 6, border: '1.5px solid var(--border-hover)',
+          width: 18, height: 18, borderRadius: 6,
+          border: `1.5px solid ${selected ? 'var(--accent)' : 'var(--border-hover)'}`,
+          background: selected ? 'var(--accent)' : 'transparent',
           flexShrink: 0, marginTop: 1, cursor: 'pointer', transition: 'all 0.15s',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
-        onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--accent)'; (e.currentTarget as HTMLDivElement).style.background = 'rgba(47,212,170,0.08)' }}
-        onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-hover)'; (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
-      />
+        onMouseEnter={e => { if (!selected) { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--accent)'; (e.currentTarget as HTMLDivElement).style.background = 'rgba(47,212,170,0.08)' } }}
+        onMouseLeave={e => { if (!selected) { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-hover)'; (e.currentTarget as HTMLDivElement).style.background = 'transparent' } }}
+      >
+        {selected && (
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#13141f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        )}
+      </div>
 
       {/* Body */}
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -374,25 +500,18 @@ function InboxItem({
               {date.overdue ? `Vencida · ${date.label}` : date.label}
             </span>
           )}
+          {item.notasAgente && (
+            <span style={{
+              fontSize: 10.5, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 3,
+            }}>
+              <SparkleIcon size={9} /> Nexus
+            </span>
+          )}
         </div>
       </div>
 
       {/* Actions */}
       <div style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <button
-          onClick={e => { e.stopPropagation(); onMoveToKanban(item.id) }}
-          title="Mover a Kanban"
-          style={{
-            padding: '3px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600,
-            background: 'rgba(165,180,252,0.1)', border: '1px solid rgba(165,180,252,0.2)',
-            color: '#a5b4fc', cursor: 'pointer', transition: 'all 0.15s',
-            fontFamily: "'Outfit', sans-serif",
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(165,180,252,0.2)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(165,180,252,0.1)' }}
-        >
-          → Kanban
-        </button>
         {badge && (
           <span style={{
             width: 20, height: 20, borderRadius: 6,
@@ -402,6 +521,22 @@ function InboxItem({
             {badge.label}
           </span>
         )}
+        <div
+          onClick={e => { e.stopPropagation(); onDelete(item.id) }}
+          title="Eliminar"
+          style={{
+            width: 24, height: 24, borderRadius: 6, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            opacity: 0.4, transition: 'opacity 0.15s',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.opacity = '1' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.opacity = '0.4' }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--urgent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          </svg>
+        </div>
       </div>
     </div>
   )

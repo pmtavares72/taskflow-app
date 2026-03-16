@@ -34,6 +34,9 @@ export async function GET(req: NextRequest) {
           seguimiento: { select: { id: true, titulo: true, estado: true } },
         },
       },
+      notasContacto: {
+        orderBy: { createdAt: 'desc' },
+      },
     },
   })
 

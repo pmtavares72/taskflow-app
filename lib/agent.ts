@@ -137,8 +137,14 @@ export async function requestContextProcessing(entradaId: string) {
     }
   }
 
-  // Fetch professional memory for richer context
-  const memoryContext = await getRelevantMemory(entrada.userId, { texto: entrada.contenido })
+  // Quick context detection based on keywords (to fetch only relevant memory)
+  const textoLower = entrada.contenido.toLowerCase()
+  const personalKeywords = ['hijo', 'hija', 'colegio', 'cole', 'pediatra', 'médico', 'doctor', 'familia', 'casa', 'hogar', 'cumpleaños', 'vacaciones', 'extraescolar', 'whatsapp', 'padres', 'mamá', 'papá', 'niño', 'niña', 'dentista', 'gimnasio', 'pádel', 'amigo']
+  const isLikelyPersonal = personalKeywords.some(k => textoLower.includes(k))
+  const preContexto = isLikelyPersonal ? 'PERSONAL' as const : 'TRABAJO' as const
+
+  // Fetch memory filtered by detected context (saves tokens)
+  const memoryContext = await getRelevantMemory(entrada.userId, { texto: entrada.contenido, contexto: preContexto })
 
   // Fetch existing items linked to the seguimiento (or all recent INBOX/TODO/IN_PROGRESS items)
   let existingItems: { id: string; titulo: string; estado: string; prioridad: string }[] = []
@@ -166,12 +172,18 @@ export async function requestContextProcessing(entradaId: string) {
     model: llmModel,
     schema: z.object({
       resumen: z.string(),
+      contextoDetectado: z.enum(['TRABAJO', 'PERSONAL', 'AMBOS']).describe('Contexto general del contenido: TRABAJO si es profesional/laboral, PERSONAL si es vida privada (familia, hijos, colegio, salud, hogar, etc.), AMBOS si mezcla ambos'),
       accionesExtraidas: z.array(z.object({
         titulo: z.string(),
         tipo: z.enum(['TASK', 'NOTE', 'IDEA']),
+        estado: z.enum(['INBOX', 'TODO', 'IN_PROGRESS', 'WAITING']).describe('Estado inicial: TODO si es acción clara para Pedro, WAITING si espera respuesta de otro, IN_PROGRESS si ya se está trabajando, INBOX solo si no queda claro qué hacer'),
         prioridad: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
+        contexto: z.enum(['TRABAJO', 'PERSONAL', 'AMBOS']).describe('Contexto de ESTA acción específica: PERSONAL si es familia/hijos/colegio/salud/hogar, TRABAJO si es profesional/laboral'),
+        eisenhowerUrgente: z.boolean().describe('¿Es urgente? Tiene deadline cercano o requiere acción inmediata'),
+        eisenhowerImportante: z.boolean().describe('¿Es importante? Tiene impacto alto en objetivos o resultados'),
         fechaLimite: z.string().optional(),
         persona: z.string().optional(),
+        notaContexto: z.string().optional().describe('Breve nota explicando de dónde viene esta tarea y qué contexto tiene'),
       })),
       fechasClave: z.array(z.object({
         fecha: z.string(),
@@ -185,6 +197,7 @@ export async function requestContextProcessing(entradaId: string) {
         empresa: z.string().optional(),
         cargo: z.string().optional(),
         rol: z.string().optional().describe('Rol en el contexto: cliente, fabricante, partner, interno, proveedor'),
+        notaIntel: z.string().optional().describe('Info relevante sobre esta persona que se deduce del contenido: qué dijo, qué hizo, su postura, decisiones, compromisos, preferencias, datos útiles para futuras interacciones. Solo si hay algo concreto y útil.'),
       })),
       actualizacionesItems: z.array(z.object({
         itemId: z.string().describe('ID exacto del item existente a actualizar'),
@@ -220,11 +233,35 @@ ${emailContent}
 ---
 
 Analiza TODO el contenido y extrae:
+0. CONTEXTO — detecta si el contenido es TRABAJO (profesional, laboral, negocios, proyectos) o PERSONAL (familia, hijos, colegio, salud, hogar, amigos, ocio, citas médicas). Si mezcla ambos, usa AMBOS. Ejemplos:
+   - WhatsApp del chat del colegio de los hijos → PERSONAL
+   - Email de un proveedor sobre entrega → TRABAJO
+   - Mensaje personal de un compañero de trabajo sobre cena → PERSONAL
+   Cada acción extraída también debe tener su propio contexto (una entrada de TRABAJO puede tener alguna acción PERSONAL y viceversa).
 1. Resumen conciso (2-3 frases). Si el usuario dio instrucciones, mencionarlas primero. Si conoces a las personas mencionadas de tu memoria, añade contexto.
 2. Acciones concretas NUEVAS para Pedro (con tipo, prioridad, fecha límite si se menciona, y persona responsable si aplica). NO dupliques tareas que ya existen en la lista de arriba.
+   Para cada acción, decide:
+   a) ESTADO KANBAN — asigna el estado correcto directamente:
+      - TODO: acción clara que Pedro debe hacer (lo más común)
+      - WAITING: Pedro ya hizo su parte y espera respuesta/acción de alguien más
+      - IN_PROGRESS: el email indica que alguien ya está trabajando en esto
+      - INBOX: solo si realmente no queda claro qué hacer con esto
+   b) CLASIFICACIÓN EISENHOWER — clasifica por separado urgente e importante:
+      - eisenhowerUrgente = true si tiene deadline cercano, requiere respuesta inmediata, o hay presión de tiempo
+      - eisenhowerImportante = true si tiene alto impacto en objetivos, resultados de negocio, o relaciones clave
+      Ejemplo: "Preparar propuesta para cliente grande (deadline en 2 semanas)" → urgente: false, importante: true
+      Ejemplo: "Responder email urgente del proveedor sobre entrega mañana" → urgente: true, importante: false
+   c) NOTA DE CONTEXTO — en notaContexto explica brevemente de dónde sale esta tarea, quién la pidió, y cualquier contexto útil
 3. Fechas clave (reuniones, deadlines, entregas)
 4. Temas/keywords principales
 5. Contactos mencionados: TODAS las personas que aparezcan en el contenido con su nombre, email, teléfono, empresa, cargo y rol en el contexto (cliente, fabricante, partner, interno, proveedor). NO incluyas a Pedro Tavares.
+   Para cada contacto, añade en notaIntel cualquier información útil que se deduzca de este contenido:
+   - Qué dijo o decidió esta persona
+   - Su postura o actitud respecto al tema
+   - Compromisos que asumió
+   - Datos personales o profesionales relevantes (horarios, preferencias, especialidades)
+   - Relaciones con otras personas o empresas
+   Solo incluye notaIntel si hay algo concreto — no inventes. Esto construye un perfil progresivo del contacto.
 6. Actualizaciones de items EXISTENTES: revisa las tareas existentes de arriba. Si el contenido del email indica que alguna tarea ya se completó, está en progreso, o cambió de estado, inclúyela en actualizacionesItems con el itemId exacto y el nuevo estado. Ejemplos:
    - Si un email confirma que se envió un documento que estaba pendiente → mover a DONE
    - Si alguien dice que está trabajando en algo → mover a IN_PROGRESS
@@ -243,6 +280,7 @@ Responde en español. Sé preciso, concreto y útil.`,
     data: {
       resumen: object.resumen,
       metadatos: {
+        contextoDetectado: object.contextoDetectado,
         accionesExtraidas: object.accionesExtraidas,
         fechasClave: object.fechasClave,
         temas: object.temas,
@@ -298,7 +336,7 @@ Responde en español. Sé preciso, concreto y útil.`,
           titulo: object.seguimientoSugerido,
           descripcion: object.resumen,
           userId: entrada.userId,
-          contexto: 'TRABAJO',
+          contexto: object.contextoDetectado,
           prioridad: object.accionesExtraidas.some(a => a.prioridad === 'URGENT') ? 'HIGH' : 'MEDIUM',
         },
       })
@@ -324,26 +362,51 @@ Responde en español. Sé preciso, concreto y útil.`,
   for (const contacto of object.contactos) {
     if (!contacto.nombre) continue
     try {
-      const existing = await db.contacto.findFirst({
+      // Buscar por nombre (case-insensitive), luego por email como fallback
+      let existing = await db.contacto.findFirst({
         where: {
           userId: entrada.userId,
           nombre: { equals: contacto.nombre, mode: 'insensitive' },
         },
       })
 
+      // Fallback: buscar por email si no encontró por nombre
+      if (!existing && contacto.email) {
+        existing = await db.contacto.findFirst({
+          where: {
+            userId: entrada.userId,
+            email: { equals: contacto.email, mode: 'insensitive' },
+          },
+        })
+      }
+
       let contactoId: string
       if (existing) {
-        // Update: merge info, bump confidence
+        // Update: merge info — solo sobreescribe campos vacíos o actualiza con info nueva
+        const updateData: Record<string, unknown> = {
+          confianza: Math.min(100, existing.confianza + 10),
+          fuentes: [...new Set([...existing.fuentes, entradaId])],
+        }
+        // Actualizar nombre si encontramos por email y el nombre nuevo es más completo
+        if (contacto.nombre && (!existing.nombre || contacto.nombre.length > existing.nombre.length)) {
+          updateData.nombre = contacto.nombre
+        }
+        // Siempre actualizar email/telefono si tenemos info nueva y el existente no la tiene
+        if (contacto.email && !existing.email) updateData.email = contacto.email
+        if (contacto.telefono && !existing.telefono) updateData.telefono = contacto.telefono
+        // Si ya tiene email/telefono pero nos llega uno diferente, actualizar también
+        if (contacto.email && existing.email && contacto.email.toLowerCase() !== existing.email.toLowerCase()) {
+          updateData.email = contacto.email
+        }
+        if (contacto.telefono && existing.telefono && contacto.telefono !== existing.telefono) {
+          updateData.telefono = contacto.telefono
+        }
+        if (contacto.empresa && !existing.empresa) updateData.empresa = contacto.empresa
+        if (contacto.cargo && !existing.cargo) updateData.cargo = contacto.cargo
+
         await db.contacto.update({
           where: { id: existing.id },
-          data: {
-            email: contacto.email || existing.email,
-            telefono: contacto.telefono || existing.telefono,
-            empresa: contacto.empresa || existing.empresa,
-            cargo: contacto.cargo || existing.cargo,
-            confianza: Math.min(100, existing.confianza + 10),
-            fuentes: [...new Set([...existing.fuentes, entradaId])],
-          },
+          data: updateData,
         })
         contactoId = existing.id
       } else {
@@ -368,6 +431,18 @@ Responde en español. Sé preciso, concreto y útil.`,
           where: { contactoId_seguimientoId: { contactoId, seguimientoId } },
           create: { contactoId, seguimientoId, rol: contacto.rol || null },
           update: { rol: contacto.rol || undefined },
+        })
+      }
+
+      // Crear nota de intel si hay info relevante
+      if (contacto.notaIntel) {
+        await db.notaContacto.create({
+          data: {
+            contenido: contacto.notaIntel,
+            autor: 'agente',
+            entradaId,
+            contactoId,
+          },
         })
       }
     } catch (err) {
@@ -410,14 +485,15 @@ Responde en español. Sé preciso, concreto y útil.`,
       data: {
         titulo: accion.titulo,
         tipo: accion.tipo as 'TASK' | 'NOTE' | 'IDEA',
-        estado: 'INBOX',
+        estado: accion.estado as 'INBOX' | 'TODO' | 'IN_PROGRESS' | 'WAITING',
         prioridad: accion.prioridad as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
-        eisenhowerUrgente: accion.prioridad === 'URGENT' || accion.prioridad === 'HIGH',
-        eisenhowerImportante: accion.prioridad === 'URGENT' || accion.prioridad === 'HIGH',
+        contexto: accion.contexto as 'TRABAJO' | 'PERSONAL' | 'AMBOS',
+        eisenhowerUrgente: accion.eisenhowerUrgente,
+        eisenhowerImportante: accion.eisenhowerImportante,
         fechaLimite: accion.fechaLimite ? new Date(accion.fechaLimite) : null,
-        contenido: accion.persona ? `Responsable: ${accion.persona}` : null,
+        contenido: [accion.persona ? `Responsable: ${accion.persona}` : '', accion.notaContexto ?? ''].filter(Boolean).join('\n') || null,
         modificadoPor: 'agente',
-        notasAgente: `Extraído automáticamente de: ${entrada.titulo}`,
+        notasAgente: `Nexus: Creada desde "${entrada.titulo}"${accion.estado === 'WAITING' ? ' — esperando respuesta externa' : accion.estado === 'IN_PROGRESS' ? ' — ya en progreso' : ''}`,
         userId: entrada.userId,
       },
     })
