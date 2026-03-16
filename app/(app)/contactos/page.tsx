@@ -388,12 +388,12 @@ function ContactoCard({ data: c, index, expanded, onToggle, onNavigate, onNotasC
                 </div>
               ))}
               <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 4 }}>
-                <button onClick={() => setEditingContact(false)} style={{
+                <button type="button" onClick={e => { e.stopPropagation(); setEditingContact(false) }} style={{
                   padding: '5px 12px', borderRadius: 6, border: '1px solid var(--border)',
                   background: 'none', color: 'var(--text-muted)', fontSize: 11, cursor: 'pointer',
                   fontFamily: "'Outfit', sans-serif",
                 }}>Cancelar</button>
-                <button onClick={saveContact} disabled={saving} style={{
+                <button type="button" onClick={e => { e.stopPropagation(); saveContact() }} disabled={saving} style={{
                   padding: '5px 12px', borderRadius: 6, border: 'none',
                   background: 'var(--accent)', color: '#13141f', fontSize: 11, fontWeight: 600,
                   cursor: 'pointer', fontFamily: "'Outfit', sans-serif", opacity: saving ? 0.5 : 1,
@@ -427,13 +427,13 @@ function ContactoCard({ data: c, index, expanded, onToggle, onNavigate, onNotasC
                 </div>
               )}
               <div style={{ flex: 1 }} />
-              <button onClick={startEditContact} style={{
+              <button type="button" onClick={e => { e.stopPropagation(); startEditContact() }} style={{
                 fontSize: 10, color: 'var(--accent-blue)', background: 'none', border: 'none',
-                cursor: 'pointer', padding: 0, textDecoration: 'underline', textUnderlineOffset: 2,
+                cursor: 'pointer', padding: '2px 6px', textDecoration: 'underline', textUnderlineOffset: 2,
               }}>editar</button>
-              <button onClick={handleDeleteContact} style={{
+              <button type="button" onClick={e => { e.stopPropagation(); handleDeleteContact() }} style={{
                 fontSize: 10, color: 'var(--urgent)', background: 'none', border: 'none',
-                cursor: 'pointer', padding: 0, textDecoration: 'underline', textUnderlineOffset: 2,
+                cursor: 'pointer', padding: '2px 6px', textDecoration: 'underline', textUnderlineOffset: 2,
               }}>eliminar</button>
             </div>
           )}

@@ -95,6 +95,8 @@ Reglas:
 - NO repitas lo que ya sabes si no hay info nueva
 - Máximo 10 hechos por entrada
 - Extrae TANTO hechos profesionales como personales si el contenido los tiene
+- Si hay un "PEDRO DIJO:" al inicio, lo que Pedro dice es un HECHO CONFIRMADO — guárdalo siempre. Si dice "es mi hija Olivia en sexto B", eso es fiable → FAMILIA: "Olivia" → "Hija de Pedro. Cursa 6º B."
+- Acumula detalles: si ya sabes que Olivia es su hija y ahora mencionan su colegio, ACTUALIZA el contenido con toda la info junta
 - Responde en español`,
   })
 

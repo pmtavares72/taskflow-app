@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ItemWithRelations } from '@/types'
 
@@ -64,6 +64,15 @@ export function EisenhowerMatrix({ items: initialItems }: Props) {
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [dragging, setDragging] = useState<string | null>(null)
   const router = useRouter()
+
+  // Sync when server data changes
+  useEffect(() => { setItems(initialItems) }, [initialItems])
+
+  // Poll for new items every 30s
+  useEffect(() => {
+    const interval = setInterval(() => { router.refresh() }, 30_000)
+    return () => clearInterval(interval)
+  }, [router])
 
   async function archive(itemId: string) {
     setItems(prev => prev.filter(i => i.id !== itemId))

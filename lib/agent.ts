@@ -262,11 +262,16 @@ Analiza TODO el contenido y extrae:
    - Datos personales o profesionales relevantes (horarios, preferencias, especialidades)
    - Relaciones con otras personas o empresas
    Solo incluye notaIntel si hay algo concreto — no inventes. Esto construye un perfil progresivo del contacto.
-6. Actualizaciones de items EXISTENTES: revisa las tareas existentes de arriba. Si el contenido del email indica que alguna tarea ya se completó, está en progreso, o cambió de estado, inclúyela en actualizacionesItems con el itemId exacto y el nuevo estado. Ejemplos:
-   - Si un email confirma que se envió un documento que estaba pendiente → mover a DONE
-   - Si alguien dice que está trabajando en algo → mover a IN_PROGRESS
-   - Si se cancela o ya no aplica → mover a ARCHIVED
-   Solo actualiza items cuando el contenido lo justifique CLARAMENTE. No supongas.
+6. Actualizaciones de items EXISTENTES: revisa las tareas existentes de arriba. Si el contenido indica que alguna tarea cambió de situación, inclúyela en actualizacionesItems con el itemId exacto, el nuevo estado, y una RAZÓN DETALLADA que explique por qué cambias el estado (quién dijo qué, qué evidencia hay en el contenido). Transiciones posibles:
+   - TODO → WAITING: Pedro ya hizo su parte y ahora espera respuesta de alguien (ej: "enviamos la propuesta, esperamos respuesta de María")
+   - TODO → IN_PROGRESS: alguien está trabajando activamente en esto (ej: "Juan dice que ya empezó con el diseño")
+   - TODO → DONE: el email confirma que la tarea se completó (ej: "María confirma que recibió el documento")
+   - WAITING → DONE: la respuesta que se esperaba ya llegó y se resolvió
+   - WAITING → TODO: la espera terminó y ahora Pedro tiene que actuar
+   - IN_PROGRESS → DONE: el trabajo se completó
+   - Cualquier estado → ARCHIVED: se canceló o ya no aplica
+   La razón debe ser ESPECÍFICA: "Email de María López confirma recepción del presupuesto" — NO "tarea completada".
+   Solo actualiza items cuando el contenido lo justifique CLARAMENTE. No supongas. Es preferible no mover nada a mover algo incorrectamente.
 7. Si no está vinculado a un seguimiento, sugiere un nombre para crear uno (seguimientoSugerido)
 
 IMPORTANTE: La app NUNCA envía correos. Solo recibe y analiza. No sugieras enviar nada.
@@ -362,20 +367,53 @@ Responde en español. Sé preciso, concreto y útil.`,
   for (const contacto of object.contactos) {
     if (!contacto.nombre) continue
     try {
-      // Buscar por nombre (case-insensitive), luego por email como fallback
-      let existing = await db.contacto.findFirst({
-        where: {
-          userId: entrada.userId,
-          nombre: { equals: contacto.nombre, mode: 'insensitive' },
-        },
-      })
+      // Normalizar nombre para búsqueda (quitar tildes, espacios extra)
+      const nombreNorm = contacto.nombre.trim()
 
-      // Fallback: buscar por email si no encontró por nombre
-      if (!existing && contacto.email) {
+      // Buscar por email primero (más fiable que nombre)
+      let existing = contacto.email
+        ? await db.contacto.findFirst({
+            where: {
+              userId: entrada.userId,
+              email: { equals: contacto.email, mode: 'insensitive' },
+            },
+          })
+        : null
+
+      // Si no encontró por email, buscar por nombre exacto
+      if (!existing) {
         existing = await db.contacto.findFirst({
           where: {
             userId: entrada.userId,
-            email: { equals: contacto.email, mode: 'insensitive' },
+            nombre: { equals: nombreNorm, mode: 'insensitive' },
+          },
+        })
+      }
+
+      // Si no encontró exacto, buscar por nombre parcial (primer nombre + apellido)
+      if (!existing) {
+        const parts = nombreNorm.split(/\s+/)
+        if (parts.length >= 2) {
+          const firstName = parts[0]
+          const lastName = parts[parts.length - 1]
+          existing = await db.contacto.findFirst({
+            where: {
+              userId: entrada.userId,
+              nombre: { startsWith: firstName, mode: 'insensitive' as const },
+              AND: [
+                { nombre: { contains: lastName, mode: 'insensitive' as const } },
+              ],
+            },
+          })
+        }
+      }
+
+      // Último intento: buscar por teléfono
+      if (!existing && contacto.telefono) {
+        existing = await db.contacto.findFirst({
+          where: {
+            userId: entrada.userId,
+            telefono: contacto.telefono,
           },
         })
       }
@@ -458,12 +496,20 @@ Responde en español. Sé preciso, concreto y útil.`,
     if (!item || item.estado === update.nuevoEstado) continue
 
     try {
+      // Fetch full item to get existing notes
+      const fullItem = await db.item.findUnique({ where: { id: update.itemId }, select: { notasAgente: true } })
+      const fecha = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+      const nuevaNota = `[${fecha}] ${item.estado} → ${update.nuevoEstado}: ${update.razon} (desde "${entrada.titulo}")`
+      const notasAcumuladas = fullItem?.notasAgente
+        ? `${fullItem.notasAgente}\n${nuevaNota}`
+        : nuevaNota
+
       await db.item.update({
         where: { id: update.itemId },
         data: {
           estado: update.nuevoEstado as 'INBOX' | 'TODO' | 'IN_PROGRESS' | 'WAITING' | 'DONE' | 'ARCHIVED',
           modificadoPor: 'agente',
-          notasAgente: `Estado cambiado por Nexus: ${update.razon}`,
+          notasAgente: notasAcumuladas,
         },
       })
       updatedItems.push({
@@ -590,11 +636,15 @@ Responde en español. Sé preciso, concreto y útil.`,
     },
   })
 
-  // ─── STEP 8: Extract professional memory (async, non-blocking) ───
+  // ─── STEP 8: Extract memory (async, non-blocking) ───
+  // Include user instructions so the memory extractor learns what Pedro said directly
+  const memoryContent = userInstructions
+    ? `PEDRO DIJO: "${userInstructions}"\n\n${entrada.contenido}`
+    : entrada.contenido
   extractMemoryFromEntry(
     entradaId,
     object.resumen,
-    entrada.contenido,
+    memoryContent,
     object.temas,
     entrada.userId,
   ).catch(err => console.error('[Memory] Error extracting facts:', err))

@@ -60,6 +60,15 @@ export function KanbanView({ initialItems }: Props) {
   const [newItemEstado, setNewItemEstado] = useState<KanbanState | null>(null)
   const router = useRouter()
 
+  // Sync when server data changes (e.g. after router.refresh)
+  useEffect(() => { setItems(initialItems) }, [initialItems])
+
+  // Poll for new items every 30s
+  useEffect(() => {
+    const interval = setInterval(() => { router.refresh() }, 30_000)
+    return () => clearInterval(interval)
+  }, [router])
+
   function getColumnItems(colId: KanbanState) {
     return sortByPriority(items.filter(i => i.estado === colId))
   }
