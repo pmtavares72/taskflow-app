@@ -1,12 +1,62 @@
 # TaskFlow
 
-Sistema de productividad personal con agente IA (Nexus) integrado. Gestiona tareas, seguimientos de temas, emails reenviados, recordatorios, y construye una memoria profesional acumulativa.
+Sistema de productividad personal con agente IA (Nexus) integrado. Gestiona tareas, seguimientos de temas, emails reenviados, recordatorios, contactos, y construye una memoria profesional acumulativa.
+
+## Features
+
+### Gestión de tareas
+- **Inbox** con captura rápida desde cualquier vista
+- **Kanban** con drag & drop entre columnas de estado
+- **Matriz de Eisenhower** (urgente/importante)
+- Items con tipo (TASK, NOTE, LINK, FILE, EMAIL, IDEA), prioridad, fecha límite, etiquetas
+
+### Seguimientos (procesos/temas activos)
+- Agrupación automática de emails, notas y tareas por tema
+- Tabs dedicados: **Correos**, **Contactos**, **Items**, **Recordatorios**, **Nexus**
+- El agente detecta el tema de cada email y lo vincula al seguimiento correcto
+- Cada email muestra un **resumen de una línea** generado por el LLM
+
+### Contactos inteligentes
+- Extracción automática de personas desde emails y entradas
+- Campos: nombre, email, teléfono, empresa, cargo
+- Rol en cada seguimiento: cliente, fabricante, partner, interno, proveedor
+- **Confianza acumulativa** (0-100%): sube +10 con cada mención
+- Vinculación automática a seguimientos
+
+### Procesamiento de emails
+- Servidor SMTP integrado para recibir emails reenviados
+- **Forward puro** o **con instrucciones**: si escribes algo antes de reenviar ("urgente", "seguir esto"), Nexus lo trata como instrucción prioritaria
+- Auto-detección de seguimiento por tema, asunto `[TF-xxx]`, o dirección `<seg-id>@dominio`
+- Cada email crea un Item (tipo EMAIL, estado INBOX) y una EntradaContexto
+
+### Actualización automática de tareas
+- Nexus revisa las tareas existentes del seguimiento al procesar cada email
+- Si detecta que algo pendiente ya se hizo → lo mueve a DONE automáticamente
+- Si alguien está trabajando en algo → lo mueve a IN_PROGRESS
+- Solo actúa cuando el contenido lo justifica claramente
+
+### Memoria Profesional
+- Nexus aprende de cada email/entrada procesada
+- 7 categorías: PERSONA, PROYECTO, PROCESO, PREFERENCIA, ORGANIZACION, HECHO, TEMA
+- La memoria se inyecta en todos los análisis para dar contexto más rico
+- Confianza incremental (50% base, +10 por confirmación)
+
+### Recordatorios
+- Creación en lenguaje natural ("recuérdame el jueves revisar la propuesta")
+- Recurrencia: una vez, diario, semanal, cada N días
+- Vinculados a seguimientos o items
+- Cron automático cada 15 minutos
+
+### Seguridad
+- **La app NUNCA envía correos** ni contacta a nadie sin permiso explícito
+- Banner visible en cada seguimiento: "Solo lectura"
+- Restricción en el prompt del LLM
 
 ## Stack
 
-- **Next.js 16** (App Router) + TypeScript
+- **Next.js 16** (App Router) + TypeScript + React 19
 - **Prisma 7** + PostgreSQL
-- **Vercel AI SDK** + xAI (Grok 4.1 Fast)
+- **Vercel AI SDK** + xAI (Grok)
 - **NextAuth v5** (JWT, credentials)
 - **SMTP server** para recibir emails reenviados
 - **OpenClaw** como plataforma del agente Nexus
@@ -80,6 +130,9 @@ ln -sfn node_modules/.prisma node_modules/@prisma/client/.prisma
 
 # Seed con datos de ejemplo
 npx tsx --env-file=.env.local prisma/seed.ts
+
+# Migrar contactos desde datos existentes (si hay)
+npx tsx --env-file=.env.local prisma/migrate-contacts.ts
 ```
 
 **Usuario por defecto:** `ptavares@openclaw.io` / `taskflow123`
@@ -108,6 +161,7 @@ npx prisma db push
 npx prisma generate
 ln -sfn node_modules/.prisma node_modules/@prisma/client/.prisma
 npx tsx --env-file=.env.local prisma/seed.ts  # solo la primera vez
+npx tsx --env-file=.env.local prisma/migrate-contacts.ts  # migrar contactos existentes
 npm run build
 ```
 
@@ -170,14 +224,16 @@ A         hyper-nexus.com.      → IP del VPS
 │                                             │                  │
 │                                     ┌───────▼────────┐        │
 │                                     │  Nexus procesa  │        │
-│                                     │  (Grok 4.1 Fast)│        │
+│                                     │  (Grok LLM)     │        │
 │                                     └───────┬────────┘        │
 │                                             │                  │
 │  ┌──────────────────────────────────────────┼──────────┐      │
 │  │              ACCIONES AUTOMÁTICAS         │          │      │
 │  │                                           │          │      │
 │  │  ┌─ Seguimiento (crea/vincula al tópico)  │          │      │
-│  │  ├─ Items (tareas extraídas)              │          │      │
+│  │  ├─ Contactos (extrae y vincula personas) │          │      │
+│  │  ├─ Items nuevos (tareas extraídas)       │          │      │
+│  │  ├─ Items existentes (actualiza estados)  │          │      │
 │  │  ├─ Recordatorios (fechas clave)          │          │      │
 │  │  ├─ Memoria Profesional (hechos)          │          │      │
 │  │  └─ Feed del Agente (resumen)             │          │      │
@@ -189,13 +245,18 @@ A         hyper-nexus.com.      → IP del VPS
 
 Cuando llega una entrada (email, nota, mensaje de Telegram via OpenClaw):
 
-1. El LLM analiza el contenido y extrae: resumen, acciones, fechas, temas
-2. Busca seguimientos activos que compartan temas → vincula al existente
-3. Si no hay match → crea seguimiento nuevo automáticamente
-4. Crea Items (tareas) para cada acción extraída
-5. Crea Recordatorios para fechas clave
-6. Extrae hechos a la Memoria Profesional
-7. La próxima vez que llegue algo del mismo tema, Nexus ya tiene contexto
+1. Detecta instrucciones del usuario (texto antes del forward)
+2. Consulta memoria profesional para contexto
+3. Consulta tareas existentes del seguimiento
+4. El LLM analiza y extrae: resumen, acciones, fechas, temas, contactos, actualizaciones
+5. Busca seguimientos activos que compartan temas → vincula al existente
+6. Si no hay match → crea seguimiento nuevo automáticamente
+7. Upsert de contactos como entidades estructuradas
+8. Actualiza tareas existentes si el contenido lo justifica (ej: pendiente → DONE)
+9. Crea Items (tareas) nuevas para cada acción extraída
+10. Crea Recordatorios para fechas clave
+11. Extrae hechos a la Memoria Profesional
+12. La próxima vez que llegue algo del mismo tema, Nexus ya tiene contexto
 
 ### Memoria Profesional
 
@@ -261,7 +322,7 @@ Pedro escribe en Telegram
     → Nexus consulta /api/seguimientos (¿tema existente?)
     → Nexus consulta /api/memoria?q=... (¿qué sé de esto?)
     → Nexus crea entrada via POST /api/entradas
-    → TaskFlow procesa automáticamente (tareas, recordatorios, memoria)
+    → TaskFlow procesa automáticamente (tareas, contactos, recordatorios, memoria)
     → Nexus responde a Pedro por Telegram con contexto
 ```
 
@@ -278,10 +339,11 @@ Si `OPENCLAW_URL` no está configurado, TaskFlow usa el LLM directamente para ge
 | `GET/POST` | `/api/items` | Listar/Crear items |
 | `GET/PATCH/DELETE` | `/api/items/[id]` | Detalle/Actualizar/Eliminar item |
 | `GET/POST` | `/api/seguimientos` | Listar/Crear seguimientos (tópicos) |
-| `GET/PATCH/DELETE` | `/api/seguimientos/[id]` | Detalle seguimiento |
+| `GET/PATCH/DELETE` | `/api/seguimientos/[id]` | Detalle seguimiento (incluye contactos) |
 | `GET/POST` | `/api/seguimientos/[id]/entradas` | Entradas de contexto |
 | `POST/DELETE` | `/api/seguimientos/[id]/items` | Vincular/desvincular items |
 | `POST` | `/api/entradas` | Crear entrada suelta (auto-vincula) |
+| `DELETE` | `/api/entradas/[id]` | Eliminar entrada |
 | `GET/POST` | `/api/recordatorios` | Recordatorios (NLP) |
 | `PATCH/DELETE` | `/api/recordatorios/[id]` | Gestionar recordatorio |
 | `GET/DELETE` | `/api/memoria` | Memoria profesional |
@@ -290,6 +352,9 @@ Si `OPENCLAW_URL` no está configurado, TaskFlow usa el LLM directamente para ge
 | `POST` | `/api/inbound-email` | Email entrante (desde SMTP) |
 | `GET` | `/api/agent/feed` | Feed del agente |
 | `POST` | `/api/agent/webhook` | Webhook entrante de Nexus |
+| `GET` | `/api/settings` | Configuración del sistema |
+| `PATCH` | `/api/settings/autonomy` | Nivel de autonomía |
+| `PATCH` | `/api/settings/profile` | Perfil del usuario |
 | `GET` | `/api/cron/reminders` | Check recordatorios (cada 15min) |
 | `GET` | `/api/cron/seguimientos` | Check seguimientos estancados (diario) |
 
@@ -313,4 +378,6 @@ Si `OPENCLAW_URL` no está configurado, TaskFlow usa el LLM directamente para ge
 | `<seguimiento-id>@hyper-nexus.com` | Vincula al seguimiento directamente |
 | `[TF-<id>]` en el asunto | Vincula al seguimiento por subject |
 
-Reenviar cualquier email a `admin@hyper-nexus.com` y Nexus lo procesa automáticamente: extrae acciones, crea tareas, vincula al tópico correcto, programa recordatorios, y aprende de la información.
+Reenviar cualquier email a `admin@hyper-nexus.com` y Nexus lo procesa automáticamente: extrae acciones, crea tareas, identifica contactos, vincula al tópico correcto, actualiza tareas existentes, programa recordatorios, y aprende de la información.
+
+Si escribes algo antes del forward (ej: "urgente", "seguir esto"), Nexus lo trata como instrucción con prioridad máxima.

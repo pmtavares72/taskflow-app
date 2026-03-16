@@ -126,14 +126,41 @@ export async function requestContextProcessing(entradaId: string) {
 
   for (const marker of forwardMarkers) {
     const idx = bodyAfterHeader.indexOf(marker)
-    if (idx > 20) { // at least 20 chars of user text before the marker
-      userInstructions = bodyAfterHeader.slice(0, idx).trim()
-      break
+    if (idx > 5) { // at least 5 chars of user text before the forward marker
+      const candidate = bodyAfterHeader.slice(0, idx).trim()
+      // Ignore if it's just a signature (lines starting with --, or only whitespace/short fragments)
+      const meaningfulText = candidate.replace(/^--\s*[\s\S]*$/m, '').replace(/[\r\n]+/g, ' ').trim()
+      if (meaningfulText.length > 3) {
+        userInstructions = meaningfulText
+        break
+      }
     }
   }
 
   // Fetch professional memory for richer context
   const memoryContext = await getRelevantMemory(entrada.userId, { texto: entrada.contenido })
+
+  // Fetch existing items linked to the seguimiento (or all recent INBOX/TODO/IN_PROGRESS items)
+  let existingItems: { id: string; titulo: string; estado: string; prioridad: string }[] = []
+  if (entrada.seguimientoId) {
+    const segItems = await db.seguimientoItem.findMany({
+      where: { seguimientoId: entrada.seguimientoId },
+      include: { item: { select: { id: true, titulo: true, estado: true, prioridad: true } } },
+    })
+    existingItems = segItems.map(si => si.item)
+  } else {
+    // No seguimiento yet — fetch recent open items to see if anything matches
+    existingItems = await db.item.findMany({
+      where: { userId: entrada.userId, estado: { in: ['INBOX', 'TODO', 'IN_PROGRESS', 'WAITING'] } },
+      select: { id: true, titulo: true, estado: true, prioridad: true },
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+    })
+  }
+
+  const existingItemsBlock = existingItems.length > 0
+    ? existingItems.map(i => `  - [${i.id}] "${i.titulo}" (estado: ${i.estado}, prioridad: ${i.prioridad})`).join('\n')
+    : '(ninguno)'
 
   const { object } = await generateObject({
     model: llmModel,
@@ -151,6 +178,19 @@ export async function requestContextProcessing(entradaId: string) {
         descripcion: z.string(),
       })),
       temas: z.array(z.string()),
+      contactos: z.array(z.object({
+        nombre: z.string(),
+        email: z.string().optional(),
+        telefono: z.string().optional(),
+        empresa: z.string().optional(),
+        cargo: z.string().optional(),
+        rol: z.string().optional().describe('Rol en el contexto: cliente, fabricante, partner, interno, proveedor'),
+      })),
+      actualizacionesItems: z.array(z.object({
+        itemId: z.string().describe('ID exacto del item existente a actualizar'),
+        nuevoEstado: z.enum(['INBOX', 'TODO', 'IN_PROGRESS', 'WAITING', 'DONE', 'ARCHIVED']),
+        razon: z.string().describe('Breve explicación de por qué cambia el estado'),
+      })).describe('Items EXISTENTES cuyo estado debe cambiar según el nuevo contenido'),
       seguimientoSugerido: z.string().optional(),
     }),
     prompt: `Eres Nexus, el agente de productividad personal de Pedro Tavares en TaskFlow.
@@ -161,6 +201,10 @@ ${memoryContext}
 ═══════════════════════════════════════════════════════════════════
 ` : ''}
 ${entrada.seguimiento ? `Este contenido pertenece al seguimiento: "${entrada.seguimiento.titulo}"` : 'Este contenido NO está vinculado a ningún seguimiento aún.'}
+
+═══ TAREAS EXISTENTES (pueden necesitar actualización) ═══
+${existingItemsBlock}
+═══════════════════════════════════════════════════════════
 
 Tipo de contenido: ${entrada.tipo}
 Asunto: "${entrada.titulo}"
@@ -177,10 +221,18 @@ ${emailContent}
 
 Analiza TODO el contenido y extrae:
 1. Resumen conciso (2-3 frases). Si el usuario dio instrucciones, mencionarlas primero. Si conoces a las personas mencionadas de tu memoria, añade contexto.
-2. Acciones concretas para Pedro (con tipo, prioridad, fecha límite si se menciona, y persona responsable si aplica)
+2. Acciones concretas NUEVAS para Pedro (con tipo, prioridad, fecha límite si se menciona, y persona responsable si aplica). NO dupliques tareas que ya existen en la lista de arriba.
 3. Fechas clave (reuniones, deadlines, entregas)
 4. Temas/keywords principales
-5. Si no está vinculado a un seguimiento, sugiere un nombre para crear uno (seguimientoSugerido)
+5. Contactos mencionados: TODAS las personas que aparezcan en el contenido con su nombre, email, teléfono, empresa, cargo y rol en el contexto (cliente, fabricante, partner, interno, proveedor). NO incluyas a Pedro Tavares.
+6. Actualizaciones de items EXISTENTES: revisa las tareas existentes de arriba. Si el contenido del email indica que alguna tarea ya se completó, está en progreso, o cambió de estado, inclúyela en actualizacionesItems con el itemId exacto y el nuevo estado. Ejemplos:
+   - Si un email confirma que se envió un documento que estaba pendiente → mover a DONE
+   - Si alguien dice que está trabajando en algo → mover a IN_PROGRESS
+   - Si se cancela o ya no aplica → mover a ARCHIVED
+   Solo actualiza items cuando el contenido lo justifique CLARAMENTE. No supongas.
+7. Si no está vinculado a un seguimiento, sugiere un nombre para crear uno (seguimientoSugerido)
+
+IMPORTANTE: La app NUNCA envía correos. Solo recibe y analiza. No sugieras enviar nada.
 
 Responde en español. Sé preciso, concreto y útil.`,
   })
@@ -194,6 +246,8 @@ Responde en español. Sé preciso, concreto y útil.`,
         accionesExtraidas: object.accionesExtraidas,
         fechasClave: object.fechasClave,
         temas: object.temas,
+        contactos: object.contactos,
+        actualizacionesItems: object.actualizacionesItems,
         seguimientoSugerido: object.seguimientoSugerido,
         instruccionesUsuario: userInstructions || undefined,
       },
@@ -266,7 +320,90 @@ Responde en español. Sé preciso, concreto y útil.`,
     }
   }
 
-  // ─── STEP 3: Auto-create Items from extracted actions ───
+  // ─── STEP 3: Upsert contacts ───
+  for (const contacto of object.contactos) {
+    if (!contacto.nombre) continue
+    try {
+      const existing = await db.contacto.findFirst({
+        where: {
+          userId: entrada.userId,
+          nombre: { equals: contacto.nombre, mode: 'insensitive' },
+        },
+      })
+
+      let contactoId: string
+      if (existing) {
+        // Update: merge info, bump confidence
+        await db.contacto.update({
+          where: { id: existing.id },
+          data: {
+            email: contacto.email || existing.email,
+            telefono: contacto.telefono || existing.telefono,
+            empresa: contacto.empresa || existing.empresa,
+            cargo: contacto.cargo || existing.cargo,
+            confianza: Math.min(100, existing.confianza + 10),
+            fuentes: [...new Set([...existing.fuentes, entradaId])],
+          },
+        })
+        contactoId = existing.id
+      } else {
+        const created = await db.contacto.create({
+          data: {
+            nombre: contacto.nombre,
+            email: contacto.email || null,
+            telefono: contacto.telefono || null,
+            empresa: contacto.empresa || null,
+            cargo: contacto.cargo || null,
+            confianza: 50,
+            fuentes: [entradaId],
+            userId: entrada.userId,
+          },
+        })
+        contactoId = created.id
+      }
+
+      // Link contact to seguimiento
+      if (seguimientoId) {
+        await db.contactoSeguimiento.upsert({
+          where: { contactoId_seguimientoId: { contactoId, seguimientoId } },
+          create: { contactoId, seguimientoId, rol: contacto.rol || null },
+          update: { rol: contacto.rol || undefined },
+        })
+      }
+    } catch (err) {
+      console.error('[Contacto] Error upserting:', contacto.nombre, err)
+    }
+  }
+
+  // ─── STEP 4: Update existing items based on new context ───
+  const updatedItems: { id: string; titulo: string; oldEstado: string; newEstado: string; razon: string }[] = []
+  for (const update of object.actualizacionesItems) {
+    // Verify this item actually exists and belongs to the user
+    const item = existingItems.find(i => i.id === update.itemId)
+    if (!item || item.estado === update.nuevoEstado) continue
+
+    try {
+      await db.item.update({
+        where: { id: update.itemId },
+        data: {
+          estado: update.nuevoEstado as 'INBOX' | 'TODO' | 'IN_PROGRESS' | 'WAITING' | 'DONE' | 'ARCHIVED',
+          modificadoPor: 'agente',
+          notasAgente: `Estado cambiado por Nexus: ${update.razon}`,
+        },
+      })
+      updatedItems.push({
+        id: item.id,
+        titulo: item.titulo,
+        oldEstado: item.estado,
+        newEstado: update.nuevoEstado,
+        razon: update.razon,
+      })
+    } catch (err) {
+      console.error('[Agent] Error updating item:', update.itemId, err)
+    }
+  }
+
+  // ─── STEP 5: Auto-create Items from extracted actions ───
   const createdItems: string[] = []
   for (const accion of object.accionesExtraidas) {
     const item = await db.item.create({
@@ -294,7 +431,7 @@ Responde en español. Sé preciso, concreto y útil.`,
     }
   }
 
-  // ─── STEP 4: Auto-create reminders from key dates ───
+  // ─── STEP 6: Auto-create reminders from key dates ───
   const createdReminders: string[] = []
   for (const fecha of object.fechasClave) {
     const fechaDate = new Date(fecha.fecha)
@@ -325,7 +462,7 @@ Responde en español. Sé preciso, concreto y útil.`,
     createdReminders.push(rec.id)
   }
 
-  // ─── STEP 5: Build feed entry with what Nexus actually did ───
+  // ─── STEP 7: Build feed entry with what Nexus actually did ───
   const hasUrgent = object.accionesExtraidas.some(a => a.prioridad === 'URGENT' || a.prioridad === 'HIGH')
 
   const actionsReport: string[] = []
@@ -335,6 +472,9 @@ Responde en español. Sé preciso, concreto y útil.`,
   if (createdItems.length > 0) {
     actionsReport.push(`${createdItems.length} tarea${createdItems.length > 1 ? 's' : ''} creada${createdItems.length > 1 ? 's' : ''}`)
   }
+  if (updatedItems.length > 0) {
+    actionsReport.push(`${updatedItems.length} tarea${updatedItems.length > 1 ? 's' : ''} actualizada${updatedItems.length > 1 ? 's' : ''}`)
+  }
   if (createdReminders.length > 0) {
     actionsReport.push(`${createdReminders.length} recordatorio${createdReminders.length > 1 ? 's' : ''}`)
   }
@@ -343,9 +483,12 @@ Responde en español. Sé preciso, concreto y útil.`,
     ? `Nexus procesó "${entrada.titulo}" → ${actionsReport.join(' + ')}`
     : `Procesado: "${entrada.titulo}"`
 
+  const updatedItemsDesc = updatedItems.map(u => `  → "${u.titulo}": ${u.oldEstado} → ${u.newEstado} (${u.razon})`).join('\n')
+
   const feedDesc = [
     object.resumen,
     userInstructions ? `\n💬 Pedro indicó: "${userInstructions}"` : '',
+    updatedItems.length > 0 ? `\n🔄 Tareas actualizadas:\n${updatedItemsDesc}` : '',
     actionsReport.length > 0 ? `\n✅ Acciones automáticas: ${actionsReport.join(', ')}` : '',
   ].filter(Boolean).join('')
 
@@ -360,6 +503,7 @@ Responde en español. Sé preciso, concreto y útil.`,
         fechasClave: object.fechasClave,
         seguimientoCreado: !entrada.seguimientoId && seguimientoId ? seguimientoId : undefined,
         itemsCreados: createdItems,
+        itemsActualizados: updatedItems,
         recordatoriosCreados: createdReminders,
         instruccionesUsuario: userInstructions || undefined,
       },
@@ -370,7 +514,7 @@ Responde en español. Sé preciso, concreto y útil.`,
     },
   })
 
-  // ─── STEP 6: Extract professional memory (async, non-blocking) ───
+  // ─── STEP 8: Extract professional memory (async, non-blocking) ───
   extractMemoryFromEntry(
     entradaId,
     object.resumen,

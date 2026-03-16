@@ -29,6 +29,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       entradas: { orderBy: { createdAt: 'desc' } },
       recordatorios: { orderBy: { proximoDisparo: 'asc' } },
       feedEntries: { orderBy: { createdAt: 'desc' }, take: 10 },
+      contactos: {
+        include: {
+          contacto: { select: { id: true, nombre: true, email: true, telefono: true, empresa: true, cargo: true, confianza: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      },
       _count: { select: { items: true, entradas: true } },
     },
   })

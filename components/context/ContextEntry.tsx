@@ -119,7 +119,7 @@ export function ContextEntry({ data, index = 0 }: { data: EntradaData; index?: n
               marginTop: 6, padding: '10px 12px', borderRadius: 8,
               background: 'var(--elevated)', border: '1px solid var(--border)',
               fontSize: 12, color: 'var(--text-sub)', lineHeight: 1.6,
-              whiteSpace: 'pre-wrap', maxHeight: 300, overflowY: 'auto',
+              whiteSpace: 'pre-wrap', overflowX: 'auto',
               fontFamily: "'DM Mono', monospace",
             }}>
               {data.contenido}
