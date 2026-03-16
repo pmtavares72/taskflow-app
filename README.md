@@ -153,11 +153,38 @@ npm run smtp
 
 ## Producción (VPS / OpenClaw container)
 
+### REGLA CRÍTICA: Protección de la base de datos
+
+**NUNCA ejecutar comandos que borren o reseteen la base de datos en producción:**
+
+```bash
+# ❌ PROHIBIDO — BORRA TODOS LOS DATOS
+npx prisma migrate reset
+npx prisma db push --force-reset
+npx prisma db push --accept-data-loss
+dropdb taskflow
+psql -c "DROP SCHEMA public CASCADE"
+
+# ✅ CORRECTO — actualiza schema SIN perder datos
+npm run db:push          # wrapper seguro con backup automático
+npx prisma db push       # push normal (falla si hay data loss)
+npx prisma generate      # solo regenera el client, no toca la BD
+```
+
+**Si `prisma db push` falla pidiendo `--accept-data-loss`**, significa que el cambio de schema destruiría datos. En ese caso:
+1. Hacer backup: `npm run db:backup`
+2. Analizar qué campo/tabla se va a perder
+3. Crear un script de migración manual si es necesario
+4. **NUNCA** añadir `--accept-data-loss` sin revisar qué se pierde
+
+**OpenClaw/CI/CD**: los scripts de deploy NO deben incluir `migrate reset`, `--force-reset`, ni `--accept-data-loss`. Solo `prisma db push` y `prisma generate`.
+
 ### Build y arranque
 
 ```bash
 npm install
-npx prisma db push
+npm run db:backup        # backup antes de cualquier cambio de schema
+npx prisma db push       # NUNCA con --force-reset o --accept-data-loss
 npx prisma generate
 ln -sfn node_modules/.prisma node_modules/@prisma/client/.prisma
 npx tsx --env-file=.env.local prisma/seed.ts  # solo la primera vez
@@ -260,19 +287,22 @@ Cuando llega una entrada (email, nota, mensaje de Telegram via OpenClaw):
 
 ### Memoria Profesional
 
-Nexus aprende de cada entrada procesada y acumula conocimiento en 7 categorías:
+Nexus aprende de cada entrada procesada y acumula conocimiento en 10 categorías (profesionales y personales):
 
 | Categoría | Qué guarda |
 |-----------|-----------|
-| PERSONA | Contactos, roles, relaciones, emails |
+| PERSONA | Contactos profesionales, roles, relaciones, emails |
 | PROYECTO | Iniciativas, estados, stakeholders, deadlines |
 | PROCESO | Cómo se hacen las cosas en la empresa |
 | PREFERENCIA | Preferencias del usuario (horarios, estilos) |
 | ORGANIZACION | Estructura org, equipos, jerarquía |
 | HECHO | Decisiones tomadas, acuerdos, contexto general |
 | TEMA | Conocimiento técnico y de negocio recurrente |
+| FAMILIA | Entorno personal: hijos, pareja, familia, amigos |
+| HOGAR | Gestiones del hogar: colegio, médicos, actividades, proveedores |
+| VIDA_PERSONAL | Rutinas, salud, hobbies, preferencias personales |
 
-La memoria se inyecta en todos los prompts del LLM, así que cuanto más se usa, más inteligente se vuelve.
+La memoria se filtra por contexto antes de inyectarse: si llega un WhatsApp del colegio, solo se cargan las categorías personales (FAMILIA, HOGAR, VIDA_PERSONAL). Si llega un email de trabajo, solo las profesionales. Esto minimiza el uso de tokens.
 
 ---
 
