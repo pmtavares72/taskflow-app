@@ -12,12 +12,10 @@ const { auth } = NextAuth({
 export default auth((req) => {
   const isLoggedIn = !!req.auth
   const isAuthRoute = req.nextUrl.pathname.startsWith('/login')
-  const isApiAuth = req.nextUrl.pathname.startsWith('/api/auth')
-  const isApiAgent = req.nextUrl.pathname.startsWith('/api/agent/webhook')
-  const isApiInbound = req.nextUrl.pathname.startsWith('/api/inbound-email')
-  const isApiCron = req.nextUrl.pathname.startsWith('/api/cron')
+  const isApi = req.nextUrl.pathname.startsWith('/api/')
 
-  if (isApiAuth || isApiAgent || isApiInbound || isApiCron) return NextResponse.next()
+  // Las rutas API manejan su propia autenticación via api-auth.ts
+  if (isApi) return NextResponse.next()
   if (isAuthRoute) {
     if (isLoggedIn) return NextResponse.redirect(new URL('/inbox', req.nextUrl))
     return NextResponse.next()

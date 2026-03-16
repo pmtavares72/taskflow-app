@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { NewItemPanel } from '@/components/items/NewItemPanel'
 
 const NAV_LINKS = [
   {
@@ -77,8 +79,10 @@ const PROJECTS = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const [showCapture, setShowCapture] = useState(false)
 
   return (
+    <>
     <aside style={{
       width: 220,
       flexShrink: 0,
@@ -98,14 +102,16 @@ export function Sidebar() {
         </div>
 
         {/* Quick capture button */}
-        <button style={{
-          width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-          background: '#a5b4fc', color: '#13141f', border: 'none',
-          borderRadius: 8, padding: '7px 12px',
-          fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 600,
-          cursor: 'pointer', transition: 'all 0.15s',
-          boxShadow: '0 0 16px rgba(165,180,252,0.2)',
-        }}
+        <button
+          onClick={() => setShowCapture(true)}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+            background: '#a5b4fc', color: '#13141f', border: 'none',
+            borderRadius: 8, padding: '7px 12px',
+            fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', transition: 'all 0.15s',
+            boxShadow: '0 0 16px rgba(165,180,252,0.2)',
+          }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#818cf8'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 24px rgba(165,180,252,0.35)'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#a5b4fc'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 16px rgba(165,180,252,0.2)'; }}
         >
@@ -193,5 +199,13 @@ export function Sidebar() {
         <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>Modo copiloto</div>
       </div>
     </aside>
+
+    {showCapture && (
+      <NewItemPanel
+        initialEstado="INBOX"
+        onClose={() => setShowCapture(false)}
+      />
+    )}
+    </>
   )
 }

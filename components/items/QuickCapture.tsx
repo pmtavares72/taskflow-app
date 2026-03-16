@@ -24,15 +24,20 @@ export function QuickCapture() {
 
     setLoading(true)
     try {
-      await fetch('/api/items', {
+      const res = await fetch('/api/items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ titulo, estado: 'INBOX', tipo }),
       })
+      if (!res.ok) {
+        const err = await res.text()
+        console.error('QuickCapture error:', res.status, err)
+        return
+      }
       setValue('')
       router.refresh()
-    } catch {
-      // silently fail — item capture should not block the user
+    } catch (err) {
+      console.error('QuickCapture fetch error:', err)
     } finally {
       setLoading(false)
     }
