@@ -93,7 +93,6 @@ export function Sidebar() {
       overflow: 'hidden',
       animation: 'slide-in-left 0.4s cubic-bezier(0.16,1,0.3,1) both',
     }}
-      className="hidden md:flex"
     >
       {/* Logo */}
       <div style={{ padding: '18px 16px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>

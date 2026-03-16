@@ -61,6 +61,13 @@ export default function CorreoPage() {
 
   const emailCount = entradas.filter(e => e.tipo === 'EMAIL').length
 
+  async function handleDelete(id: string) {
+    if (!confirm('¿Eliminar esta entrada?')) return
+    await fetch(`/api/entradas/${id}`, { method: 'DELETE' })
+    setEntradas(prev => prev.filter(e => e.id !== id))
+    if (expanded === id) setExpanded(null)
+  }
+
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
       {/* Header */}
@@ -343,6 +350,21 @@ export default function CorreoPage() {
                         {entrada.contenido}
                       </pre>
                     </details>
+
+                    {/* Borrar */}
+                    <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={e => { e.stopPropagation(); handleDelete(entrada.id) }}
+                        style={{
+                          padding: '5px 12px', borderRadius: 6, border: '1px solid rgba(248,113,113,0.2)',
+                          background: 'rgba(248,113,113,0.06)', color: 'var(--urgent)',
+                          fontFamily: "'Outfit', sans-serif", fontSize: 11, fontWeight: 600,
+                          cursor: 'pointer', transition: 'all 0.15s',
+                        }}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

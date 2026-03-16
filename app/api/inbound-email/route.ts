@@ -96,12 +96,26 @@ export async function POST(req: NextRequest) {
     email.body,
   ].filter(Boolean).join('\n')
 
+  // Crear Item tipo EMAIL en INBOX para que aparezca en la bandeja
+  const item = await db.item.create({
+    data: {
+      titulo: email.subject,
+      tipo: 'EMAIL',
+      estado: 'INBOX',
+      contenido,
+      modificadoPor: 'agente',
+      notasAgente: `Email de: ${email.from}`,
+      userId: user.id,
+    },
+  })
+
   const entrada = await db.entradaContexto.create({
     data: {
       tipo: 'EMAIL',
       titulo: email.subject,
       contenido,
       seguimientoId,
+      itemId: item.id,
       userId: user.id,
     },
   })
@@ -117,6 +131,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     id: entrada.id,
+    itemId: item.id,
     seguimientoId,
     user: user.inboundEmail,
     message: 'Email recibido y procesado por Nexus',

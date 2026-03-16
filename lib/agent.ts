@@ -273,7 +273,7 @@ Responde en español. Sé preciso, concreto y útil.`,
       data: {
         titulo: accion.titulo,
         tipo: accion.tipo as 'TASK' | 'NOTE' | 'IDEA',
-        estado: 'TODO',
+        estado: 'INBOX',
         prioridad: accion.prioridad as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
         eisenhowerUrgente: accion.prioridad === 'URGENT' || accion.prioridad === 'HIGH',
         eisenhowerImportante: accion.prioridad === 'URGENT' || accion.prioridad === 'HIGH',
