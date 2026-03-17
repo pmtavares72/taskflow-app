@@ -50,23 +50,60 @@ export default function CorreoPage() {
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [acting, setActing] = useState(false)
 
   useEffect(() => {
     setLoading(true)
     const url = filter === 'all' ? '/api/entradas' : `/api/entradas?tipo=${filter}`
     fetch(url)
       .then(r => r.json())
-      .then(setEntradas)
+      .then((data: EntradaData[]) => {
+        setEntradas(data)
+        setSelectedIds(new Set())
+      })
       .finally(() => setLoading(false))
   }, [filter])
 
   const emailCount = entradas.filter(e => e.tipo === 'EMAIL').length
 
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function selectAll() {
+    if (selectedIds.size === entradas.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(entradas.map(e => e.id)))
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!confirm('¿Eliminar esta entrada?')) return
     await fetch(`/api/entradas/${id}`, { method: 'DELETE' })
     setEntradas(prev => prev.filter(e => e.id !== id))
+    setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next })
     if (expanded === id) setExpanded(null)
+  }
+
+  async function bulkDelete() {
+    if (selectedIds.size === 0 || acting) return
+    if (!confirm(`¿Eliminar ${selectedIds.size} entrada${selectedIds.size > 1 ? 's' : ''}?`)) return
+    setActing(true)
+    const promises = Array.from(selectedIds).map(id =>
+      fetch(`/api/entradas/${id}`, { method: 'DELETE' })
+    )
+    await Promise.all(promises)
+    setEntradas(prev => prev.filter(e => !selectedIds.has(e.id)))
+    setSelectedIds(new Set())
+    setActing(false)
+    if (expanded && selectedIds.has(expanded)) setExpanded(null)
   }
 
   return (
@@ -103,8 +140,29 @@ export default function CorreoPage() {
           )}
         </div>
 
-        {/* Filter tabs */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {/* Filter tabs + select all */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          {entradas.length > 0 && (
+            <div
+              onClick={selectAll}
+              style={{
+                width: 16, height: 16, borderRadius: 4, cursor: 'pointer',
+                border: `1.5px solid ${selectedIds.size === entradas.length && entradas.length > 0 ? 'var(--accent)' : 'var(--border-hover)'}`,
+                background: selectedIds.size === entradas.length && entradas.length > 0 ? 'var(--accent)' : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.15s', marginRight: 4, flexShrink: 0,
+              }}
+            >
+              {selectedIds.size === entradas.length && entradas.length > 0 && (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#13141f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+              {selectedIds.size > 0 && selectedIds.size < entradas.length && (
+                <div style={{ width: 8, height: 2, background: 'var(--accent)', borderRadius: 1 }} />
+              )}
+            </div>
+          )}
           {FILTERS.map(f => (
             <button
               key={f.key}
@@ -121,6 +179,32 @@ export default function CorreoPage() {
             </button>
           ))}
         </div>
+
+        {/* Bulk action bar */}
+        {selectedIds.size > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', marginTop: 8,
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 10, animation: 'fadeUp 0.2s ease both',
+          }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', fontFamily: "'Outfit', sans-serif" }}>
+              {selectedIds.size} seleccionada{selectedIds.size > 1 ? 's' : ''}
+            </span>
+            <div style={{ flex: 1 }} />
+            <button
+              onClick={bulkDelete}
+              disabled={acting}
+              style={{
+                padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)',
+                color: 'var(--urgent)', cursor: 'pointer', transition: 'all 0.15s',
+                fontFamily: "'Outfit', sans-serif", opacity: acting ? 0.5 : 1,
+              }}
+            >
+              Eliminar
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Entries list */}
@@ -161,12 +245,31 @@ export default function CorreoPage() {
                 <div
                   onClick={() => setExpanded(isExpanded ? null : entrada.id)}
                   style={{
-                    padding: '12px 16px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 12,
+                    padding: '12px 16px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 10,
                     transition: 'background 0.15s',
+                    background: selectedIds.has(entrada.id) ? 'rgba(167,139,250,0.06)' : 'transparent',
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--elevated)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  onMouseEnter={e => { if (!selectedIds.has(entrada.id)) e.currentTarget.style.background = 'var(--elevated)' }}
+                  onMouseLeave={e => { if (!selectedIds.has(entrada.id)) e.currentTarget.style.background = 'transparent' }}
                 >
+                  {/* Checkbox */}
+                  <div
+                    onClick={e => { e.stopPropagation(); toggleSelect(entrada.id) }}
+                    style={{
+                      width: 18, height: 18, borderRadius: 6, flexShrink: 0, marginTop: 2,
+                      border: `1.5px solid ${selectedIds.has(entrada.id) ? 'var(--accent)' : 'var(--border-hover)'}`,
+                      background: selectedIds.has(entrada.id) ? 'var(--accent)' : 'transparent',
+                      cursor: 'pointer', transition: 'all 0.15s',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    {selectedIds.has(entrada.id) && (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#13141f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </div>
+
                   {/* Icon */}
                   <div style={{ fontSize: 18, lineHeight: 1, marginTop: 2, flexShrink: 0 }}>
                     {TIPO_ICONS[entrada.tipo] ?? '📄'}

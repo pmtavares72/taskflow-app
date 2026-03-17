@@ -8,7 +8,8 @@
     "start": "next start",
     "smtp": "npx tsx server/smtp-inbound.ts",
     "db:backup": "bash scripts/db-backup.sh",
-    "db:push": "bash scripts/db-safe-push.sh"
+    "db:push": "bash scripts/db-safe-push.sh",
+    "gmail": "npx tsx --env-file=.env.local scripts/gmail-poll.ts"
   },
   "dependencies": {
     "@ai-sdk/xai": "^3.0.64",
@@ -40,6 +41,7 @@
     "@types/react-dom": "^19",
     "@types/smtp-server": "^3.5.12",
     "dotenv": "^17.3.1",
+    "googleapis": "^171.4.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"

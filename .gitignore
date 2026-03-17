@@ -44,3 +44,7 @@ next-env.d.ts
 
 # database backups
 /backups/
+
+# gmail poller (local dev only)
+scripts/gmail-credentials.json
+scripts/gmail-token.json

@@ -151,14 +151,14 @@ export async function requestContextProcessing(entradaId: string) {
   if (entrada.seguimientoId) {
     const segItems = await db.seguimientoItem.findMany({
       where: { seguimientoId: entrada.seguimientoId },
-      include: { item: { select: { id: true, titulo: true, estado: true, prioridad: true } } },
+      include: { item: { select: { id: true, titulo: true, tipo: true, estado: true, prioridad: true } } },
     })
-    existingItems = segItems.map(si => si.item)
+    existingItems = segItems.map(si => si.item).filter(i => i.tipo === 'TASK')
   } else {
-    // No seguimiento yet — fetch recent open items to see if anything matches
+    // No seguimiento yet — fetch recent open TASKS to see if anything matches
     existingItems = await db.item.findMany({
-      where: { userId: entrada.userId, estado: { in: ['INBOX', 'TODO', 'IN_PROGRESS', 'WAITING'] } },
-      select: { id: true, titulo: true, estado: true, prioridad: true },
+      where: { userId: entrada.userId, tipo: 'TASK', estado: { in: ['INBOX', 'TODO', 'IN_PROGRESS', 'WAITING'] } },
+      select: { id: true, titulo: true, tipo: true, estado: true, prioridad: true },
       orderBy: { createdAt: 'desc' },
       take: 30,
     })
@@ -271,7 +271,10 @@ Analiza TODO el contenido y extrae:
    - IN_PROGRESS → DONE: el trabajo se completó
    - Cualquier estado → ARCHIVED: se canceló o ya no aplica
    La razón debe ser ESPECÍFICA: "Email de María López confirma recepción del presupuesto" — NO "tarea completada".
-   Solo actualiza items cuando el contenido lo justifique CLARAMENTE. No supongas. Es preferible no mover nada a mover algo incorrectamente.
+   ⚠️ REGLA CRÍTICA SOBRE DONE: Para marcar algo como DONE necesitas EVIDENCIA EXPLÍCITA en el contenido de que la tarea se completó. Un email que HABLA sobre un tema NO significa que las tareas de ese tema estén hechas. Ejemplo:
+   - ❌ "Llega email de María sobre el presupuesto" → NO mover "Enviar presupuesto a María" a DONE (puede estar pidiendo cambios)
+   - ✅ "María dice: recibido y aprobado, procedemos" → SÍ mover "Enviar presupuesto a María" a DONE
+   Si tienes CUALQUIER duda, NO muevas a DONE. Es mucho peor marcar algo como hecho sin estar seguro que dejarlo pendiente.
 7. Si no está vinculado a un seguimiento, sugiere un nombre para crear uno (seguimientoSugerido)
 
 IMPORTANTE: La app NUNCA envía correos. Solo recibe y analiza. No sugieras enviar nada.
@@ -297,45 +300,85 @@ Responde en español. Sé preciso, concreto y útil.`,
     },
   })
 
-  // ─── STEP 2: Auto-create or link seguimiento ───
+  // ─── STEP 2: Auto-create or link seguimiento (multi-factor scoring) ───
   let seguimientoId = entrada.seguimientoId
 
   if (!seguimientoId) {
-    // Try to find an existing seguimiento that matches the content's topics
     const activeSeguimientos = await db.seguimiento.findMany({
       where: {
         userId: entrada.userId,
         estado: { in: ['ACTIVO', 'EN_ESPERA', 'NECESITA_ATENCION'] },
       },
       include: {
-        entradas: { select: { metadatos: true }, take: 5, orderBy: { createdAt: 'desc' } },
+        entradas: { select: { titulo: true, metadatos: true }, take: 10, orderBy: { createdAt: 'desc' } },
+        contactos: { include: { contacto: { select: { nombre: true, email: true, empresa: true } } } },
       },
     })
 
-    // Match by topics: check if any existing seguimiento shares topics with this entry
-    let existing: typeof activeSeguimientos[0] | null = null
-    const entryTopics = object.temas.map(t => t.toLowerCase())
+    // Normalize helper
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+    // Data from the new entry
+    const entryTopics = object.temas.map(t => norm(t))
+    const entryContactNames = object.contactos.map(c => norm(c.nombre))
+    const entryContactEmails = object.contactos.filter(c => c.email).map(c => norm(c.email!))
+    const entrySubject = norm(entrada.titulo)
+    // Strip Re:/FW:/Fwd: prefixes for subject comparison
+    const cleanSubject = entrySubject.replace(/^(re|fw|fwd|rv)\s*:\s*/gi, '').trim()
+
+    // Score each seguimiento
+    let bestSeg: typeof activeSeguimientos[0] | null = null
+    let bestScore = 0
 
     for (const seg of activeSeguimientos) {
-      // Check title match
-      const titleWords = seg.titulo.toLowerCase().split(/\s+/)
-      const titleMatch = entryTopics.some(t => titleWords.some(w => w.includes(t) || t.includes(w)))
-      if (titleMatch) { existing = seg; break }
+      let score = 0
 
-      // Check previous entry topics overlap
+      // Factor 1: Title keyword match (3 pts per match)
+      const segTitleWords = norm(seg.titulo).split(/\s+/).filter(w => w.length > 2)
+      for (const topic of entryTopics) {
+        if (segTitleWords.some(w => w.includes(topic) || topic.includes(w))) score += 3
+      }
+
+      // Factor 2: Subject similarity — email chains share subjects (5 pts)
+      if (cleanSubject.length > 5) {
+        for (const e of seg.entradas) {
+          const eSubject = norm(e.titulo).replace(/^(re|fw|fwd|rv)\s*:\s*/gi, '').trim()
+          if (eSubject.length > 5 && (cleanSubject.includes(eSubject) || eSubject.includes(cleanSubject))) {
+            score += 5
+            break
+          }
+        }
+      }
+
+      // Factor 3: Topic overlap with previous entries (2 pts per overlapping topic)
       for (const e of seg.entradas) {
         const meta = e.metadatos as { temas?: string[] } | null
-        const segTopics = (meta?.temas ?? []).map((t: string) => t.toLowerCase())
-        const overlap = entryTopics.filter(t => segTopics.some(st => st.includes(t) || t.includes(st)))
-        if (overlap.length >= 2) { existing = seg; break }
+        const segTopics = (meta?.temas ?? []).map((t: string) => norm(t))
+        for (const topic of entryTopics) {
+          if (segTopics.some(st => st.includes(topic) || topic.includes(st))) score += 2
+        }
       }
-      if (existing) break
+
+      // Factor 4: Shared contacts — solo como apoyo, un contacto puede estar en muchos seguimientos
+      let contactMatches = 0
+      for (const cs of seg.contactos) {
+        if (cs.contacto.email && entryContactEmails.includes(norm(cs.contacto.email))) contactMatches++
+        else if (entryContactNames.includes(norm(cs.contacto.nombre))) contactMatches++
+      }
+      // Solo suma si hay al menos otro factor (temas o subject) — contactos solos no bastan
+      if (contactMatches > 0 && score > 0) score += 1
+
+      if (score > bestScore) {
+        bestScore = score
+        bestSeg = seg
+      }
     }
 
-    if (existing) {
-      seguimientoId = existing.id
+    // Minimum threshold: need at least 4 points to match (e.g. subject match, or title+topic, or contact email)
+    if (bestSeg && bestScore >= 4) {
+      seguimientoId = bestSeg.id
     } else if (object.seguimientoSugerido) {
-      // Create new seguimiento automatically
+      // No match found — create new seguimiento
       const newSeg = await db.seguimiento.create({
         data: {
           titulo: object.seguimientoSugerido,
@@ -349,13 +392,10 @@ Responde en español. Sé preciso, concreto y útil.`,
     }
 
     if (seguimientoId && seguimientoId !== entrada.seguimientoId) {
-      // Link this entrada to the seguimiento
       await db.entradaContexto.update({
         where: { id: entradaId },
         data: { seguimientoId },
       })
-
-      // Update seguimiento activity
       await db.seguimiento.update({
         where: { id: seguimientoId },
         data: { ultimaActividad: new Date() },
