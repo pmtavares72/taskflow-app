@@ -137,6 +137,18 @@ export async function requestContextProcessing(entradaId: string) {
     }
   }
 
+  // Also detect "Nexus, ..." at the start of the content (even without forward markers)
+  // This handles messages from Telegram/WhatsApp where Pedro writes directly to Nexus
+  if (!userInstructions) {
+    const firstLine = bodyAfterHeader.split('\n')[0]?.trim() ?? ''
+    const nexusPrefix = /^nexus[\s,:;.\-]+/i
+    if (nexusPrefix.test(firstLine)) {
+      // The whole first paragraph (up to double newline) is user instruction
+      const paraEnd = bodyAfterHeader.indexOf('\n\n')
+      userInstructions = (paraEnd > 0 ? bodyAfterHeader.slice(0, paraEnd) : firstLine).trim()
+    }
+  }
+
   // Quick context detection based on keywords (to fetch only relevant memory)
   const textoLower = entrada.contenido.toLowerCase()
   const personalKeywords = ['hijo', 'hija', 'colegio', 'cole', 'pediatra', 'médico', 'doctor', 'familia', 'casa', 'hogar', 'cumpleaños', 'vacaciones', 'extraescolar', 'whatsapp', 'padres', 'mamá', 'papá', 'niño', 'niña', 'dentista', 'gimnasio', 'pádel', 'amigo']
@@ -146,26 +158,35 @@ export async function requestContextProcessing(entradaId: string) {
   // Fetch memory filtered by detected context (saves tokens)
   const memoryContext = await getRelevantMemory(entrada.userId, { texto: entrada.contenido, contexto: preContexto })
 
-  // Fetch existing items linked to the seguimiento (or all recent INBOX/TODO/IN_PROGRESS items)
-  let existingItems: { id: string; titulo: string; estado: string; prioridad: string }[] = []
+  // Fetch existing items linked to the seguimiento (or all recent open tasks)
+  const itemSelect = {
+    id: true, titulo: true, tipo: true, estado: true, prioridad: true,
+    contenido: true, notasAgente: true, fechaLimite: true, createdAt: true,
+  }
+  let existingItems: { id: string; titulo: string; tipo: string; estado: string; prioridad: string; contenido: string | null; notasAgente: string | null; fechaLimite: Date | null; createdAt: Date }[] = []
   if (entrada.seguimientoId) {
     const segItems = await db.seguimientoItem.findMany({
       where: { seguimientoId: entrada.seguimientoId },
-      include: { item: { select: { id: true, titulo: true, tipo: true, estado: true, prioridad: true } } },
+      include: { item: { select: itemSelect } },
     })
     existingItems = segItems.map(si => si.item).filter(i => i.tipo === 'TASK')
   } else {
-    // No seguimiento yet — fetch recent open TASKS to see if anything matches
     existingItems = await db.item.findMany({
       where: { userId: entrada.userId, tipo: 'TASK', estado: { in: ['INBOX', 'TODO', 'IN_PROGRESS', 'WAITING'] } },
-      select: { id: true, titulo: true, tipo: true, estado: true, prioridad: true },
+      select: itemSelect,
       orderBy: { createdAt: 'desc' },
       take: 30,
     })
   }
 
   const existingItemsBlock = existingItems.length > 0
-    ? existingItems.map(i => `  - [${i.id}] "${i.titulo}" (estado: ${i.estado}, prioridad: ${i.prioridad})`).join('\n')
+    ? existingItems.map(i => {
+        let line = `  - [${i.id}] "${i.titulo}" (estado: ${i.estado}, prioridad: ${i.prioridad})`
+        if (i.contenido) line += `\n    Detalle: ${i.contenido.slice(0, 150)}`
+        if (i.notasAgente) line += `\n    Notas: ${i.notasAgente.split('\n').pop()?.slice(0, 150)}`
+        if (i.fechaLimite) line += `\n    Fecha límite: ${i.fechaLimite.toISOString().split('T')[0]}`
+        return line
+      }).join('\n')
     : '(ninguno)'
 
   const { object } = await generateObject({
@@ -222,10 +243,14 @@ ${existingItemsBlock}
 Tipo de contenido: ${entrada.tipo}
 Asunto: "${entrada.titulo}"
 ${userInstructions ? `
-⚠️ INSTRUCCIONES DEL USUARIO (Pedro escribió esto al reenviar — tiene MÁXIMA prioridad):
+⚠️ MENSAJE DE PEDRO (texto que él escribió al enviar esto):
 "${userInstructions}"
 
-Presta especial atención a lo que Pedro pide. Si dice "seguir esto", "pendiente", "importante", "urgente", etc., actúa en consecuencia.
+CLASIFICA este mensaje de Pedro:
+- Si es una ORDEN ("haz X", "crea tarea", "recuérdame Y") → ejecutar la orden
+- Si es CONTEXTO/INFORMACIÓN ("Nexus, Lorenzo es el manager", "para que sepas", "esto es sobre X") → actualizar memoria y seguimiento, NO crear tareas genéricas con este texto
+- Si es un FORWARD con instrucciones ("seguir esto", "pendiente", "importante") → procesar el contenido reenviado según la instrucción
+Pedro NO quiere que sus explicaciones a Nexus se conviertan en tareas. Si Pedro dice "Nexus, este es el contacto de Logista", eso es info para guardar, NO una tarea.
 ` : ''}
 Contenido completo:
 ---
@@ -262,19 +287,33 @@ Analiza TODO el contenido y extrae:
    - Datos personales o profesionales relevantes (horarios, preferencias, especialidades)
    - Relaciones con otras personas o empresas
    Solo incluye notaIntel si hay algo concreto — no inventes. Esto construye un perfil progresivo del contacto.
-6. Actualizaciones de items EXISTENTES: revisa las tareas existentes de arriba. Si el contenido indica que alguna tarea cambió de situación, inclúyela en actualizacionesItems con el itemId exacto, el nuevo estado, y una RAZÓN DETALLADA que explique por qué cambias el estado (quién dijo qué, qué evidencia hay en el contenido). Transiciones posibles:
-   - TODO → WAITING: Pedro ya hizo su parte y ahora espera respuesta de alguien (ej: "enviamos la propuesta, esperamos respuesta de María")
-   - TODO → IN_PROGRESS: alguien está trabajando activamente en esto (ej: "Juan dice que ya empezó con el diseño")
-   - TODO → DONE: el email confirma que la tarea se completó (ej: "María confirma que recibió el documento")
-   - WAITING → DONE: la respuesta que se esperaba ya llegó y se resolvió
+6. Actualizaciones de items EXISTENTES: revisa las tareas existentes de arriba CON SU CONTEXTO COMPLETO (detalle, notas, fecha). Si el contenido indica que alguna tarea cambió de situación, inclúyela en actualizacionesItems con el itemId exacto, el nuevo estado, y una RAZÓN DETALLADA.
+
+   Transiciones posibles:
+   - TODO → WAITING: Pedro ya hizo su parte y espera respuesta de alguien
+   - TODO → IN_PROGRESS: alguien está trabajando activamente en esto
+   - TODO → DONE: la tarea se completó (evidencia clara en el contenido)
+   - WAITING → DONE: la respuesta/información que se ESPERABA ya llegó (ver regla especial abajo)
    - WAITING → TODO: la espera terminó y ahora Pedro tiene que actuar
    - IN_PROGRESS → DONE: el trabajo se completó
    - Cualquier estado → ARCHIVED: se canceló o ya no aplica
+
+   ⚠️ REGLA ESPECIAL PARA TAREAS WAITING:
+   Una tarea WAITING significa "Pedro espera una respuesta o acción de alguien". Cuando ESA RESPUESTA LLEGA:
+   → Marca la tarea WAITING como DONE (la espera terminó, se recibió respuesta)
+   → Si la respuesta abre una NUEVA espera diferente, crea una NUEVA tarea WAITING
+
+   DONE en WAITING = "la espera terminó" (recibimos respuesta), NO "se logró el objetivo".
+   Ejemplo:
+   - Tarea WAITING: "Confirmar si podemos participar en la RFP de Logista"
+   - Email del cliente: "Aún no hemos lanzado la RFP, os tendremos en el radar"
+   - ✅ Mover a DONE (la pregunta fue contestada, la espera terminó)
+   - ✅ Crear NUEVA tarea WAITING: "Esperar a que Logista lance y envíe la RFP"
+
+   ⚠️ REGLA PARA TAREAS TODO/IN_PROGRESS → DONE:
+   Para estas SÍ necesitas evidencia clara de que la tarea se completó. Un email que HABLA sobre un tema NO significa que la tarea esté hecha.
+
    La razón debe ser ESPECÍFICA: "Email de María López confirma recepción del presupuesto" — NO "tarea completada".
-   ⚠️ REGLA CRÍTICA SOBRE DONE: Para marcar algo como DONE necesitas EVIDENCIA EXPLÍCITA en el contenido de que la tarea se completó. Un email que HABLA sobre un tema NO significa que las tareas de ese tema estén hechas. Ejemplo:
-   - ❌ "Llega email de María sobre el presupuesto" → NO mover "Enviar presupuesto a María" a DONE (puede estar pidiendo cambios)
-   - ✅ "María dice: recibido y aprobado, procedemos" → SÍ mover "Enviar presupuesto a María" a DONE
-   Si tienes CUALQUIER duda, NO muevas a DONE. Es mucho peor marcar algo como hecho sin estar seguro que dejarlo pendiente.
 7. Si no está vinculado a un seguimiento, sugiere un nombre para crear uno (seguimientoSugerido)
 
 IMPORTANTE: La app NUNCA envía correos. Solo recibe y analiza. No sugieras enviar nada.
