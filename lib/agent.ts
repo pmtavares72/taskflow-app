@@ -243,14 +243,15 @@ ${existingItemsBlock}
 Tipo de contenido: ${entrada.tipo}
 Asunto: "${entrada.titulo}"
 ${userInstructions ? `
-⚠️ MENSAJE DE PEDRO (texto que él escribió al enviar esto):
+⚠️ NOTA DE PEDRO (texto que él añadió al reenviar/enviar esto):
 "${userInstructions}"
 
-CLASIFICA este mensaje de Pedro:
-- Si es una ORDEN ("haz X", "crea tarea", "recuérdame Y") → ejecutar la orden
-- Si es CONTEXTO/INFORMACIÓN ("Nexus, Lorenzo es el manager", "para que sepas", "esto es sobre X") → actualizar memoria y seguimiento, NO crear tareas genéricas con este texto
-- Si es un FORWARD con instrucciones ("seguir esto", "pendiente", "importante") → procesar el contenido reenviado según la instrucción
-Pedro NO quiere que sus explicaciones a Nexus se conviertan en tareas. Si Pedro dice "Nexus, este es el contacto de Logista", eso es info para guardar, NO una tarea.
+IMPORTANTE sobre la nota de Pedro:
+- La nota es CONTEXTO ADICIONAL o una instrucción que COMPLEMENTA el contenido reenviado
+- SIEMPRE procesa el contenido completo del email/cadena para extraer tareas, contactos, fechas, etc.
+- La nota de Pedro en sí NO debe convertirse en tarea, pero sí úsala para entender mejor el contexto
+- Si Pedro da una instrucción ("seguir esto", "pendiente", "importante", "haz X"), aplícala AL CONTENIDO reenviado
+- Si Pedro da información ("este es el contacto de X", "para que sepas") → guárdala en memoria Y sigue procesando el contenido completo
 ` : ''}
 Contenido completo:
 ---
@@ -632,11 +633,31 @@ Responde en español. Sé preciso, concreto y útil.`,
     }
   }
 
-  // ─── STEP 6: Auto-create reminders from key dates ───
+  // ─── STEP 6: Auto-create reminders + calendar events from key dates ───
   const createdReminders: string[] = []
+  const createdEvents: string[] = []
   for (const fecha of object.fechasClave) {
     const fechaDate = new Date(fecha.fecha)
     if (isNaN(fechaDate.getTime()) || fechaDate < new Date()) continue
+
+    // Create calendar event
+    try {
+      const evt = await db.evento.create({
+        data: {
+          titulo: fecha.descripcion,
+          fecha: fechaDate,
+          todoElDia: true,
+          contexto: object.contextoDetectado,
+          origen: 'agente',
+          seguimientoId,
+          entradaId: entradaId,
+          userId: entrada.userId,
+        },
+      })
+      createdEvents.push(evt.id)
+    } catch (err) {
+      console.error('[Agent] Error creating event:', err)
+    }
 
     // Create reminder 1 day before the date
     const reminderDate = new Date(fechaDate)
@@ -678,6 +699,9 @@ Responde en español. Sé preciso, concreto y útil.`,
   }
   if (createdReminders.length > 0) {
     actionsReport.push(`${createdReminders.length} recordatorio${createdReminders.length > 1 ? 's' : ''}`)
+  }
+  if (createdEvents.length > 0) {
+    actionsReport.push(`${createdEvents.length} evento${createdEvents.length > 1 ? 's' : ''} en calendario`)
   }
 
   const feedTitle = actionsReport.length > 0

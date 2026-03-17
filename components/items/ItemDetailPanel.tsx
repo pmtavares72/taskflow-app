@@ -4,6 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ItemWithRelations } from '@/types'
 
+type RelatedEmail = {
+  id: string; tipo: string; titulo: string; resumen: string | null; createdAt: string
+  seguimientoId: string; seguimientoTitulo: string
+}
+
 const TIPOS = [
   { value: 'TASK', label: 'Tarea', icon: '✓' },
   { value: 'IDEA', label: 'Idea', icon: '💡' },
@@ -56,11 +61,32 @@ export function ItemDetailPanel({ item, onClose, onUpdate }: Props) {
   )
   const [projects, setProjects] = useState<Project[]>([])
   const [saving, setSaving] = useState(false)
+  const [relatedEmails, setRelatedEmails] = useState<RelatedEmail[]>([])
 
-  // Load projects
+  // Load projects + related emails
   useEffect(() => {
     fetch('/api/projects').then(r => r.json()).then(setProjects).catch(() => {})
-  }, [])
+    // Fetch full item with seguimiento entradas
+    fetch(`/api/items/${item.id}`).then(r => r.json()).then(data => {
+      if (data.seguimientoItems) {
+        const emails: RelatedEmail[] = []
+        for (const si of data.seguimientoItems) {
+          for (const e of si.seguimiento.entradas) {
+            emails.push({
+              ...e,
+              seguimientoId: si.seguimiento.id,
+              seguimientoTitulo: si.seguimiento.titulo,
+            })
+          }
+        }
+        // Sort by date desc, dedupe by id
+        const seen = new Set<string>()
+        const unique = emails.filter(e => { if (seen.has(e.id)) return false; seen.add(e.id); return true })
+        unique.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        setRelatedEmails(unique)
+      }
+    }).catch(() => {})
+  }, [item.id])
 
   const dirty =
     titulo !== item.titulo ||
@@ -399,6 +425,81 @@ export function ItemDetailPanel({ item, onClose, onUpdate }: Props) {
               onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
             />
           </div>
+
+          {/* Related emails/entradas from seguimientos */}
+          {relatedEmails.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <label style={{
+                display: 'block', fontSize: 10.5, fontWeight: 600,
+                color: 'var(--text-muted)', textTransform: 'uppercase',
+                letterSpacing: '0.08em', marginBottom: 8,
+              }}>
+                Correos relacionados
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {relatedEmails.slice(0, 10).map(email => {
+                  const tipoIcon = email.tipo === 'EMAIL' ? '✉' : email.tipo === 'NOTAS_REUNION' ? '📋' : email.tipo === 'CONVERSACION' ? '💬' : '📄'
+                  return (
+                    <div key={email.id} style={{
+                      padding: '8px 10px', borderRadius: 8, background: 'var(--card)',
+                      border: '1px solid var(--border)',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                        <span style={{ fontSize: 12 }}>{tipoIcon}</span>
+                        <span style={{
+                          fontSize: 12, fontWeight: 600, color: 'var(--text)',
+                          flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {email.titulo}
+                        </span>
+                        <span style={{ fontSize: 9.5, color: 'var(--text-muted)', fontFamily: "'DM Mono', monospace", flexShrink: 0 }}>
+                          {new Date(email.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                      {email.resumen && (
+                        <div style={{
+                          fontSize: 11, color: 'var(--text-sub)', lineHeight: 1.4,
+                          overflow: 'hidden', textOverflow: 'ellipsis',
+                          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
+                        }}>
+                          {email.resumen}
+                        </div>
+                      )}
+                      <div style={{ marginTop: 3 }}>
+                        <a
+                          href={`/seguimientos/${email.seguimientoId}`}
+                          style={{ fontSize: 10, color: 'var(--accent-purple)', textDecoration: 'none' }}
+                        >
+                          📌 {email.seguimientoTitulo}
+                        </a>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Agent notes */}
+          {item.notasAgente && (
+            <div style={{ marginBottom: 20 }}>
+              <label style={{
+                display: 'block', fontSize: 10.5, fontWeight: 600,
+                color: 'var(--text-muted)', textTransform: 'uppercase',
+                letterSpacing: '0.08em', marginBottom: 8,
+              }}>
+                Notas de Nexus
+              </label>
+              <div style={{
+                padding: '8px 10px', borderRadius: 8,
+                background: 'rgba(167,139,250,0.04)', border: '1px solid rgba(167,139,250,0.12)',
+                fontSize: 11.5, color: 'var(--text-sub)', lineHeight: 1.5,
+                whiteSpace: 'pre-wrap', fontFamily: "'DM Mono', monospace",
+              }}>
+                {item.notasAgente}
+              </div>
+            </div>
+          )}
 
           {/* Activity log */}
           {item.actividad && item.actividad.length > 0 && (

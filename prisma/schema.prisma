@@ -22,6 +22,7 @@ model User {
   recordatorios Recordatorio[]
   memorias      MemoriaProfesional[]
   contactos     Contacto[]
+  eventos       Evento[]
 }
 
 model Project {
@@ -193,6 +194,7 @@ model Seguimiento {
   recordatorios   Recordatorio[]
   feedEntries     AgenteFeed[]
   contactos       ContactoSeguimiento[]
+  eventos         Evento[]
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 }
@@ -266,6 +268,28 @@ enum TipoRecurrencia {
   CADA_N_DIAS
   SEMANAL
   PERSONALIZADO
+}
+
+// ─── Calendario (eventos extraídos de emails/mensajes + manuales) ───
+
+model Evento {
+  id            String        @id @default(cuid())
+  titulo        String
+  descripcion   String?
+  fecha         DateTime                  // fecha y hora del evento
+  fechaFin      DateTime?                 // hora de fin (opcional)
+  todoElDia     Boolean       @default(false)
+  contexto      Contexto      @default(TRABAJO)
+  origen        String        @default("usuario")  // "usuario" | "agente" | "recordatorio"
+  seguimientoId String?
+  seguimiento   Seguimiento?  @relation(fields: [seguimientoId], references: [id], onDelete: SetNull)
+  entradaId     String?                   // entrada que originó este evento (si fue el agente)
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([userId, fecha])
 }
 
 // ─── Contactos (entidades extraídas de emails, reuniones, etc.) ───

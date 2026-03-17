@@ -49,6 +49,7 @@ export default function SeguimientoDetailPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<typeof TABS[number]>('correos')
   const [showContextInput, setShowContextInput] = useState(false)
+  const [followUp, setFollowUp] = useState<{ loading: boolean; text: string; subject: string; dest: string } | null>(null)
 
   const fetchData = useCallback(async () => {
     const res = await fetch(`/api/seguimientos/${id}`)
@@ -67,12 +68,67 @@ export default function SeguimientoDetailPage() {
     fetchData()
   }
 
+  async function generateFollowUp(tema?: string) {
+    setFollowUp({ loading: true, text: '', subject: '', dest: '' })
+    try {
+      const res = await fetch('/api/agent/follow-up', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seguimientoId: id, tema }),
+      })
+      if (!res.ok) throw new Error('Error generando follow-up')
+      const result = await res.json()
+      const text = result.text as string
+      // Parse subject from first line
+      const subjectMatch = text.match(/^SUBJECT:\s*(.+)/i)
+      const subject = subjectMatch ? subjectMatch[1].trim() : `Follow-up: ${data?.titulo ?? ''}`
+      const body = subjectMatch ? text.slice(subjectMatch[0].length).trim() : text
+      setFollowUp({ loading: false, text: body, subject, dest: result.destinatario })
+    } catch {
+      setFollowUp(null)
+    }
+  }
+
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Cargando...</div>
   if (!data) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>No encontrado</div>
 
   const est = estadoLabels[data.estado] ?? estadoLabels.ACTIVO
   const emails = data.entradas.filter(e => e.tipo === 'EMAIL')
   const otherEntries = data.entradas.filter(e => e.tipo !== 'EMAIL')
+
+  // Group entries by topic for hierarchy view
+  const topicGroups: Record<string, { entradas: EntradaData[]; items: typeof data.items }> = {}
+  const ungrouped: EntradaData[] = []
+
+  for (const entrada of data.entradas) {
+    const temas = (entrada.metadatos as { temas?: string[] } | null)?.temas ?? []
+    if (temas.length === 0) {
+      ungrouped.push(entrada)
+    } else {
+      // Use first tema as primary group
+      const primaryTema = temas[0]
+      if (!topicGroups[primaryTema]) topicGroups[primaryTema] = { entradas: [], items: [] }
+      topicGroups[primaryTema].entradas.push(entrada)
+    }
+  }
+
+  // Match items to topic groups by title/content keywords
+  for (const si of data.items) {
+    let matched = false
+    const itemTitle = si.item.titulo.toLowerCase()
+    for (const [tema, group] of Object.entries(topicGroups)) {
+      if (itemTitle.includes(tema.toLowerCase()) || tema.toLowerCase().split(/\s+/).some(w => w.length > 3 && itemTitle.includes(w))) {
+        group.items.push(si)
+        matched = true
+        break
+      }
+    }
+    if (!matched && Object.keys(topicGroups).length > 0) {
+      // Put in first group as fallback (or leave unmatched)
+    }
+  }
+
+  const hasTopics = Object.keys(topicGroups).length > 0
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
@@ -133,6 +189,23 @@ export default function SeguimientoDetailPage() {
           </div>
 
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            {data.items.some(si => si.item.estado === 'WAITING') && (
+              <button
+                onClick={() => generateFollowUp()}
+                style={{
+                  padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(165,180,252,0.25)',
+                  background: 'rgba(165,180,252,0.06)', fontSize: 11, fontWeight: 600,
+                  color: '#a5b4fc', cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+                  display: 'flex', alignItems: 'center', gap: 5,
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <polyline points="22,6 12,13 2,6" />
+                </svg>
+                Follow-up
+              </button>
+            )}
             {data.estado !== 'COMPLETADO' && (
               <button
                 onClick={() => handleStatusChange('COMPLETADO')}
@@ -223,14 +296,148 @@ export default function SeguimientoDetailPage() {
             )}
           </div>
 
-          {/* Email entries */}
           {emails.length === 0 && otherEntries.length === 0 ? (
             <div style={{
               textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)', fontSize: 13,
             }}>
               Sin entradas de contexto. Pega un email o notas de reunión para que Nexus analice.
             </div>
+          ) : hasTopics ? (
+            /* ─── Grouped by topic ─── */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {Object.entries(topicGroups).map(([tema, group]) => {
+                const waitingItems = group.items.filter(si => si.item.estado === 'WAITING')
+                const todoItems = group.items.filter(si => si.item.estado === 'TODO' || si.item.estado === 'IN_PROGRESS')
+                const doneItems = group.items.filter(si => si.item.estado === 'DONE')
+                const latestEntry = group.entradas[0]
+                const latestDate = latestEntry ? new Date(latestEntry.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : ''
+
+                return (
+                  <div key={tema} style={{
+                    borderRadius: 12, border: '1px solid var(--border)',
+                    overflow: 'hidden', background: 'var(--surface)',
+                  }}>
+                    {/* Topic header */}
+                    <div style={{
+                      padding: '12px 16px', background: 'var(--card)',
+                      borderBottom: '1px solid var(--border)',
+                      display: 'flex', alignItems: 'center', gap: 10,
+                    }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', flex: 1 }}>
+                        {tema}
+                      </span>
+                      {latestDate && (
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: "'DM Mono', monospace" }}>
+                          últ. {latestDate}
+                        </span>
+                      )}
+                      {/* Status indicators */}
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {waitingItems.length > 0 && (
+                          <span style={{
+                            fontSize: 9.5, padding: '2px 7px', borderRadius: 10, fontWeight: 600,
+                            background: 'rgba(251,146,60,0.1)', color: 'var(--accent-orange)',
+                            border: '1px solid rgba(251,146,60,0.2)',
+                          }}>
+                            {waitingItems.length} esperando
+                          </span>
+                        )}
+                        {todoItems.length > 0 && (
+                          <span style={{
+                            fontSize: 9.5, padding: '2px 7px', borderRadius: 10, fontWeight: 600,
+                            background: 'rgba(96,165,250,0.1)', color: 'var(--accent-blue)',
+                            border: '1px solid rgba(96,165,250,0.2)',
+                          }}>
+                            {todoItems.length} pendiente{todoItems.length > 1 ? 's' : ''}
+                          </span>
+                        )}
+                        {doneItems.length > 0 && (
+                          <span style={{
+                            fontSize: 9.5, padding: '2px 7px', borderRadius: 10, fontWeight: 600,
+                            background: 'rgba(47,212,170,0.1)', color: 'var(--accent)',
+                            border: '1px solid rgba(47,212,170,0.2)',
+                          }}>
+                            {doneItems.length} hecho{doneItems.length > 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Items for this topic */}
+                    {group.items.length > 0 && (
+                      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.01)' }}>
+                        {group.items.map(si => {
+                          const stColor = si.item.estado === 'WAITING' ? 'var(--accent-orange)' :
+                            si.item.estado === 'DONE' ? 'var(--accent)' :
+                            si.item.estado === 'IN_PROGRESS' ? 'var(--accent-blue)' : 'var(--text-muted)'
+                          return (
+                            <div key={si.id} style={{
+                              display: 'flex', alignItems: 'center', gap: 8, padding: '5px 4px',
+                              fontSize: 12,
+                            }}>
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: stColor, flexShrink: 0 }} />
+                              <span style={{
+                                color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                fontWeight: si.item.estado === 'WAITING' ? 600 : 400,
+                              }}>
+                                {si.item.titulo}
+                              </span>
+                              <span style={{ fontSize: 10, color: stColor, flexShrink: 0 }}>
+                                {si.item.estado === 'WAITING' ? 'Esperando' : si.item.estado === 'DONE' ? 'Hecho' : si.item.estado === 'IN_PROGRESS' ? 'En progreso' : 'Por hacer'}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {/* Follow-up button for topics with WAITING items */}
+                    {waitingItems.length > 0 && (
+                      <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--border)' }}>
+                        <button
+                          onClick={() => generateFollowUp(tema)}
+                          style={{
+                            padding: '5px 12px', borderRadius: 7, border: '1px solid rgba(165,180,252,0.25)',
+                            background: 'rgba(165,180,252,0.06)', fontSize: 11, fontWeight: 600,
+                            color: '#a5b4fc', cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+                            display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s',
+                          }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                            <polyline points="22,6 12,13 2,6" />
+                          </svg>
+                          Generar follow-up
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Emails for this topic */}
+                    <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {group.entradas.map((entrada, i) => (
+                        <EmailCard key={entrada.id} data={entrada} index={i} />
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* Ungrouped entries */}
+              {ungrouped.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '4px 0 8px' }}>
+                    Sin tema asignado
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {ungrouped.map((entrada, i) => (
+                      <EmailCard key={entrada.id} data={entrada} index={i} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
+            /* ─── Flat list (no topics) ─── */
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {emails.map((entrada, i) => (
                 <EmailCard key={entrada.id} data={entrada} index={i} />
@@ -250,6 +457,97 @@ export default function SeguimientoDetailPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Follow-up modal */}
+      {followUp && (
+        <>
+          <div
+            onClick={() => setFollowUp(null)}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)',
+              zIndex: 900, animation: 'fade-up 0.15s ease both',
+            }}
+          />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            width: '90%', maxWidth: 560, maxHeight: '80vh', overflowY: 'auto',
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 16, padding: '24px', zIndex: 901,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+            animation: 'fade-up 0.25s ease both',
+          }}>
+            {followUp.loading ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+                <div style={{ fontSize: 24, marginBottom: 8 }}>✉️</div>
+                <div style={{ fontSize: 13 }}>Generando follow-up con Nexus...</div>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+                  Borrador de follow-up
+                </div>
+
+                {/* To field — always Pedro */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
+                  padding: '8px 12px', borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)',
+                }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', width: 30 }}>Para:</span>
+                  <span style={{ fontSize: 12, color: 'var(--text)', fontFamily: "'DM Mono', monospace" }}>{followUp.dest}</span>
+                </div>
+
+                {/* Subject */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12,
+                  padding: '8px 12px', borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)',
+                }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', width: 30 }}>Asunto:</span>
+                  <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>{followUp.subject}</span>
+                </div>
+
+                {/* Body */}
+                <div style={{
+                  padding: '14px 16px', borderRadius: 10, background: 'var(--card)',
+                  border: '1px solid var(--border)', marginBottom: 16,
+                  fontSize: 13, color: 'var(--text)', lineHeight: 1.7,
+                  whiteSpace: 'pre-wrap',
+                }}>
+                  {followUp.text}
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => setFollowUp(null)}
+                    style={{
+                      padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)',
+                      background: 'transparent', fontSize: 12, fontWeight: 600,
+                      color: 'var(--text-muted)', cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+                    }}
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Open mailto with the generated content — TO is always Pedro
+                      const mailto = `mailto:${followUp.dest}?subject=${encodeURIComponent(followUp.subject)}&body=${encodeURIComponent(followUp.text)}`
+                      window.open(mailto, '_blank')
+                    }}
+                    style={{
+                      padding: '8px 16px', borderRadius: 8, border: 'none',
+                      background: '#a5b4fc', fontSize: 12, fontWeight: 600,
+                      color: '#13141f', cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+                      boxShadow: '0 0 12px rgba(165,180,252,0.25)',
+                    }}
+                  >
+                    Abrir en email
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
       )}
 
       {/* ─── Tab: Contactos ─── */}

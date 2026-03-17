@@ -37,6 +37,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       actividad: { orderBy: { createdAt: 'desc' } },
       relaciones: { include: { destino: { select: { id: true, titulo: true, estado: true, tipo: true } } } },
       relacionesDe: { include: { origen: { select: { id: true, titulo: true, estado: true, tipo: true } } } },
+      seguimientoItems: {
+        include: {
+          seguimiento: {
+            select: {
+              id: true, titulo: true,
+              entradas: {
+                select: { id: true, tipo: true, titulo: true, resumen: true, createdAt: true },
+                orderBy: { createdAt: 'desc' },
+                take: 20,
+              },
+            },
+          },
+        },
+      },
     },
   })
 
